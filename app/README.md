@@ -28,11 +28,11 @@ If the checkout is on the Windows drive, its WSL path commonly starts with `/mnt
 
 ## Device test record
 
-Both setups loaded in Expo Go on a physical iPhone. The Windows run reported smooth orbiting at 120 FPS, continued operation in airplane mode after loading, working messages in both directions, and an approximately 2-second reload. The true WSL run used Linux Node 22.23.5 and reported an approximately 5-second reload; FPS was usually 120, with occasional drops into the 100–120 range. Airplane-mode and two-way messaging results have not yet been reported for the true WSL run.
+Both setups loaded in Expo Go on a physical iPhone. The Windows run reported smooth orbiting at 120 FPS, continued operation in airplane mode after loading, working messages in both directions, and an approximately 2-second reload. The true WSL run used Linux Node 22.23.5 and passed airplane-mode and two-way messaging checks. It reported an approximately 5-second reload; FPS was usually 120, with occasional drops into the 100–120 range.
 
 | Setup | Connected in Expo Go | Airplane mode after load | Reload time | FPS while orbiting | Messages both ways | Steps or notes |
 |---|---|---|---|---|---|---|
-| WSL `expo start --tunnel` | Yes | Not reported | About 5 seconds | Usually 120; occasional drops to 100–120 | Not reported | Linux Node 22.23.5. Checkout is under `/mnt/c`; initial startup took about 90 seconds. |
+| WSL `expo start --tunnel` | Yes | Yes | About 5 seconds | Usually 120; occasional drops to 100–120 | Yes | Linux Node 22.23.5. Checkout is under `/mnt/c`; initial startup took about 90 seconds. |
 | Expo on Windows, same Wi-Fi/hotspot | Yes | Yes | About 2 seconds | 120 FPS reported while orbiting | Yes | Scene loaded before airplane mode was enabled. |
 
 ## If Expo Go or WebGL fails
