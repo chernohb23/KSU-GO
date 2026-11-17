@@ -72,7 +72,7 @@ flowchart LR
     review --> done["Done<br/>merged to main"]
 ```
 
-- **Todo:** take one ticket whose dependencies are done. Have one in progress at a time, unless you are waiting on something.
+- **Todo:** take one ticket with nothing left in its **Blocked by** field (GitHub shows it as blocked on the board otherwise). **Done needs** tickets may still be open; build against fixtures and mock mode until they land. Have one in progress at a time, unless you are waiting on something.
 - **In Progress:** create a branch like `yourname-APP-3-event-card`. Read the ticket and `CONTRACTS.md` first. Commit on your branch only.
 - **In Review:** open the pull request. Self-merge is fine once the local type check and tests pass (there is no CI). Only `CONTRACTS.md` and `shared/types.ts` need a teammate's review.
 - **Done:** merged. Move the card and grab the next one.
@@ -146,7 +146,7 @@ cloudflared tunnel --url http://localhost:8000   # optional: lets a phone on ano
 
 ## How to grab a ticket
 
-1. Open the board and pick a card in **Todo** whose "Depends on" tickets are done. Tickets marked 🚦 go first.
+1. Open the board and pick a card in **Todo** that is not marked blocked (its **Blocked by** tickets are merged). Tickets marked 🚦 go first, then tickets with a long **Blocks** list. TICKETS.md explains the four dependency fields.
 2. Assign yourself and move it to **In Progress**. One at a time, unless you are waiting on something.
 3. Create a branch: `{your-name}-{ticket}-{short-summary}`.
 4. Give your coding agent the ticket text. It reads `AGENTS.md` on its own, and the ticket plus `CONTRACTS.md` is all the context it needs.

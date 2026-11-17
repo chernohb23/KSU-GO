@@ -1,6 +1,6 @@
 # KSU-GO tickets (draft)
 
-Nothing here is on GitHub yet. Tickets are grouped into four build parts plus setup and the pitch.
+These are the source for the GitHub issues (34 tickets: the motion cross-check moved out of AI-4 into a new ticket, AI-7). Tickets are grouped into four build parts plus setup and the pitch.
 
 **Libraries.** A ticket's "Pre-approved libraries" line lists what may be added without asking. Anything else needs the human's OK (AGENTS.md, "How we work").
 
@@ -26,16 +26,76 @@ Nothing here is on GitHub yet. Tickets are grouped into four build parts plus se
 
 **Assignments.** Only MAP-1, MAP-3 and AI-6 are assigned, to Juan. Every other ticket is open to grab. All paid keys live only on Juan's laptop, so every live paid run happens there.
 
-**Grab first:** S-1 blocks five Tuesday tickets and is about an hour of work. PITCH-1 must go out Tuesday morning, because responses need days. Both are 🚦 Do first and open to grab.
+**Grab first:** S-1 blocks five Tuesday tickets (APP-2, MAP-2, ROUTE-1, ROUTE-4, AI-1) and is about an hour of work. PITCH-1 must go out Tuesday morning, because responses need days. Both are 🚦 Do first and open to grab.
 
 | Day | 📱 App | 🗺️ Campus map | 🧭 Indoor route | 🤖 AI + server | 🎤 Pitch |
 |---|---|---|---|---|---|
 | Tue | APP-1, APP-2 | MAP-1, MAP-2 | ROUTE-1, ROUTE-4 | AI-1, AI-2, first Gemini run of AI-3 in the evening | PITCH-1 |
-| Wed | APP-3, APP-4, APP-5, APP-6a | MAP-3, MAP-4 | ROUTE-2, ROUTE-3 | AI-3, AI-4 | PITCH-2 |
-| Thu | APP-6b, APP-7, APP-8 (bonus) | MAP-5 | ROUTE-5 | AI-5, AI-6 | PITCH-3, PITCH-4, PITCH-5, PITCH-6 |
+| Wed | APP-3, APP-4, APP-5, APP-6a | MAP-3, MAP-4 | ROUTE-2, ROUTE-3, ROUTE-5 (JSON) | AI-3, AI-4, AI-7 | PITCH-2, PITCH-4 (draft) |
+| Thu | APP-6b, APP-7, APP-8 (bonus) | MAP-5 | ROUTE-5 (polish) | AI-5, AI-6 | PITCH-3, PITCH-4, PITCH-5, PITCH-6 |
 | Fri | | | | | PITCH-7 |
 
 S-1 comes before everything in the grid.
+
+## Dependencies: read this before grabbing a ticket
+
+Every ticket lists its dependencies in four fields:
+
+| Field | Meaning | What you do |
+|---|---|---|
+| **Blocked by** | You cannot start until these are **merged** (their issues closed). These are the GitHub "blocked by" links on the board. | Don't take the ticket. Pick another, or help finish a blocker. |
+| **Done needs** | Some acceptance checks can only run once these merge. They do **not** stop you starting or merging. | Build against fixtures and mock mode, merge when everything else passes, and list the checks you could not run in the PR ("Waiting on MAP-4: tap test on iPhone"). The issue closes on merge. |
+| **Uses if ready** | Optional. If it has landed, use it; never wait for it. | Nothing. |
+| **Blocks** | Tickets that cannot start until this one merges. | Prefer tickets with a long Blocks list. |
+| **When merged, check** | Tickets that left acceptance checks waiting on this one. | When your PR merges, run their pending checks (listed in their PRs) and post the result there. A failure becomes a 🐛 Bug ticket. |
+
+A ticket closed as "removed" (AI-7, a cut Bonus) counts as done for anything that needs it.
+
+**Merging closes the issue.** GitHub shows a ticket as blocked until every **Blocked by** issue is closed, so never leave a merged ticket open waiting on its Done needs: that would falsely block everything downstream.
+
+**Ready right now (nothing blocks them):** S-1, APP-1, AI-2, PITCH-1, PITCH-2, MAP-1 (Juan). PITCH-4 and PITCH-5 can also start now, but their real deadline is Thursday.
+**Ready once S-1 merges:** APP-2, MAP-2, ROUTE-1, ROUTE-4, AI-1. **Once AI-2 has videos:** AI-3 (first paid run on Juan's laptop), ROUTE-5 (hand-route JSON).
+
+**Critical path** (the chains with the least slack, by time): the demo-route chain **AI-2 (film Tue) → AI-3 (first Gemini run Tue evening) → AI-4 → AI-6 (bake Thu) → PITCH-3 → PITCH-4 → PITCH-7**, fed on the app side by **S-1 → APP-2 → APP-5 / APP-6a → AI-6**. A slip on these moves the demo; ROUTE-5's hand routes are the fallback if the AI-3 → AI-6 chain slips.
+
+**Biggest unblockers:** S-1, MAP-2 and AI-1 each block five tickets; APP-2 blocks four; APP-6a and AI-4 block three.
+
+| Ticket | Blocked by (can't start) | Done needs (checks wait on) | Blocks |
+|---|---|---|---|
+| S-1 | **ready** | — | APP-2, MAP-2, ROUTE-1, ROUTE-4, AI-1 |
+| APP-1 | **ready** | — | — |
+| APP-2 | S-1 | — | APP-3, APP-4, APP-5, APP-6a |
+| APP-3 | APP-2, MAP-2 | MAP-4 | APP-7, APP-8 |
+| APP-4 | APP-2, MAP-2, ROUTE-4 | ROUTE-3 | APP-7, PITCH-6 |
+| APP-5 | APP-2, AI-1 | — | AI-6 |
+| APP-6a | APP-2, AI-1, ROUTE-4 | APP-5, MAP-2 | APP-6b, APP-7, AI-6 |
+| APP-6b | APP-6a, ROUTE-2, AI-4 | — | — |
+| APP-7 | APP-3, APP-4, APP-6a | ROUTE-5 | — |
+| APP-8 | APP-3, AI-1 | — | — |
+| MAP-1 | **ready** | S-1, APP-1 | MAP-3 |
+| MAP-2 | S-1 | APP-2 | APP-3, APP-4, MAP-3, MAP-4, ROUTE-2 |
+| MAP-3 | MAP-1, MAP-2 | — | MAP-5 |
+| MAP-4 | MAP-2 | — | MAP-5 |
+| MAP-5 | MAP-3, MAP-4 | — | — |
+| ROUTE-1 | S-1 | — | ROUTE-2 |
+| ROUTE-2 | ROUTE-1, MAP-2 | — | APP-6b, ROUTE-3 |
+| ROUTE-3 | ROUTE-2 | — | — |
+| ROUTE-4 | S-1 | — | APP-4, APP-6a |
+| ROUTE-5 | AI-2 | ROUTE-2 | PITCH-6 |
+| AI-1 | S-1 | — | APP-5, APP-6a, APP-8, AI-4, AI-7 |
+| AI-2 | **ready** | — | ROUTE-5, AI-3, AI-7 |
+| AI-3 | AI-2 | AI-1 | — |
+| AI-4 | AI-1 | AI-3 | APP-6b, AI-5, AI-6 |
+| AI-5 | AI-4 | ROUTE-5 | — |
+| AI-6 | AI-4, APP-5, APP-6a | APP-3 | — |
+| AI-7 | AI-1, AI-2 | AI-4 | — |
+| PITCH-1 | **ready** | — | — |
+| PITCH-2 | **ready** | — | PITCH-3 |
+| PITCH-3 | PITCH-2 | AI-6 | — |
+| PITCH-4 | **ready** | PITCH-1, PITCH-2, PITCH-3, AI-7, AI-6 | PITCH-7 |
+| PITCH-5 | **ready** | APP-7 | PITCH-7 |
+| PITCH-6 | APP-4, ROUTE-5 | — | — |
+| PITCH-7 | PITCH-4, PITCH-5 | — | — |
 
 ---
 
@@ -49,12 +109,16 @@ S-1 comes before everything in the grid.
   - `route.sample.json`: the sample in section 4, with every `StepBase` field filled.
   - `route.draft-flawed.json`: the sample route as a `draft` with three planted problems, each with its check: step `s9` turns `right` where it should turn `left` (confidence 0.4, a `turn_motion_mismatch` warn on it); step `s3` is correct but has confidence 0.5 and a `low_confidence` warn; and an extra 0.2 m walk after `s8` carries a `leg_length_range` fail.
   - `campus.json`: a placeholder with 4 rectangular buildings, replaced by MAP-1.
+  - `routes/placeholder.draft.json`: a copy of `route.draft-flawed.json` with id `route-placeholder-draft`, so APP-5's drafts list and AI-1's route loading have a file to work with before AI-6 bakes the real stage draft. AI-6 deletes it.
 - **Pre-approved libraries:** `typescript`, `vitest` (for the fixture check).
 - **Acceptance:**
   - `shared/types.ts` compiles under `tsc --strict`, and each fixture is checked against its type in a small test.
   - Building ids used in events exist in `campus.json`.
   - No app, viewer or server logic is included.
-- **Depends on:** nothing. Do this first on Tuesday.
+- **Blocked by:** nothing, start now
+- **Blocks:** APP-2, MAP-2, ROUTE-1, ROUTE-4, AI-1
+- **When merged, check:** MAP-1
+- **Dependency note:** Do this first on Tuesday. It unblocks five tickets.
 - **Labels:** 🧱 Setup, ✅ Must have, 🚦 Do first · **Milestone:** Tue
 
 ---
@@ -73,7 +137,10 @@ S-1 comes before everything in the grid.
   - Messages work in both directions using the mechanism in CONTRACTS.md section 6.
   - The PR records, for each dev setup tried (tunnel from WSL, Expo on Windows): whether the iPhone connected, how long a reload takes, and any setup steps needed. The working setup is written into `app/README.md` for the rest of the team.
   - A short note in the PR says which loading method worked, and anything that needs to change in section 6. If it fails, the note says which fallback from SCOPE.md risk 1 was tried and what happened.
-- **Depends on:** nothing. Start first thing Tuesday.
+- **Blocked by:** nothing, start now
+- **Blocks:** nothing
+- **When merged, check:** MAP-1
+- **Dependency note:** Start first thing Tuesday.
 - **Labels:** 📱 App, ✅ Must have, 🚦 Do first · **Milestone:** Tue
 
 ### APP-2: App shell, API client and fixture fallback
@@ -95,7 +162,11 @@ S-1 comes before everything in the grid.
   - Stopping the server makes the badge appear within about 10 seconds; starting it makes the badge go away.
   - Changing the server URL in the hidden screen takes effect without restarting Expo.
   - The app does not import three.js.
-- **Depends on:** S-1. Uses the APP-1 result for how `ViewerWebView` loads the HTML.
+- **Blocked by:** S-1
+- **Uses if ready:** APP-1
+- **Blocks:** APP-3, APP-4, APP-5, APP-6a
+- **When merged, check:** MAP-2
+- **Dependency note:** Build `ViewerWebView` to the default in CONTRACTS.md section 6 until APP-1 reports which loading method works.
 - **Labels:** 📱 App, ✅ Must have · **Milestone:** Tue
 
 ### APP-3: Map screen, event card and register
@@ -107,7 +178,11 @@ S-1 comes before everything in the grid.
   - Registering updates the count and the button state, and survives an app restart.
   - "Take me there" opens the Route screen with that route.
   - The whole flow works in airplane mode.
-- **Depends on:** APP-2, MAP-2. Looks better once MAP-4 lands, but does not wait for it.
+- **Blocked by:** APP-2, MAP-2
+- **Done needs:** MAP-4 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** APP-7, APP-8
+- **When merged, check:** AI-6
+- **Dependency note:** Until MAP-4 lands there are no flags to tap: fire `campus:flagTapped` from a dev button to build the card.
 - **Labels:** 📱 App, ✅ Must have · **Milestone:** Wed
 
 ### APP-4: Route screen with step-by-step instructions
@@ -118,7 +193,10 @@ S-1 comes before everything in the grid.
   - The sample route can be stepped through from the entrance to "Room 204", and played as a walk-through.
   - The bar and the 3D view never disagree about the current step.
   - A route that is not `confirmed` is not shown to students.
-- **Depends on:** APP-2, MAP-2, ROUTE-4. Uses a placeholder scene until ROUTE-2 lands.
+- **Blocked by:** APP-2, MAP-2, ROUTE-4
+- **Done needs:** ROUTE-3 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** APP-7, PITCH-6
+- **Dependency note:** Build against the placeholder scene. Play and the bar/3D sync can only be accepted once ROUTE-3 sends `route:stepChanged`.
 - **Labels:** 📱 App, ✅ Must have · **Milestone:** Wed
 
 ### APP-5: Organizer upload, progress and drafts list
@@ -137,7 +215,11 @@ S-1 comes before everything in the grid.
   - Leaving and reopening the screen resumes polling for the same route.
   - A draft fixture loaded by the server appears in the drafts list and opens.
   - With the server stopped mid-upload, the app shows the failure and Retry works after the server is back.
-- **Depends on:** APP-2, AI-1.
+- **Blocked by:** APP-2, AI-1
+- **Uses if ready:** AI-2
+- **Blocks:** AI-6
+- **When merged, check:** APP-6a
+- **Dependency note:** The export setting is one constant; AI-2/AI-3 decide its value on Tuesday.
 - **Labels:** 📱 App, ✅ Must have · **Milestone:** Wed
 
 ### APP-6a: Organizer confirms turns (core)
@@ -157,8 +239,11 @@ S-1 comes before everything in the grid.
   - Against the mock server, the flawed draft (`route.draft-flawed.json`) opens focused on its first flagged step.
   - **A teammate who has not seen the screen fixes the flawed draft and confirms it in under one minute, timed.** Write the time in the PR.
   - A route with a `fail` check cannot be confirmed; after fixing it, it can.
-  - After confirming, the event's card shows "Take me there" and opens the new route. So does the other seed event in the same room.
-- **Depends on:** APP-5, AI-1.
+  - After confirming, `GET /api/events` shows the new `routeId` on the uploaded event and on the other seed event in the same room. (The card-level check is in APP-7, so this ticket never waits on the map.)
+- **Blocked by:** APP-2, AI-1, ROUTE-4
+- **Done needs:** APP-5, MAP-2 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** APP-6b, APP-7, AI-6
+- **Dependency note:** Does not wait for APP-5: open the mock draft by id from a dev entry point, then hook into the drafts list when APP-5 lands. This lets two people work the organizer flow in parallel on Wednesday. The "Take me there" card check moved to APP-7 so this ticket never waits on the map.
 - **Labels:** 📱 App, ✅ Must have · **Milestone:** Wed
 
 ### APP-6b: Organizer confirms turns (more edits)
@@ -176,7 +261,8 @@ S-1 comes before everything in the grid.
   - A draft with a missed mid-corridor turn can be fixed by splitting the walk, in three taps or fewer.
   - A draft that ends on the wrong floor can be brought to the right one with the stairs switch or by deleting a flight, and the `ends_on_destination_floor` warning clears.
   - Every `fail` check the server can produce can be cleared with the edits on this screen.
-- **Depends on:** APP-6a, ROUTE-2, AI-4.
+- **Blocked by:** APP-6a, ROUTE-2, AI-4
+- **Blocks:** nothing
 - **Labels:** 📱 App, ✅ Must have · **Milestone:** Thu
 
 ### APP-7: Visual polish and offline demo check
@@ -186,8 +272,14 @@ S-1 comes before everything in the grid.
 - **Acceptance:**
   - The full student flow from SCOPE.md runs in airplane mode on the demo iPhone.
   - No screen shows placeholder text or a default Expo asset.
+  - After an organizer confirms a draft, the event's card shows "Take me there" and opens the new route; so does the other seed event in the same room.
   - Nothing in the app copies names or art from an existing game.
-- **Depends on:** APP-3, APP-4, APP-6a.
+- **Blocked by:** APP-3, APP-4, APP-6a
+- **Done needs:** ROUTE-5 (merge without them; list the checks you could not run in your PR)
+- **Uses if ready:** AI-6
+- **Blocks:** nothing
+- **When merged, check:** PITCH-5
+- **Dependency note:** Bundles the hand routes (ROUTE-5) at minimum; swaps in AI-6's routes if they exist.
 - **Labels:** 📱 App, ✅ Must have · **Milestone:** Thu
 
 ### APP-8: Swipe deck of this week's events
@@ -208,7 +300,10 @@ S-1 comes before everything in the grid.
   - Saved events survive an app restart.
   - A saved event that is on today's map is highlighted once MAP-5's highlight exists.
   - The screen works in airplane mode.
-- **Depends on:** APP-3 (working), S-1 (week events in the seed), AI-1 (`range=week`). MAP-5 for the highlight only.
+- **Blocked by:** APP-3, AI-1
+- **Uses if ready:** MAP-5
+- **Blocks:** nothing
+- **Dependency note:** Bonus. APP-3 must work on the demo iPhone, not just be merged.
 - **Labels:** 📱 App, ✨ Bonus · **Milestone:** Thu
 
 ---
@@ -231,7 +326,11 @@ S-1 comes before everything in the grid.
   - Screenshots of each path tried, taken on the iPhone, are in the PR with frame rate and file size for each.
   - The PR states the decision: A alone, A with named hero models from B, or C. The team agrees by Tuesday evening.
   - Money spent on model generation is written in `pitch/pipeline-numbers.md` and is at most $4 for the whole project.
-- **Depends on:** S-1. Can start in a desktop browser before MAP-2 is done.
+- **Blocked by:** nothing, start now
+- **Done needs:** S-1, APP-1 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** MAP-3
+- **Gate:** Juan (image-to-3D account and spend)
+- **Dependency note:** Reference images and the Path A/B experiments start now in a desktop browser. The `campus.json` PR waits for S-1; the on-iPhone comparison uses APP-1's screen.
 - **Labels:** 🗺️ Campus map, ✅ Must have, 🚦 Do first, 💳 Costs money · **Milestone:** Tue
 
 ### MAP-2: Viewer scaffold, bridge and single-file build
@@ -243,7 +342,12 @@ S-1 comes before everything in the grid.
   - `npm run dev` shows either placeholder scene in a desktop browser.
   - After `npm run build`, the app's `ViewerWebView` shows the same scene on an iPhone in airplane mode.
   - An unknown message type produces an `error` message and does not crash.
-- **Depends on:** S-1. Uses the APP-1 result; until it arrives, build to the default in section 6.
+- **Blocked by:** S-1
+- **Done needs:** APP-2 (merge without them; list the checks you could not run in your PR)
+- **Uses if ready:** APP-1
+- **Blocks:** APP-3, APP-4, MAP-3, MAP-4, ROUTE-2
+- **When merged, check:** APP-6a
+- **Dependency note:** The "shows on an iPhone" acceptance needs APP-2's `ViewerWebView`.
 - **Labels:** 🗺️ Campus map, ✅ Must have · **Milestone:** Tue
 
 ### MAP-3: Stylized campus scene
@@ -256,7 +360,8 @@ S-1 comes before everything in the grid.
   - Smooth on the demo iPhone while panning and zooming, and the built viewer file is under 8 MB.
   - The look uses a small named palette defined in one file, shared with the route scene.
   - Nothing copies art or models from an existing game.
-- **Depends on:** MAP-1, MAP-2.
+- **Blocked by:** MAP-1, MAP-2
+- **Blocks:** MAP-5
 - **Labels:** 🗺️ Campus map, ✅ Must have · **Milestone:** Wed
 
 ### MAP-4: Event flags
@@ -267,7 +372,11 @@ S-1 comes before everything in the grid.
   - A unit test covers the state and height function, including the boundaries at 0, 60 and 240 minutes.
   - On an iPhone, every flag in the seed data can be tapped on the first try.
   - Live, soon and later flags are distinguishable without relying on color alone (height and pulse also differ).
-- **Depends on:** MAP-3.
+- **Blocked by:** MAP-2
+- **Uses if ready:** MAP-3
+- **Blocks:** MAP-5
+- **When merged, check:** APP-3
+- **Dependency note:** Flags need only building entrances from `campus.json` and the scene interface, so this runs alongside MAP-3 on the placeholder buildings. Keep flags in their own file (e.g. `viewer/src/campus/flags.ts`) to avoid conflicts with MAP-3.
 - **Labels:** 🗺️ Campus map, ✅ Must have · **Milestone:** Wed
 
 ### MAP-5: Map polish
@@ -278,7 +387,8 @@ S-1 comes before everything in the grid.
   - Labels and legend are in. Each further item is either done or left out cleanly.
   - A `campus:load` without `savedEventIds` behaves exactly as before.
   - Still smooth on the demo iPhone.
-- **Depends on:** MAP-4.
+- **Blocked by:** MAP-3, MAP-4
+- **Blocks:** nothing
 - **Labels:** 🗺️ Campus map, ✨ Bonus · **Milestone:** Thu
 
 ---
@@ -295,7 +405,8 @@ S-1 comes before everything in the grid.
   - The two stair flights in the sample route do not overlap in plan view.
   - Any step list the contract allows lays out without throwing, however odd: turns next to each other, corridors that overlap, stairs going below the start floor. An organizer's half-finished edit must still draw. The flawed draft fixture is one of the test inputs.
   - Only input that breaks the contract (negative length, empty steps) throws, with a clear error.
-- **Depends on:** S-1.
+- **Blocked by:** S-1
+- **Blocks:** ROUTE-2
 - **Labels:** 🧭 Indoor route, ✅ Must have · **Milestone:** Tue
 
 ### ROUTE-2: Corridor scene
@@ -308,7 +419,9 @@ S-1 comes before everything in the grid.
   - A test route with an elevator renders with the next floor's corridor starting at the shaft.
   - The flawed draft fixture renders without errors.
   - Rebuilding ten times does not leak memory or slow down (old geometry is disposed).
-- **Depends on:** ROUTE-1, MAP-2.
+- **Blocked by:** ROUTE-1, MAP-2
+- **Blocks:** APP-6b, ROUTE-3
+- **When merged, check:** ROUTE-5
 - **Labels:** 🧭 Indoor route, ✅ Must have · **Milestone:** Wed
 
 ### ROUTE-3: Walk-through camera
@@ -319,7 +432,9 @@ S-1 comes before everything in the grid.
   - Playing the sample route reaches "Room 204" and reports every step index in order, once each.
   - `route:goto` during play stops play and jumps cleanly.
   - On floor changes, the floor being walked is always visible.
-- **Depends on:** ROUTE-2.
+- **Blocked by:** ROUTE-2
+- **Blocks:** nothing
+- **When merged, check:** APP-4
 - **Labels:** 🧭 Indoor route, ✅ Must have · **Milestone:** Wed
 
 ### ROUTE-4: Step instructions
@@ -329,18 +444,23 @@ S-1 comes before everything in the grid.
 - **Acceptance:**
   - Unit tests cover every step type and direction, and the sample route's full instruction list reads naturally.
   - The last step of a route always names the destination.
-- **Depends on:** S-1.
+- **Blocked by:** S-1
+- **Blocks:** APP-4, APP-6a
 - **Labels:** 🧭 Indoor route, ✅ Must have · **Milestone:** Tue
 
 ### ROUTE-5: Hand-measured demo routes and polish
 - **Assignee:** open
 - **Goal:** A guaranteed good route for the demo, whatever the AI pipeline does.
-- **Work:** Walk the two demo routes in the real building (the same ones filmed in AI-2) and write them by hand as `Route` JSON with paced or measured lengths (an elevator step is fine where the walk uses one), saved as `shared/fixtures/routes/<name>.hand.json` with `status: "confirmed"` and every step `source: "organizer"`. Then polish the scene: readable door and floor labels, lighting, colors that match the campus map's palette.
+- **Work:** As soon as AI-2 has picked the routes, walk the two demo routes in the real building (the same ones filmed in AI-2) and write them by hand as `Route` JSON with paced or measured lengths (an elevator step is fine where the walk uses one), saved as `shared/fixtures/routes/<name>.hand.json` with `status: "confirmed"` and every step `source: "organizer"`. Then polish the scene: readable door and floor labels, lighting, colors that match the campus map's palette.
 - **Acceptance:**
   - Both hand routes validate against the `Route` type and render correctly.
   - A teammate who knows the building agrees each route matches the real walk.
   - The seed events for the demo building point at these routes until AI-6 replaces them.
-- **Depends on:** ROUTE-3, AI-2 (for which routes were filmed).
+- **Blocked by:** AI-2
+- **Done needs:** ROUTE-2 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** PITCH-6
+- **When merged, check:** APP-7, AI-5
+- **Dependency note:** This is the demo's safety net, so do not wait for ROUTE-3: write the hand-route JSON as soon as AI-2 has picked the routes (Wednesday). Rendering checks and polish need ROUTE-2.
 - **Labels:** 🧭 Indoor route, ✅ Must have · **Milestone:** Thu
 
 ---
@@ -367,7 +487,9 @@ The server and its API keys run on Juan's laptop. Tickets marked 💳 make paid 
   - `GET /api/health` answers in under half a second while a mock pipeline run is in progress.
   - A phone on a different network can reach `/api/health` through the tunnel.
   - No API key is needed in mock mode.
-- **Depends on:** S-1.
+- **Blocked by:** S-1
+- **Blocks:** APP-5, APP-6a, APP-8, AI-4, AI-7
+- **When merged, check:** AI-3
 - **Labels:** 🤖 AI + server, ✅ Must have · **Milestone:** Tue
 
 ### AI-2: Film the demo building, and the ingest step
@@ -387,7 +509,9 @@ The server and its API keys run on Juan's laptop. Tickets marked 💳 make paid 
   - A test with a small video that carries a location tag shows the output has none, and that the assertion fires if stripping is skipped.
   - The stripped file plays with the right orientation.
   - The size report is posted to the team.
-- **Depends on:** nothing.
+- **Blocked by:** nothing, start now
+- **Blocks:** ROUTE-5, AI-3, AI-7
+- **Dependency note:** Film Tuesday morning; the Tuesday-evening Gemini run needs these videos.
 - **Labels:** 🤖 AI + server, ✅ Must have, 🚦 Do first · **Milestone:** Tue
 
 ### AI-3: Gemini timeline
@@ -415,13 +539,18 @@ The server and its API keys run on Juan's laptop. Tickets marked 💳 make paid 
   - **Tests use recorded responses.** Save real Gemini answers from the live runs under `server/tests/recordings/` and replay them; no test calls Gemini or needs a key. Tests cover parsing, validation, the retry, the timeout and the cap (with the cap at 0, the client is never called).
   - **Manual live checks on Juan's server**, written in the PR: uploading the same file twice makes one paid call (shown by the spend log).
 - **Bonus:** an `elevator` event type (with the floor reached, if a sign or the panel shows it), which AI-4 turns into an `elevator` step. Not needed for the demo.
-- **Depends on:** AI-2.
+- **Blocked by:** AI-2
+- **Done needs:** AI-1 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** nothing
+- **When merged, check:** AI-4
+- **Gate:** Juan's laptop and OK for every paid run
+- **Dependency note:** The Tuesday-evening throwaway run needs only the videos. Wiring the spend cap into the API needs AI-1.
 - **Labels:** 🤖 AI + server, ✅ Must have, 💳 Costs money · **Milestone:** Wed (first run Tue evening)
 
-### AI-4: Assemble, verify and motion cross-check
+### AI-4: Assemble and verify
 - **Assignee:** open
 - **Goal:** A complete `live` pipeline from upload to a checked draft route that the organizer can always finish.
-- **Order:** assemble and verify first, because APP-6b and AI-6 wait on them. The motion cross-check comes last. If Wednesday runs out, its three hours are Thursday morning, ahead of AI-5.
+- **Why the motion check moved to AI-7:** APP-6b, AI-5 and AI-6 wait only on assemble and verify. The motion cross-check (AI-7) is time-boxed and may be removed, so it must not hold them up.
 - **Work:**
   - **Assemble** (`assemble.py`): convert the timeline to `Route` steps.
     - **Doors:** the route always starts with a door ("Main entrance", or Gemini's note for it) and always ends with a door labelled with the route's `destination`, whether or not Gemini reported them. `turn_into_room` becomes a turn followed by that final door.
@@ -430,29 +559,26 @@ The server and its API keys run on Juan's laptop. Tickets marked 💳 make paid 
     - **Switchbacks:** between two flights in the same direction less than 8 seconds apart, a single left or right turn becomes a U-turn to that side with a `warn`; two turns to the same side merge into one U-turn; no turn at all gets a U-turn inserted with a `warn`, using the side the motion check saw, or the right if it saw nothing.
     - **Notes:** a sign or landmark becomes the `note` on the nearest walk only when its confidence is 0.8 or more.
     - `confidence` and `tSec` are carried over; `source` is `"ai"`.
-  - **Motion cross-check** (`motion.py`). **Time-box: three hours, tested on Tuesday's videos.**
-    - Decode the video to small grayscale frames (about 160 px wide, 10 per second). For each pair of frames, estimate how far the image slid sideways (phase correlation). Sideways slide is rotation: calibrate the scale so the known 90° turns in Tuesday's videos add up to about 90.
-    - For each turn in the timeline, add up the rotation from 2 seconds before to 2 seconds after. If the side disagrees, or the size is clearly the other kind (about 90 against about 180), attach a `turn_motion_mismatch` warn to the step, such as "The video turns left here."
-    - Where the video rotates 60° or more within 4 seconds and the timeline has no turn or pan, split the walk at that time and insert a turn with confidence 0.3 and a `turn_from_motion` warn: "The video turns here but the AI did not report it. Keep or delete."
-    - Save the per-second rotation with the route under `server/data/`, so `PUT .../steps` can re-run the check without the video. Steps with `source: "organizer"` are never checked against motion; the organizer has the last word.
-    - This check verifies and supplements Gemini's turns. It does not replace them.
-    - **Pass bar:** on the four campus videos, at least 9 in 10 true turns get the right side, with no more than one false "unreported turn" per video. **If it does not pass in three hours, remove it,** keep the low-confidence check, and tell whoever has PITCH-4: the pitch wording changes to "low-confidence turns are flagged" (see SCOPE.md).
-    - **Cleanup after a removal, done by a person in one PR** (coding agents may not change contracts): delete step 3 from the pipeline section of `docs/pipeline.md`; delete `turn_motion_mismatch` and `turn_from_motion` from the checks table in CONTRACTS.md; and change the planted check on `s9` in `route.draft-flawed.json` to `low_confidence`. In assemble, an inserted switchback U-turn then always goes to the right.
   - **Verify** (`verify.py`): plain code that returns `checks`, run on every draft and on every `PUT .../steps`.
     - `fail`: `leg_length_range` (a walk shorter than 0.5 m; cleared by deleting it); `elevator_floor` (an elevator whose `toFloor` is the floor it is already on).
     - `warn`: `long_walk` (a walk over 80 m, which the organizer cannot shorten); `ends_on_destination_floor` (the floor after the last step is not `destinationFloor`); `total_length` (total length does not fit the video's duration at 0.4 to 1.5 m/s); `stair_rise` (a flight outside 1.0 to 4.5 m); `low_confidence` (a step under 0.6, naming the step); the two motion checks; and the assemble warnings above.
     - `low_confidence` and the motion checks are skipped for steps with `source: "organizer"`.
     - **Rule:** a check may be `fail` only if the edits in APP-6a and APP-6b can clear it. Anything else is a `warn`.
   - **Robustness:** the live pipeline runs in the worker thread from AI-1. Fill `stats` with the video length, processing time and cost.
-- **Pre-approved libraries:** `numpy`, `opencv-python-headless<5` (motion check: frame decoding and phase correlation).
+  - **Hook for AI-7:** leave a clear place in assemble and verify where the motion results plug in (the switchback side, and the two motion checks). Until AI-7 lands, an inserted switchback U-turn goes to the right.
+- **Pre-approved libraries:** `numpy`.
 - **Acceptance:**
-  - **Tests use recorded timelines** from `server/tests/recordings/` (AI-3) and hand-written ones; no test calls a paid service or needs a key. The motion check is tested on short clips cut from the campus videos, which cost nothing.
+  - **Tests use recorded timelines** from `server/tests/recordings/` (AI-3) and hand-written ones; no test calls a paid service or needs a key.
   - **Manual live check on Juan's server**, written in the PR: with `PIPELINE_MODE=live`, uploading a campus video yields a `draft` that renders in the route viewer and can be confirmed after edits.
   - Unit tests cover each assemble rule above with a small hand-written timeline, including: no final door reported, a single left turn between two flights, two flights with no turn, and a 0.2-second walk.
   - Unit tests cover each verifier check with a passing and a failing route.
   - `GET /api/health` answers in under half a second during a live run.
-  - The PR reports the motion check's result against the pass bar, and states whether it stays or is removed.
-- **Depends on:** AI-1, AI-3.
+- **Blocked by:** AI-1
+- **Done needs:** AI-3 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** APP-6b, AI-5, AI-6
+- **When merged, check:** AI-7
+- **Gate:** Juan's laptop for the live check
+- **Dependency note:** Assemble and verify are plain code: build them on hand-written timelines (schema in AI-3) while AI-3 runs. Its recorded-response tests and live check wait on AI-3.
 - **Labels:** 🤖 AI + server, ✅ Must have, 💳 Costs money · **Milestone:** Wed
 
 ### AI-5: Measured lengths from MapAnything
@@ -470,7 +596,11 @@ The server and its API keys run on Juan's laptop. Tickets marked 💳 make paid 
   - A failed or timed-out segment degrades to time-based lengths; the route still reaches `draft`.
   - No clip over 15 MB is ever sent.
   - An HDR `.mov` produces a normal-looking SDR copy.
-- **Depends on:** AI-4.
+- **Blocked by:** AI-4
+- **Done needs:** ROUTE-5 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** nothing
+- **Gate:** Juan's laptop (Replicate)
+- **Dependency note:** Bonus. Cut line Thursday 2 pm. The comparison needs ROUTE-5's paced lengths.
 - **Labels:** 🤖 AI + server, ✨ Bonus, 💳 Costs money · **Milestone:** Thu
 
 ### AI-6: Bake the demo routes and record the numbers
@@ -478,7 +608,7 @@ The server and its API keys run on Juan's laptop. Tickets marked 💳 make paid 
 - **Goal:** Real AI-drafted, organizer-confirmed routes in the app, the draft for the stage, and measured numbers for the slides.
 - **Work:**
   - **Run** the best take of each demo route through the live pipeline, uploaded from the demo iPhone through the app, so the input is the same kind of file the stage will use.
-  - **Stage draft:** save the AI's draft of the stage route, before any correction, as `shared/fixtures/routes/<name>.draft.json`. The server loads it at startup and the app lists it under drafts (APP-5). The best stage draft has one wrong turn that the code flagged. Look for one among the takes and routes, and never plant an error in a real draft. If no draft has one, tell whoever has PITCH-4 which case applies, so the script matches: (a) the draft is right and its flags are false alarms, so the organizer taps "Looks right" and confirms, and the pitch says this draft needed no correction; or (b) a turn is wrong but not flagged, so the organizer fixes it and the pitch credits the organizer, not the code.
+  - **Stage draft:** save the AI's draft of the stage route, before any correction, as `shared/fixtures/routes/<name>.draft.json`, and delete `routes/placeholder.draft.json` from S-1. The server loads it at startup and the app lists it under drafts (APP-5). The best stage draft has one wrong turn that the code flagged. Look for one among the takes and routes, and never plant an error in a real draft. If no draft has one, tell whoever has PITCH-4 which case applies, so the script matches: (a) the draft is right and its flags are false alarms, so the organizer taps "Looks right" and confirms, and the pitch says this draft needed no correction; or (b) a turn is wrong but not flagged, so the organizer fixes it and the pitch credits the organizer, not the code.
   - **Confirm** each route in the app's organizer flow (or, if APP-6b is not ready, with APP-6a plus direct calls to `PUT /api/routes/{id}/steps`), writing down how many steps had to change. Save the confirmed routes to `shared/fixtures/routes/` and point the seed events at them, leaving the one seed event with no route (S-1) in the stage route's room.
   - **Rehearse the stage flow** once from a fresh server start: start an upload, open the stage draft, fix, confirm, and see "Take me there" appear on the event with no route.
   - **Numbers:** write `pitch/pipeline-numbers.md`. For each run: video length, upload time from the phone, processing time, cost, number of steps and number of organizer corrections. State whether MapAnything was part of the run. Add total spend so far.
@@ -486,8 +616,37 @@ The server and its API keys run on Juan's laptop. Tickets marked 💳 make paid 
   - Two AI-drafted, organizer-confirmed routes are in fixtures and open from their event cards. Each needed at most one correction; if not, the hand routes from ROUTE-5 stay in place and the pitch says which is which.
   - The stage draft fixture exists, and restarting the server brings it back unconfirmed.
   - `pitch/pipeline-numbers.md` contains only measured values.
-- **Depends on:** AI-4, APP-5, APP-6a. Uses APP-6b and AI-5 if they landed.
+- **Blocked by:** AI-4, APP-5, APP-6a
+- **Done needs:** APP-3 (merge without them; list the checks you could not run in your PR)
+- **Uses if ready:** APP-6b, AI-7, AI-5
+- **Blocks:** nothing
+- **When merged, check:** PITCH-3, PITCH-4
+- **Gate:** Juan (live runs)
+- **Dependency note:** The stage rehearsal step ("Take me there" appears) needs APP-3.
 - **Labels:** 🤖 AI + server, ✅ Must have, 💳 Costs money · **Milestone:** Thu
+
+### AI-7: Motion cross-check
+- **Assignee:** open
+- **Goal:** Catch wrong left/right turns, which ordinary checks cannot see. **Time-box: three hours.** If it does not pass its bar, it is removed, and that is a valid way to close this ticket.
+- **Order:** Wednesday after AI-4's core, or Thursday morning ahead of AI-5.
+- **Work** (`server/pipeline/motion.py`), tested on Tuesday's videos:
+  - Decode the video to small grayscale frames (about 160 px wide, 10 per second). For each pair of frames, estimate how far the image slid sideways (phase correlation). Sideways slide is rotation: calibrate the scale so the known 90° turns in Tuesday's videos add up to about 90.
+  - For each turn in the timeline, add up the rotation from 2 seconds before to 2 seconds after. If the side disagrees, or the size is clearly the other kind (about 90 against about 180), attach a `turn_motion_mismatch` warn to the step, such as "The video turns left here."
+  - Where the video rotates 60° or more within 4 seconds and the timeline has no turn or pan, split the walk at that time and insert a turn with confidence 0.3 and a `turn_from_motion` warn: "The video turns here but the AI did not report it. Keep or delete."
+  - Save the per-second rotation with the route under `server/data/`, so `PUT .../steps` can re-run the check without the video. Steps with `source: "organizer"` are never checked against motion; the organizer has the last word.
+  - This check verifies and supplements Gemini's turns. It does not replace them.
+  - **Pass bar:** on the four campus videos, at least 9 in 10 true turns get the right side, with no more than one false "unreported turn" per video. **If it does not pass in three hours, remove it,** keep the low-confidence check, and tell whoever has PITCH-4: the pitch wording changes to "low-confidence turns are flagged" (see SCOPE.md).
+  - **Cleanup after a removal, done by a person in one PR** (coding agents may not change contracts): delete step 3 from the pipeline section of `docs/pipeline.md`; delete `turn_motion_mismatch` and `turn_from_motion` from the checks table in CONTRACTS.md; and change the planted check on `s9` in `route.draft-flawed.json` to `low_confidence`. In assemble, an inserted switchback U-turn then always goes to the right.
+- **Pre-approved libraries:** `numpy`, `opencv-python-headless<5` (frame decoding and phase correlation).
+- **Acceptance:**
+  - The motion check is tested on short clips cut from the campus videos, which cost nothing.
+  - The PR reports the result against the pass bar, and states whether the check stays or is removed. If removed, the cleanup PR above is done and whoever holds PITCH-4 is told.
+- **Blocked by:** AI-1, AI-2
+- **Done needs:** AI-4 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** nothing
+- **When merged, check:** PITCH-4
+- **Dependency note:** Time-boxed to 3 hours. Calibrate on AI-2's clips on their own; hooking the checks into verify needs AI-4. Closing it as removed counts as done.
+- **Labels:** 🤖 AI + server, ✅ Must have · **Milestone:** Wed (overflow Thu morning)
 
 ---
 
@@ -503,7 +662,10 @@ These are shared. PITCH-1 takes 30 minutes and must go out Tuesday morning, beca
   - At least 50 responses by Thursday noon; the real count is reported whatever it is.
   - `pitch/survey-results.md` gives the count, the date range, how it was distributed, and the result for each question.
   - No number is estimated or rounded in our favor.
-- **Depends on:** nothing.
+- **Blocked by:** nothing, start now
+- **Blocks:** nothing
+- **When merged, check:** PITCH-4
+- **Dependency note:** Send Tuesday morning; responses need days.
 - **Labels:** 🎤 Pitch, ✅ Must have, 🚦 Do first · **Milestone:** Tue (send), results Thu
 
 ### PITCH-2: OwlLife event counts
@@ -514,7 +676,9 @@ These are shared. PITCH-1 takes 30 minutes and must go out Tuesday morning, beca
   - `pitch/event-counts.md` has each number with the date it was counted and how.
   - Every figure has a source link. Nothing is invented.
   - One sentence combines the counts into the reach claim used on the opening slide (events per week, rooms, students).
-- **Depends on:** nothing.
+- **Blocked by:** nothing, start now
+- **Blocks:** PITCH-3
+- **When merged, check:** PITCH-4
 - **Labels:** 🎤 Pitch, ✅ Must have · **Milestone:** Wed
 
 ### PITCH-3: Feasibility slide
@@ -524,7 +688,11 @@ These are shared. PITCH-1 takes 30 minutes and must go out Tuesday morning, beca
 - **Acceptance:**
   - Every number on the slide traces to `pitch/pipeline-numbers.md` or `pitch/event-counts.md`.
   - The slide can be read in 20 seconds.
-- **Depends on:** PITCH-2, AI-6.
+- **Blocked by:** PITCH-2
+- **Done needs:** AI-6 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** nothing
+- **When merged, check:** PITCH-4
+- **Dependency note:** Lay out the slide with blanks once PITCH-2 is in; the cost/time numbers come from AI-6 on Thursday.
 - **Labels:** 🎤 Pitch, ✅ Must have · **Milestone:** Thu
 
 ### PITCH-4: Deck and script
@@ -533,14 +701,17 @@ These are shared. PITCH-1 takes 30 minutes and must go out Tuesday morning, beca
 - **Work:** Follow the demo story in SCOPE.md. At most six slides: problem with our numbers, live demo (student), live demo (organizer and how the AI works: AI drafts, code verifies, organizer confirms), feasibility, close. Write the script with a time mark per section and name who speaks and who drives the phone.
   - **Stage upload:** the script starts an upload and then opens a draft made from the same video earlier. Say so plainly, and give the processing time measured in AI-6, not a fixed "10 minutes".
   - **Route wording:** the route is drafted by AI from the video and drawn from the step list. Never call it a 3D reconstruction or a scan.
-  - **Verifier wording:** use the line from SCOPE.md that matches what AI-4 shipped. If the motion check stayed: code compares each AI turn with the camera's motion and flags the ones that disagree. If it was removed: low-confidence turns are flagged.
+  - **Verifier wording:** use the line from SCOPE.md that matches AI-7's result. If the motion check stayed: code compares each AI turn with the camera's motion and flags the ones that disagree. If it was removed: low-confidence turns are flagged.
 - **Acceptance:**
   - A read-through of the script takes 4:30 or less.
   - Each judging criterion is clearly addressed by at least one section.
   - The words "3D reconstruction" and "scan" do not appear in the slides or the script as a description of the route.
-  - Every claim about what the code checks matches what AI-4 shipped.
+  - Every claim about what the code checks matches what AI-4 and AI-7 shipped.
   - Slides and app share the same original visual style.
-- **Depends on:** PITCH-1, PITCH-2, PITCH-3.
+- **Blocked by:** nothing, start now
+- **Done needs:** PITCH-1, PITCH-2, PITCH-3, AI-7, AI-6 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** PITCH-7
+- **Dependency note:** Do not wait for the numbers: start the deck and script Wednesday from SCOPE.md's demo story with placeholders. Final numbers come from PITCH-1/2/3 and AI-6; the verifier line from AI-7's result.
 - **Labels:** 🎤 Pitch, ✅ Must have · **Milestone:** Thu
 
 ### PITCH-5: Demo rig and backup recording
@@ -551,7 +722,10 @@ These are shared. PITCH-1 takes 30 minutes and must go out Tuesday morning, beca
   - The app has been shown on an external screen from the demo iPhone.
   - The backup video plays from the deck with no network.
   - The checklist exists in `pitch/`.
-- **Depends on:** APP-7.
+- **Blocked by:** nothing, start now
+- **Done needs:** APP-7 (merge without them; list the checks you could not run in your PR)
+- **Blocks:** PITCH-7
+- **Dependency note:** Test the HDMI adapter or mirroring and the hotspot any time. The backup recording needs APP-7.
 - **Labels:** 🎤 Pitch, ✅ Must have · **Milestone:** Thu
 
 ### PITCH-6: Timed hallway test
@@ -560,7 +734,10 @@ These are shared. PITCH-1 takes 30 minutes and must go out Tuesday morning, beca
 - **Work:** Ask a few students who do not know the demo building to find the demo room from the entrance: half with only the room number, half with the app's route. Time each and note wrong turns.
 - **Acceptance:**
   - `pitch/hallway-test.md` reports every participant's time and condition, and the group size, without overstating a small sample.
-- **Depends on:** ROUTE-5 or AI-6.
+- **Blocked by:** APP-4, ROUTE-5
+- **Uses if ready:** AI-6
+- **Blocks:** nothing
+- **Dependency note:** Bonus. Needs a confirmed route on the phone; the hand route is enough.
 - **Labels:** 🎤 Pitch, ✨ Bonus · **Milestone:** Thu
 
 ### PITCH-7: Rehearsals
@@ -570,5 +747,6 @@ These are shared. PITCH-1 takes 30 minutes and must go out Tuesday morning, beca
 - **Acceptance:**
   - The last run-through is under five minutes.
   - Everyone knows their part and the fallback if the phone fails.
-- **Depends on:** PITCH-4, PITCH-5.
+- **Blocked by:** PITCH-4, PITCH-5
+- **Blocks:** nothing
 - **Labels:** 🎤 Pitch, ✅ Must have · **Milestone:** Fri

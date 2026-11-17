@@ -27,7 +27,7 @@ KSU-GO is a 3D campus events app. The campus is a stylized 3D map, every event t
 **Wording.** Two rules for the pitch, the deck and the app:
 
 - **The route.** It is "drafted by AI from the video and drawn from the step list". We never call it a 3D reconstruction or a scan of the building.
-- **The verifier.** Say only what shipped. If the motion cross-check in AI-4 passes its test: "code compares each AI turn with the camera's motion in the video and flags the ones that disagree". If it is removed: "low-confidence turns are flagged".
+- **The verifier.** Say only what shipped. If the motion cross-check in AI-7 passes its test: "code compares each AI turn with the camera's motion in the video and flags the ones that disagree". If it is removed: "low-confidence turns are flagged".
 
 **The stage upload.** A real run does not fit inside the pitch: the video has to upload over a hotspot before any processing starts. So on stage we start an upload to show the flow, then open a draft that the same pipeline made from the same video earlier (AI-6). The pitch says so plainly. The draft is the AI's real output, uncorrected; nobody plants an error in it.
 
@@ -89,7 +89,7 @@ Whichever path wins, `campus.json` stays the logical layout (building ids, names
 |---|---|---|---|
 | 1 | three.js in a WebView is slow or will not load inside Expo Go on a real iPhone. | **First task (APP-1):** a corridor scene running on a real iPhone in Expo Go, with messages passing both ways. | Load the viewer from a URL on the laptop. If WebGL itself is the problem, try `expo-gl` with three.js. |
 | 2 | The pipeline has only been tried on two house walks, and by its own rules that test was inconclusive. Gemini got two of four indoor turns wrong, sign reading was never tested, and scale varied from 0.87 to 1.74 between MapAnything calls. | Film the real demo building on Tuesday, on routes with right-angle corridors and a switchback stairwell (AI-2). Run Gemini on that video Tuesday evening (AI-3). | A demo route must need at most one correction; otherwise pick a simpler route or use a hand-measured one (ROUTE-5). Floors and the room come from the organizer, not from signs. |
-| 3 | A wrong left or right turn still makes a valid-looking route, so ordinary checks cannot see it. | The motion cross-check in AI-4, time-boxed to three hours. | Low-confidence flags only, and the pitch wording changes to match. |
+| 3 | A wrong left or right turn still makes a valid-looking route, so ordinary checks cannot see it. | The motion cross-check in AI-7, time-boxed to three hours. | Low-confidence flags only, and the pitch wording changes to match. |
 | 4 | The AI-made campus looks rough or runs slowly on the phone. | MAP-1 compares the three campus paths on the demo iPhone and picks one by Tuesday evening. | Extruded OpenStreetMap footprints, styled. |
 | 5 | Four people block each other. | Fixtures and types land first (S-1). The server ships in mock mode on Tuesday (AI-1). | Every part runs from fixtures alone. |
 | 6 | Wi-Fi or the tunnel fails on stage. Expo Go also needs to reach the laptop to load the app, and the organizer part needs the server. | Test on a phone hotspot on Tuesday. The app shows an "Offline data" badge and lets us change the server address without a rebuild (APP-2). | The student flow runs offline from bundled fixtures. The organizer part falls back to the backup screen recording. |
@@ -110,7 +110,7 @@ These need an answer from the organizers. None of them blocks Tuesday's work.
 | Criterion | Points | What earns it |
 |---|---|---|
 | Campus impact | 25 | PITCH-1 survey, PITCH-2 OwlLife counts, PITCH-6 hallway test |
-| Use of AI | 25 | The pipeline (AI-3 to AI-6) and the organizer flow (APP-5, APP-6a, APP-6b): AI drafts, code verifies, a person confirms |
+| Use of AI | 25 | The pipeline (AI-3 to AI-7) and the organizer flow (APP-5, APP-6a, APP-6b): AI drafts, code verifies, a person confirms |
 | Feasibility | 20 | PITCH-3 slide from measured cost and time; routes reused per room; no hardware |
 | Creativity | 15 | The AI-modeled campus and flag map (MAP-1, MAP-3, MAP-4) and the 3D route (ROUTE-2, ROUTE-3). Bonus: the swipe deck (APP-8) |
 | Pitch | 15 | PITCH-4 deck and script, PITCH-5 backup, PITCH-7 rehearsals |
