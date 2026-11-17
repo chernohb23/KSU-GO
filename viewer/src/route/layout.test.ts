@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import sampleJson from "../../../shared/fixtures/route.sample.json";
 import type { Route, Step } from "../../../shared/types";
-import { layoutRoute, type RouteLayout, type Vec3 } from "./layout";
+import { layoutRoute, type Polygon, type Ring, type RouteLayout, type Vec3 } from "./layout";
 
 const sample = sampleJson as Route;
 const HALF_PI = Math.PI / 2;
@@ -155,5 +155,55 @@ describe("layoutRoute on the sample route", () => {
     expect(first.start[2]).toBeCloseTo(first.end[2]);
     expect(second.start[2]).toBeCloseTo(second.end[2]);
     expect(Math.abs(first.start[2] - second.start[2])).toBeGreaterThanOrEqual(sample.corridorWidthM);
+  });
+});
+
+/** Shoelace area of a ring, whichever way it winds. */
+function ringArea(ring: Ring): number {
+  let sum = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const [x1, z1] = ring[i];
+    const [x2, z2] = ring[(i + 1) % ring.length];
+    sum += x1 * z2 - x2 * z1;
+  }
+  return Math.abs(sum) / 2;
+}
+
+/** Outer ring area minus its holes. */
+const area = ([outer, ...holes]: Polygon) =>
+  ringArea(outer) - holes.reduce((total, hole) => total + ringArea(hole), 0);
+
+describe("layoutRoute footprints", () => {
+  it("covers a straight walk with a corridor capped half a width past each end", () => {
+    const [polygon, ...rest] = layoutRoute(route([walk(5)])).floors[0].footprint;
+    expect(rest).toEqual([]);
+    expect(polygon).toHaveLength(1);
+    expect(area(polygon)).toBeCloseTo(14);
+    const xs = polygon[0].map(([x]) => x);
+    const zs = polygon[0].map(([, z]) => z);
+    expect([Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)]).toEqual([-1, 1, -6, 1]);
+  });
+
+  it("fills the outside of an L corner with no notch", () => {
+    const footprint = layoutRoute(route([walk(4), turn("right"), walk(4)])).floors[0].footprint;
+    expect(footprint).toHaveLength(1);
+    expect(area(footprint[0])).toBeCloseTo(20);
+    expect(footprint[0][0]).toContainEqual([-1, -5]);
+  });
+
+  it("keeps the hole inside a corridor loop", () => {
+    const loop = [walk(4), turn("left"), walk(4), turn("left"), walk(4), turn("left"), walk(4)];
+    const footprint = layoutRoute(route(loop)).floors[0].footprint;
+    expect(footprint).toHaveLength(1);
+    expect(footprint[0]).toHaveLength(2);
+    expect(area(footprint[0])).toBeCloseTo(32);
+  });
+
+  it("gives each sample floor one corridor shape", () => {
+    const [ground, upper] = layoutRoute(sample).floors;
+    expect(ground.footprint).toHaveLength(1);
+    expect(area(ground.footprint[0])).toBeCloseTo(30);
+    expect(upper.footprint).toHaveLength(1);
+    expect(area(upper.footprint[0])).toBeCloseTo(36);
   });
 });

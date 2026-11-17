@@ -1,3 +1,4 @@
+import { union } from "polygon-clipping";
 import type { Route } from "../../../shared/types";
 
 /** `[x, y, z]` in meters; `y` is up. */
@@ -81,6 +82,7 @@ export function layoutRoute(route: Route): RouteLayout {
 
   const steps: StepLayout[] = [];
   const centerline: Vec3[] = [here()];
+  const corridors: Polygon[][] = [];
 
   for (const step of route.steps) {
     const start = here();
@@ -92,6 +94,7 @@ export function layoutRoute(route: Route): RouteLayout {
       case "walk":
         x += dx * step.lengthM;
         z += dz * step.lengthM;
+        (corridors[floor] ??= []).push(corridor(start, here(), [dx, dz], width));
         break;
       case "turn": {
         if (step.direction === "left") quarters += 1;
@@ -137,5 +140,22 @@ export function layoutRoute(route: Route): RouteLayout {
     if (end.some((v, i) => v !== previous[i])) centerline.push(end);
   }
 
+  for (const floorLayout of floors) {
+    const [first, ...rest] = corridors[floorLayout.index] ?? [];
+    if (first) floorLayout.footprint = union(first, ...rest);
+  }
+
   return { steps, centerline, floors };
+}
+
+/** The walk's corridor: `width` wide, reaching `width / 2` past both ends so corners join. */
+function corridor(start: Vec3, end: Vec3, [dx, dz]: [number, number], width: number): Polygon {
+  const half = width / 2;
+  const [ax, az] = [start[0] - dx * half, start[2] - dz * half];
+  const [bx, bz] = [end[0] + dx * half, end[2] + dz * half];
+  // Sideways offset, perpendicular to the walk.
+  const [sx, sz] = [-dz * half, dx * half];
+  return [[
+    [ax + sx, az + sz], [bx + sx, bz + sz], [bx - sx, bz - sz], [ax - sx, az - sz],
+  ]];
 }
