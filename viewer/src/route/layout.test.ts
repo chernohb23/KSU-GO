@@ -174,21 +174,26 @@ function ringArea(ring: Ring): number {
 const area = ([outer, ...holes]: Polygon) =>
   ringArea(outer) - holes.reduce((total, hole) => total + ringArea(hole), 0);
 
+/** `[minX, maxX, minZ, maxZ]` of a polygon's outer ring. */
+function bounds([outer]: Polygon): [number, number, number, number] {
+  const xs = outer.map(([x]) => x);
+  const zs = outer.map(([, z]) => z);
+  return [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
+}
+
 describe("layoutRoute footprints", () => {
-  it("covers a straight walk with a corridor capped half a width past each end", () => {
+  it("covers a straight walk between doors exactly, with no stub past either door", () => {
     const [polygon, ...rest] = layoutRoute(route([walk(5)])).floors[0].footprint;
     expect(rest).toEqual([]);
     expect(polygon).toHaveLength(1);
-    expect(area(polygon)).toBeCloseTo(14);
-    const xs = polygon[0].map(([x]) => x);
-    const zs = polygon[0].map(([, z]) => z);
-    expect([Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)]).toEqual([-1, 1, -6, 1]);
+    expect(area(polygon)).toBeCloseTo(10);
+    expect(bounds(polygon)).toEqual([-1, 1, -5, 0]);
   });
 
   it("fills the outside of an L corner with no notch", () => {
     const footprint = layoutRoute(route([walk(4), turn("right"), walk(4)])).floors[0].footprint;
     expect(footprint).toHaveLength(1);
-    expect(area(footprint[0])).toBeCloseTo(20);
+    expect(area(footprint[0])).toBeCloseTo(16);
     expect(footprint[0][0]).toContainEqual([-1, -5]);
   });
 
@@ -197,15 +202,26 @@ describe("layoutRoute footprints", () => {
     const footprint = layoutRoute(route(loop)).floors[0].footprint;
     expect(footprint).toHaveLength(1);
     expect(footprint[0]).toHaveLength(2);
-    expect(area(footprint[0])).toBeCloseTo(32);
+    // 6 x 6 outside, minus the 2 x 2 hole, minus the 1 x 1 corner where the loop closes on the doors.
+    expect(area(footprint[0])).toBeCloseTo(31);
   });
 
   it("gives each sample floor one corridor shape", () => {
     const [ground, upper] = layoutRoute(sample).floors;
     expect(ground.footprint).toHaveLength(1);
-    expect(area(ground.footprint[0])).toBeCloseTo(30);
+    expect(area(ground.footprint[0])).toBeCloseTo(26);
     expect(upper.footprint).toHaveLength(1);
-    expect(area(upper.footprint[0])).toBeCloseTo(36);
+    expect(area(upper.footprint[0])).toBeCloseTo(32);
+  });
+
+  it("stops corridors at the stairwell and the entrance in the sample", () => {
+    const [ground, upper] = layoutRoute(sample).floors;
+    // Floor 1 runs from the entrance (z 0) to the bottom of the flight (x 5).
+    const [, groundMaxX, , groundMaxZ] = bounds(ground.footprint[0]);
+    expect(groundMaxX).toBeCloseTo(5);
+    expect(groundMaxZ).toBeCloseTo(0);
+    // Floor 2 starts at the top of the flight (x 5), not over its last metre.
+    expect(bounds(upper.footprint[0])[1]).toBeCloseTo(5);
   });
 });
 

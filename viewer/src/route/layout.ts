@@ -105,7 +105,7 @@ export function layoutRoute(route: Route): RouteLayout {
   const centerline: Vec3[] = [here()];
   const corridors: Polygon[][] = [];
 
-  for (const step of route.steps) {
+  for (const [i, step] of route.steps.entries()) {
     const start = here();
     const headingStart = quarters * (Math.PI / 2);
     const floorStart = floor;
@@ -115,7 +115,10 @@ export function layoutRoute(route: Route): RouteLayout {
       case "walk":
         x += dx * step.lengthM;
         z += dz * step.lengthM;
-        (corridors[floor] ??= []).push(corridor(start, here(), [dx, dz], width));
+        (corridors[floor] ??= []).push(corridor(start, here(), [dx, dz], width, {
+          start: joinsWalk(route, i, -1),
+          end: joinsWalk(route, i, 1),
+        }));
         break;
       case "turn": {
         if (step.direction === "left") quarters += 1;
@@ -169,11 +172,33 @@ export function layoutRoute(route: Route): RouteLayout {
   return { steps, centerline, floors };
 }
 
-/** The walk's corridor: `width` wide, reaching `width / 2` past both ends so corners join. */
-function corridor(start: Vec3, end: Vec3, [dx, dz]: [number, number], width: number): Polygon {
+/**
+ * True when the walk at `index` meets another walk in `step` direction (-1 back, 1 ahead)
+ * with only turns and doors between them, so its corridor must reach the corner.
+ */
+function joinsWalk(route: Route, index: number, step: -1 | 1): boolean {
+  let j = index + step;
+  while (route.steps[j]?.type === "turn" || route.steps[j]?.type === "door") j += step;
+  return route.steps[j]?.type === "walk";
+}
+
+/**
+ * The walk's corridor, `width` wide. An end that joins another walk reaches `width / 2`
+ * further so the corner has no notch; an end at stairs, an elevator or the route's end stops
+ * exactly there, so the slab never covers a flight or pokes out behind a door.
+ */
+function corridor(
+  start: Vec3,
+  end: Vec3,
+  [dx, dz]: [number, number],
+  width: number,
+  extend: { start: boolean; end: boolean },
+): Polygon {
   const half = width / 2;
-  const [ax, az] = [start[0] - dx * half, start[2] - dz * half];
-  const [bx, bz] = [end[0] + dx * half, end[2] + dz * half];
+  const back = extend.start ? half : 0;
+  const ahead = extend.end ? half : 0;
+  const [ax, az] = [start[0] - dx * back, start[2] - dz * back];
+  const [bx, bz] = [end[0] + dx * ahead, end[2] + dz * ahead];
   // Sideways offset, perpendicular to the walk.
   const [sx, sz] = [-dz * half, dx * half];
   return [[
