@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "KSU-GO Corridor Spike",
+    "slug": "ksu-go-corridor-spike",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "ios": {
+      "supportsTablet": true
+    }
+  }
+}
