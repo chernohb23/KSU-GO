@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>KSU-GO Viewer</title>
+    <link rel="stylesheet" href="/src/preview.css">
+  </head>
+  <body>
+    <div class="preview">
+      <header class="masthead">
+        <a class="wordmark" href="?scene=campus"><span aria-hidden="true"></span>KSU-GO</a>
+        <nav aria-label="Viewer scenes">
+          <a data-scene="campus" href="?scene=campus">Campus</a>
+          <a data-scene="route" href="?scene=route">Indoor route</a>
+        </nav>
+      </header>
+      <section class="intro">
+        <p class="eyebrow">3D viewer preview</p>
+        <h1 id="scene-title"></h1>
+        <p id="scene-description"></p>
+      </section>
+      <footer class="scene-footer">
+        <span>Sample geometry</span>
+        <span>Drag to orbit <b>·</b> Scroll or pinch to zoom</span>
+      </footer>
+    </div>
+    <main id="viewer" aria-label="Interactive 3D scene"></main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
