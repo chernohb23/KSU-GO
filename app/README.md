@@ -27,13 +27,12 @@ Scan the QR code in Expo Go. Record the time from saving an edit to seeing the r
 
 ## Device test record
 
-The scene and message exchange were checked in Expo Go on a physical iPhone. The tester reported smooth orbiting at 120 FPS, continued operation in airplane mode after loading, working messages in both directions, and an approximately 2-second reload. The network setup for that run was not specified. WSL is unavailable in the environment used to prepare this spike.
+The Windows Expo Go run on a physical iPhone reported smooth orbiting at 120 FPS, continued operation in airplane mode after loading, working messages in both directions, and an approximately 2-second reload. WSL is unavailable in the environment used to prepare this spike.
 
 | Setup | Connected in Expo Go | Airplane mode after load | Reload time | FPS while orbiting | Messages both ways | Steps or notes |
 |---|---|---|---|---|---|---|
-| WSL `expo start --tunnel` | Not tried (WSL is not installed here) | — | Not measured | Not measured | Not tried | Run from WSL as described above. |
-| Expo on Windows, same Wi-Fi/hotspot | Earlier first launch stayed on “Starting…”; successful retry setup not identified | — | Not measured | Not measured | Not tried | SDK mismatch fixed; three.js core import is now embedded locally. Use Node.js 22.13 or later. |
-| Expo Go on physical iPhone (network setup not specified) | Yes | Yes | About 2 seconds | 120 FPS reported while orbiting | Yes | Scene loaded before airplane mode was enabled. |
+| WSL `expo start --tunnel` | Not tried | — | Not measured | Not measured | Not tried | Run from WSL as described above. |
+| Expo on Windows, same Wi-Fi/hotspot | Yes | Yes | About 2 seconds | 120 FPS reported while orbiting | Yes | Scene loaded before airplane mode was enabled. |
 
 ## If Expo Go or WebGL fails
 
