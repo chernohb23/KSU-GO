@@ -28,11 +28,11 @@ If the checkout is on the Windows drive, its WSL path commonly starts with `/mnt
 
 ## Device test record
 
-The Windows Expo Go run on a physical iPhone reported smooth orbiting at 120 FPS, continued operation in airplane mode after loading, working messages in both directions, and an approximately 2-second reload. The WSL tunnel has not yet been tested.
+Both setups were tested in Expo Go on a physical iPhone. The Windows run reported smooth orbiting at 120 FPS, continued operation in airplane mode after loading, working messages in both directions, and an approximately 2-second reload. The WSL tunnel run reported the same results, with an approximately 1.5-second reload.
 
 | Setup | Connected in Expo Go | Airplane mode after load | Reload time | FPS while orbiting | Messages both ways | Steps or notes |
 |---|---|---|---|---|---|---|
-| WSL `expo start --tunnel` | Not tried | — | Not measured | Not measured | Not tried | Run from WSL as described above. |
+| WSL `expo start --tunnel` | Yes | Yes | About 1.5 seconds | 120 FPS reported while orbiting | Yes | Scene loaded before airplane mode was enabled. |
 | Expo on Windows, same Wi-Fi/hotspot | Yes | Yes | About 2 seconds | 120 FPS reported while orbiting | Yes | Scene loaded before airplane mode was enabled. |
 
 ## If Expo Go or WebGL fails
