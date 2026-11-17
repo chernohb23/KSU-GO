@@ -115,7 +115,19 @@ describe("layoutRoute poses", () => {
 
   it("lists a floor reached without walking on it, with an empty footprint", () => {
     const layout = layoutRoute(route([walk(2), elevator("3")]));
-    expect(layout.floors[1]).toEqual({ index: 1, name: "3", y: 7.2, footprint: [] });
+    expect(layout.floors[1]).toEqual({ index: 1, name: "3", y: 7.2, footprint: [], landings: [] });
+  });
+
+  it("keeps a walk on a stair landing at the landing's height, not the floor's", () => {
+    const layout = layoutRoute(route([stairs("up", null), walk(2), stairs("up", "2")]));
+    const [ground, upper] = layout.floors;
+    expect(ground.footprint).toEqual([]);
+    expect(ground.landings).toHaveLength(1);
+    expect(ground.landings[0].y).toBeCloseTo(1.8);
+    expect(ground.landings[0].footprint).toHaveLength(1);
+    expect(area(ground.landings[0].footprint[0])).toBeCloseTo(4);
+    expect(upper.footprint).toEqual([]);
+    expect(upper.landings).toEqual([]);
   });
 
   it("reuses a floor's entry when the route comes back to it", () => {
@@ -212,6 +224,7 @@ describe("layoutRoute footprints", () => {
     expect(area(ground.footprint[0])).toBeCloseTo(26);
     expect(upper.footprint).toHaveLength(1);
     expect(area(upper.footprint[0])).toBeCloseTo(32);
+    expect([ground.landings, upper.landings]).toEqual([[], []]);
   });
 
   it("stops corridors at the stairwell and the entrance in the sample", () => {

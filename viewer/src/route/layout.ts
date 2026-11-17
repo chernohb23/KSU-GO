@@ -30,8 +30,13 @@ export type FloorLayout = {
   name: string;
   /** Height where the route first reached this floor. */
   y: number;
-  /** Union of the corridor rectangles around this floor's walks. */
+  /** Union of the corridor rectangles around this floor's walks at height `y`. */
   footprint: Polygon[];
+  /**
+   * Walks on this floor at another height, such as a walk on a stair landing
+   * before `toFloor` is reached, grouped by height and sorted by `y`.
+   */
+  landings: { y: number; footprint: Polygon[] }[];
 };
 
 export type RouteLayout = {
@@ -88,7 +93,7 @@ export function layoutRoute(route: Route): RouteLayout {
   const floorIndex = (name: string, y: number): number => {
     const found = floors.find((floor) => floor.name === name);
     if (found) return found.index;
-    floors.push({ index: floors.length, name, y, footprint: [] });
+    floors.push({ index: floors.length, name, y, footprint: [], landings: [] });
     return floors.length - 1;
   };
 
@@ -103,7 +108,7 @@ export function layoutRoute(route: Route): RouteLayout {
 
   const steps: StepLayout[] = [];
   const centerline: Vec3[] = [here()];
-  const corridors: Polygon[][] = [];
+  const corridors: { y: number; polygon: Polygon }[][] = [];
 
   for (const [i, step] of route.steps.entries()) {
     const start = here();
@@ -115,10 +120,13 @@ export function layoutRoute(route: Route): RouteLayout {
       case "walk":
         x += dx * step.lengthM;
         z += dz * step.lengthM;
-        (corridors[floor] ??= []).push(corridor(start, here(), [dx, dz], width, {
-          start: joinsWalk(route, i, -1),
-          end: joinsWalk(route, i, 1),
-        }));
+        (corridors[floor] ??= []).push({
+          y: start[1],
+          polygon: corridor(start, here(), [dx, dz], width, {
+            start: joinsWalk(route, i, -1),
+            end: joinsWalk(route, i, 1),
+          }),
+        });
         break;
       case "turn": {
         if (step.direction === "left") quarters += 1;
@@ -165,8 +173,21 @@ export function layoutRoute(route: Route): RouteLayout {
   }
 
   for (const floorLayout of floors) {
-    const [first, ...rest] = corridors[floorLayout.index] ?? [];
-    if (first) floorLayout.footprint = union(first, ...rest);
+    // Group by height to the millimetre, so 1.7 + 1.9 and 3.6 land together.
+    const byHeight = new Map<number, { y: number; polygons: Polygon[] }>();
+    for (const { y: walkY, polygon } of corridors[floorLayout.index] ?? []) {
+      const key = Math.round(walkY * 1000);
+      const group = byHeight.get(key) ?? { y: walkY, polygons: [] };
+      group.polygons.push(polygon);
+      byHeight.set(key, group);
+    }
+    const floorKey = Math.round(floorLayout.y * 1000);
+    for (const [key, { y: groupY, polygons: [first, ...rest] }] of byHeight) {
+      const footprint = union(first, ...rest);
+      if (key === floorKey) floorLayout.footprint = footprint;
+      else floorLayout.landings.push({ y: groupY, footprint });
+    }
+    floorLayout.landings.sort((a, b) => a.y - b.y);
   }
 
   return { steps, centerline, floors };
