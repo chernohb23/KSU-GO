@@ -1,0 +1,24 @@
+{
+  "name": "ksu-go-app",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "start:tunnel": "expo start --tunnel",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "node scripts/embed-three.mjs"
+  },
+  "dependencies": {
+    "expo": "~57.0.33",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-webview": "13.16.1",
+    "three": "^0.183.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  }
+}
