@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import flawedJson from "../../../shared/fixtures/route.draft-flawed.json";
 import sampleJson from "../../../shared/fixtures/route.sample.json";
 import type { Route, Step } from "../../../shared/types";
 import { layoutRoute, type Polygon, type Ring, type RouteLayout, type Vec3 } from "./layout";
@@ -205,5 +206,53 @@ describe("layoutRoute footprints", () => {
     expect(area(ground.footprint[0])).toBeCloseTo(30);
     expect(upper.footprint).toHaveLength(1);
     expect(area(upper.footprint[0])).toBeCloseTo(36);
+  });
+});
+
+describe("layoutRoute input checks", () => {
+  it("throws on a route with no steps", () => {
+    expect(() => layoutRoute({ ...sample, steps: [] })).toThrow(/no steps/i);
+  });
+
+  it("throws on negative lengths, naming the step", () => {
+    expect(() => layoutRoute(route([walk(-1)]))).toThrow(/s2/);
+    expect(() => layoutRoute(route([stairs("up", "2", -1, 3)]))).toThrow(/s2/);
+    expect(() => layoutRoute(route([stairs("up", "2", 1.8, -1)]))).toThrow(/s2/);
+  });
+
+  it("throws on numbers that are not finite, naming the step", () => {
+    expect(() => layoutRoute(route([walk(Number.NaN)]))).toThrow(/s2/);
+    expect(() => layoutRoute(route([stairs("up", "2", 1.8, Number.POSITIVE_INFINITY)]))).toThrow(/s2/);
+  });
+
+  it("throws on a corridor width that is not a positive number", () => {
+    expect(() => layoutRoute(route([walk(2)], { corridorWidthM: 0 }))).toThrow(/corridorWidthM/);
+    expect(() => layoutRoute(route([walk(2)], { corridorWidthM: Number.NaN }))).toThrow(/corridorWidthM/);
+  });
+});
+
+describe("layoutRoute on odd but legal routes", () => {
+  it("lays out the flawed draft fixture", () => {
+    const layout = layoutRoute(flawedJson as Route);
+    expectVec(last(layout).end, [2.8, 3.6, -20]);
+  });
+
+  it("lays out turns next to each other", () => {
+    expect(() => layoutRoute(route([turn("left"), turn("left"), turn("right"), walk(2)]))).not.toThrow();
+  });
+
+  it("lays out corridors that overlap", () => {
+    const layout = layoutRoute(route([walk(4), turn("u_left"), walk(6)]));
+    expect(layout.floors[0].footprint.length).toBeGreaterThan(0);
+  });
+
+  it("lays out a step list with no doors", () => {
+    expectVec(last(layoutRoute(route([walk(3)], {}, false))).end, [0, 0, -3]);
+  });
+
+  it("lays out an elevator to the floor it is already on, without moving", () => {
+    const layout = layoutRoute(route([elevator("1")]));
+    expectVec(layout.steps[1].end, [0, 0, 0]);
+    expect(layout.floors).toHaveLength(1);
   });
 });

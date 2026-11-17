@@ -60,8 +60,29 @@ function elevatorRise(from: string, to: string): number {
     : FLOOR_HEIGHT_M;
 }
 
+const isLength = (value: number) => Number.isFinite(value) && value >= 0;
+
+/** Throws only on input the contract does not allow; odd but legal step lists pass. */
+function assertValid(route: Route) {
+  if (route.steps.length === 0) throw new Error("Route has no steps to lay out.");
+  if (!Number.isFinite(route.corridorWidthM) || route.corridorWidthM <= 0) {
+    throw new Error(`Route corridorWidthM must be a positive number, got ${route.corridorWidthM}.`);
+  }
+  for (const step of route.steps) {
+    const lengths = step.type === "walk" ? { lengthM: step.lengthM }
+      : step.type === "stairs" ? { riseM: step.riseM, runM: step.runM }
+      : {};
+    for (const [name, value] of Object.entries(lengths)) {
+      if (!isLength(value)) {
+        throw new Error(`Step ${step.id} has ${name} ${value}; it must be a finite number of 0 or more.`);
+      }
+    }
+  }
+}
+
 /** Lays out a route as turtle graphics, following CONTRACTS.md section 4. */
 export function layoutRoute(route: Route): RouteLayout {
+  assertValid(route);
   const width = route.corridorWidthM;
   const floors: FloorLayout[] = [];
   const floorIndex = (name: string, y: number): number => {
