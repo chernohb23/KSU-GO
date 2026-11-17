@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+CLAUDE.md
+.claude/
+.context/
+node_modules/
+.expo/
+__pycache__/
+.venv/
+dist/
+AGENTS.md
