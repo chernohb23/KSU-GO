@@ -1,4 +1,4 @@
-import { THREE_SOURCE } from './three-source';
+import { THREE_CORE_SOURCE, THREE_MODULE_SOURCE } from './three-source';
 
 const corridorScene = String.raw`
 const scene = new Scene();
@@ -142,11 +142,32 @@ canvas.addEventListener('pointerup', (event) => {
 canvas.addEventListener('pointercancel', () => { pointerDown = null; });
 `;
 
+const bootstrap = [
+  `const coreSource = ${JSON.stringify(THREE_CORE_SOURCE)};`,
+  `const threeModuleSource = ${JSON.stringify(THREE_MODULE_SOURCE)};`,
+  `const fpsLabel = document.getElementById('fps');`,
+  `function reportViewerError(error) {`,
+  `  const message = error instanceof Error ? error.name + ': ' + error.message : String(error);`,
+  `  fpsLabel.textContent = 'Viewer error: ' + message.slice(0, 150);`,
+  `  const bridge = window.ReactNativeWebView;`,
+  `  if (bridge && typeof bridge.postMessage === 'function') bridge.postMessage(JSON.stringify({ type: 'error', message }));`,
+  `  else console.error('Viewer error:', error);`,
+  `}`,
+  `window.addEventListener('error', (event) => reportViewerError(event.error || event.message));`,
+  `window.addEventListener('unhandledrejection', (event) => reportViewerError(event.reason));`,
+  `const coreUrl = URL.createObjectURL(new Blob([coreSource], { type: 'text/javascript' }));`,
+  `const resolvedModuleSource = threeModuleSource.replaceAll('from"./three.core.min.js"', 'from"' + coreUrl + '"');`,
+  `if (resolvedModuleSource === threeModuleSource) throw new Error('Could not resolve the inlined three.js core module.');`,
+  `const moduleUrl = URL.createObjectURL(new Blob([resolvedModuleSource], { type: 'text/javascript' }));`,
+  `import(moduleUrl).then((THREE) => {`,
+  `  const { Scene, Color, PerspectiveCamera, WebGLRenderer, SRGBColorSpace, HemisphereLight, DirectionalLight, MeshStandardMaterial, Mesh, BoxGeometry, Vector3 } = THREE;`,
+  corridorScene,
+  `}).catch(reportViewerError);`,
+].join('\n');
+
 export const corridorHtml = `<!doctype html>
 <html><head><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#101820"><style>
 html,body,#scene{width:100%;height:100%;margin:0;overflow:hidden;background:#101820}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;touch-action:none}#fps{position:fixed;top:10px;left:10px;padding:5px 8px;border-radius:5px;background:#101820cc;color:#fff;font-size:12px;z-index:2;pointer-events:none}
 </style></head><body><div id="fps">Starting…</div><canvas id="scene"></canvas>
-<script type="module">${THREE_SOURCE}
-${corridorScene}
-</script></body></html>`;
+<script type="module">${bootstrap}</script></body></html>`;

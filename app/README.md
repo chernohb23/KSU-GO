@@ -27,12 +27,12 @@ Scan the QR code in Expo Go. Record the time from saving an edit to seeing the r
 
 ## Device test record
 
-No physical iPhone scene run has been recorded yet. The first Windows launch reached Expo Go but was rejected because the project used SDK 57 while the phone had SDK 58; the project has since been upgraded and needs a retry. WSL is unavailable in the environment used to prepare this spike. Do not treat the entries below as a successful device test; fill them in during the APP-1 phone check.
+No physical iPhone scene run has been recorded yet. The first Windows launch reached the screen but stayed on “Starting…” because the inlined three.js module still referenced a separate core file. The viewer now embeds both files and imports them from local Blob URLs; the phone check needs a retry. WSL is unavailable in the environment used to prepare this spike. Do not treat the entries below as a successful device test; fill them in during the APP-1 phone check.
 
 | Setup | Connected in Expo Go | Reload time | FPS while orbiting | Steps or notes |
 |---|---|---|---|---|
 | WSL `expo start --tunnel` | Not tried (WSL is not installed here) | Not measured | Not measured | Run from WSL as described above. |
-| Expo on Windows, same Wi-Fi/hotspot | Initial launch rejected (SDK 57 project, SDK 58 Expo Go); retry pending | Not measured | Not measured | Project upgraded to SDK 58; retry phone check with Node.js 22.13 or later. |
+| Expo on Windows, same Wi-Fi/hotspot | Initial launch stayed on “Starting…”; retry pending | Not measured | Not measured | SDK mismatch fixed; three.js core import is now embedded locally. Use Node.js 22.13 or later. |
 
 ## If Expo Go or WebGL fails
 
