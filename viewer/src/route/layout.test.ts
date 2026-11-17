@@ -1,0 +1,159 @@
+import { describe, expect, it } from "vitest";
+import sampleJson from "../../../shared/fixtures/route.sample.json";
+import type { Route, Step } from "../../../shared/types";
+import { layoutRoute, type RouteLayout, type Vec3 } from "./layout";
+
+const sample = sampleJson as Route;
+const HALF_PI = Math.PI / 2;
+
+type StepInput =
+  | { type: "walk"; lengthM: number }
+  | { type: "turn"; direction: "left" | "right" | "u_left" | "u_right" }
+  | { type: "stairs"; direction: "up" | "down"; riseM: number; runM: number; toFloor: string | null }
+  | { type: "elevator"; toFloor: string }
+  | { type: "door"; label: string | null };
+
+const walk = (lengthM: number): StepInput => ({ type: "walk", lengthM });
+const turn = (direction: "left" | "right" | "u_left" | "u_right"): StepInput => ({ type: "turn", direction });
+const stairs = (direction: "up" | "down", toFloor: string | null, riseM = 1.8, runM = 3): StepInput =>
+  ({ type: "stairs", direction, riseM, runM, toFloor });
+const elevator = (toFloor: string): StepInput => ({ type: "elevator", toFloor });
+
+/** A route whose steps are the given ones between two doors (unless `doors: false`). */
+function route(steps: StepInput[], overrides: Partial<Route> = {}, doors = true): Route {
+  const body = doors
+    ? [{ type: "door", label: "Main entrance" } as StepInput, ...steps, { type: "door", label: "Room 204" } as StepInput]
+    : steps;
+  return {
+    ...sample,
+    checks: [],
+    ...overrides,
+    steps: body.map((step, i): Step => ({
+      id: `s${i + 1}`, source: "organizer", confidence: null, tSec: null, note: null, ...step,
+    })),
+  };
+}
+
+function expectVec(actual: Vec3, expected: Vec3) {
+  actual.forEach((v, i) => expect(v).toBeCloseTo(expected[i], 9));
+}
+
+const last = (layout: RouteLayout) => layout.steps[layout.steps.length - 1];
+const byId = (layout: RouteLayout, id: string) => layout.steps.find((s) => s.stepId === id)!;
+
+describe("layoutRoute poses", () => {
+  it("walks straight ahead along -z from the origin", () => {
+    const layout = layoutRoute(route([walk(5)]));
+    expect(last(layout).end).toEqual([0, 0, -5]);
+    expect(last(layout).headingEnd).toBe(0);
+    expect(layout.steps[0].start).toEqual([0, 0, 0]);
+  });
+
+  it("turns left counter-clockwise seen from above", () => {
+    const layout = layoutRoute(route([walk(2), turn("left"), walk(3)]));
+    expectVec(last(layout).end, [-3, 0, -2]);
+    expect(last(layout).headingEnd).toBeCloseTo(HALF_PI);
+  });
+
+  it("turns right clockwise seen from above", () => {
+    const layout = layoutRoute(route([walk(2), turn("right"), walk(3)]));
+    expectVec(last(layout).end, [3, 0, -2]);
+    expect(last(layout).headingEnd).toBeCloseTo(-HALF_PI);
+  });
+
+  it("u_left reverses and shifts one corridor width to the left", () => {
+    const layout = layoutRoute(route([walk(2), turn("u_left"), walk(2)]));
+    expectVec(layout.steps[2].start, [0, 0, -2]);
+    expectVec(layout.steps[2].end, [-2, 0, -2]);
+    expect(layout.steps[2].headingStart).toBe(0);
+    expect(layout.steps[2].headingEnd).toBeCloseTo(Math.PI);
+    expectVec(last(layout).end, [-2, 0, 0]);
+  });
+
+  it("u_right reverses and shifts one corridor width to the right", () => {
+    const layout = layoutRoute(route([walk(2), turn("u_right"), walk(2)]));
+    expectVec(layout.steps[2].end, [2, 0, -2]);
+    expect(layout.steps[2].headingEnd).toBeCloseTo(-Math.PI);
+    expectVec(last(layout).end, [2, 0, 0]);
+  });
+
+  it("climbs stairs forward and up, changing floor at toFloor", () => {
+    const layout = layoutRoute(route([stairs("up", "2")]));
+    const flight = layout.steps[1];
+    expectVec(flight.end, [0, 1.8, -3]);
+    expect(flight.floorStart).toBe(0);
+    expect(flight.floorEnd).toBe(1);
+    expect(layout.floors.map(({ index, name, y }) => ({ index, name, y })))
+      .toEqual([{ index: 0, name: "1", y: 0 }, { index: 1, name: "2", y: 1.8 }]);
+  });
+
+  it("goes down stairs below the start floor", () => {
+    const layout = layoutRoute(route([stairs("down", "0")]));
+    expectVec(layout.steps[1].end, [0, -1.8, -3]);
+    expect(layout.floors[1]).toMatchObject({ name: "0", y: -1.8 });
+  });
+
+  it("keeps the position through an elevator, 3.6 m per whole floor", () => {
+    const layout = layoutRoute(route([walk(2), elevator("3"), walk(2)]));
+    expectVec(layout.steps[2].start, [0, 0, -2]);
+    expectVec(layout.steps[2].end, [0, 7.2, -2]);
+    expectVec(layout.steps[3].start, [0, 7.2, -2]);
+    expect(layout.steps[2].floorEnd).toBe(1);
+    expect(layout.floors[1]).toMatchObject({ name: "3", y: 7.2 });
+  });
+
+  it("takes an elevator down to a basement", () => {
+    const layout = layoutRoute(route([elevator("-1")]));
+    expectVec(layout.steps[1].end, [0, -7.2, 0]);
+  });
+
+  it("goes up 3.6 m when either elevator floor is not a whole number", () => {
+    expectVec(layoutRoute(route([elevator("M")])).steps[1].end, [0, 3.6, 0]);
+    expectVec(layoutRoute(route([elevator("2")], { startFloor: "G" })).steps[1].end, [0, 3.6, 0]);
+  });
+
+  it("lists a floor reached without walking on it, with an empty footprint", () => {
+    const layout = layoutRoute(route([walk(2), elevator("3")]));
+    expect(layout.floors[1]).toEqual({ index: 1, name: "3", y: 7.2, footprint: [] });
+  });
+
+  it("reuses a floor's entry when the route comes back to it", () => {
+    const layout = layoutRoute(route([stairs("up", "2"), stairs("down", "1")]));
+    expect(layout.floors).toHaveLength(2);
+    expect(last(layout).floorEnd).toBe(0);
+  });
+});
+
+describe("layoutRoute on the sample route", () => {
+  const layout = layoutRoute(sample);
+
+  it("ends at Room 204 on floor 2", () => {
+    expectVec(last(layout).end, [3, 3.6, 8]);
+    expect(layout.floors[last(layout).floorEnd].name).toBe("2");
+  });
+
+  it("draws the centerline through every corner, landing and flight", () => {
+    const expected: Vec3[] = [
+      [0, 0, 0], [0, 0, -8], [5, 0, -8], [8, 1.8, -8], [8, 1.8, -6], [5, 3.6, -6], [3, 3.6, -6], [3, 3.6, 8],
+    ];
+    expect(layout.centerline).toHaveLength(expected.length);
+    layout.centerline.forEach((point, i) => expectVec(point, expected[i]));
+  });
+
+  it("changes floor on the second flight and accumulates headings", () => {
+    expect(byId(layout, "s7")).toMatchObject({ floorStart: 0, floorEnd: 1 });
+    expect(byId(layout, "s5")).toMatchObject({ floorStart: 0, floorEnd: 0 });
+    expect(byId(layout, "s3").headingEnd).toBeCloseTo(-HALF_PI);
+    expect(byId(layout, "s6").headingEnd).toBeCloseTo(-3 * HALF_PI);
+    expect(byId(layout, "s9").headingEnd).toBeCloseTo(-Math.PI);
+  });
+
+  it("keeps the two stair flights apart in plan view", () => {
+    const first = byId(layout, "s5");
+    const second = byId(layout, "s7");
+    // Both flights run along x; their centerlines must be a corridor width apart in z.
+    expect(first.start[2]).toBeCloseTo(first.end[2]);
+    expect(second.start[2]).toBeCloseTo(second.end[2]);
+    expect(Math.abs(first.start[2] - second.start[2])).toBeGreaterThanOrEqual(sample.corridorWidthM);
+  });
+});
