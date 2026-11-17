@@ -4,7 +4,7 @@ This throwaway screen checks the in-app WebView path: the corridor HTML contains
 
 ## Run on Windows
 
-This app uses Expo SDK 58, matching the Expo Go version currently installed on the test iPhone. SDK 58 requires Node.js 22.13 or later. From this directory, run:
+This app uses Expo SDK 58, matching the Expo Go version on the test iPhone. SDK 58 requires Node.js 22.13 or later. Open PowerShell in the `app/` directory (not the repository root). The `.cmd` suffix avoids PowerShell's script-execution restriction on `npm.ps1` and `npx.ps1`:
 
 ```powershell
 npm.cmd install
@@ -15,19 +15,20 @@ Keep the PC and iPhone on the same Wi-Fi network or connect both to a phone hots
 
 ## Try the WSL tunnel
 
-Node.js 22.13 or later must also be installed inside WSL. Open this project through its Windows-mounted path and run:
+Run these commands in a WSL terminal such as Ubuntu, not in PowerShell. Node.js 22.13 or later and npm must be installed inside WSL; Windows installations are separate. Confirm `pwd` starts with `/mnt/c/` before continuing. From the repository's Windows-mounted `app/` directory, run:
 
 ```bash
 cd /mnt/c/Users/perfe/Downloads/KSU-GO/app
 npm install
+npx expo login
 npx expo start --tunnel
 ```
 
-Scan the QR code in Expo Go. Record the time from saving an edit to seeing the refreshed screen. This setup requires WSL and a working tunnel connection.
+Sign in to Expo Go with the same account used by `npx expo login`, then scan the QR code. Record the time from saving an edit to seeing the refreshed screen. Tunnel access requires an internet connection; airplane mode is only for checking the already-loaded scene.
 
 ## Device test record
 
-The Windows Expo Go run on a physical iPhone reported smooth orbiting at 120 FPS, continued operation in airplane mode after loading, working messages in both directions, and an approximately 2-second reload. WSL is unavailable in the environment used to prepare this spike.
+The Windows Expo Go run on a physical iPhone reported smooth orbiting at 120 FPS, continued operation in airplane mode after loading, working messages in both directions, and an approximately 2-second reload. The WSL tunnel has not yet been tested.
 
 | Setup | Connected in Expo Go | Airplane mode after load | Reload time | FPS while orbiting | Messages both ways | Steps or notes |
 |---|---|---|---|---|---|---|
