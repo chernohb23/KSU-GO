@@ -4,7 +4,9 @@ This throwaway screen checks the in-app WebView path: the corridor HTML contains
 
 ## Run on Windows
 
-This app uses Expo SDK 58, matching the Expo Go version on the test iPhone. SDK 58 requires Node.js 22.13 or later. Open PowerShell in the `app/` directory (not the repository root). The `.cmd` suffix avoids PowerShell's script-execution restriction on `npm.ps1` and `npx.ps1`:
+Requirements: Node 22.13+ (Expo SDK 58).
+
+Open PowerShell in the `app/` directory (not the repository root). The `.cmd` suffix avoids PowerShell's script-execution restriction on `npm.ps1` and `npx.ps1`:
 
 ```powershell
 npm.cmd install
@@ -28,12 +30,14 @@ If the checkout is on the Windows drive, its WSL path commonly starts with `/mnt
 
 ## Device test record
 
-Both setups loaded in Expo Go on a physical iPhone. The Windows run reported smooth orbiting at 120 FPS, continued operation in airplane mode after loading, working messages in both directions, and an approximately 2-second reload. The true WSL run used Linux Node 22.23.5 and passed airplane-mode and two-way messaging checks. It reported an approximately 5-second reload; FPS was usually 120, with occasional drops into the 100–120 range.
+Both setups loaded in Expo Go on a physical Android phone. The Windows LAN run loaded in about 2 seconds and reported 120 FPS while orbiting, operation in airplane mode after loading, and working messages in both directions. The WSL tunnel run used Linux Node 22.23.5 and passed airplane-mode and two-way messaging checks. Its reload took about 5 seconds; FPS was usually 120, with occasional dips into the 100–120 range.
 
-| Setup | Connected in Expo Go | Airplane mode after load | Reload time | FPS while orbiting | Messages both ways | Steps or notes |
+iPhone check pending.
+
+| Setup | Connected in Expo Go | Airplane mode after load | Load or reload time | FPS while orbiting | Messages both ways | Steps or notes |
 |---|---|---|---|---|---|---|
 | WSL `expo start --tunnel` | Yes | Yes | About 5 seconds | Usually 120; occasional drops to 100–120 | Yes | Linux Node 22.23.5. Checkout is under `/mnt/c`; initial startup took about 90 seconds. |
-| Expo on Windows, same Wi-Fi/hotspot | Yes | Yes | About 2 seconds | 120 FPS reported while orbiting | Yes | Scene loaded before airplane mode was enabled. |
+| Expo on Windows, LAN | Yes | Yes | About 2 seconds to load | 120 FPS reported while orbiting | Yes | Scene loaded before airplane mode was enabled. |
 
 ## If Expo Go or WebGL fails
 
