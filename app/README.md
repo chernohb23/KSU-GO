@@ -15,16 +15,16 @@ Keep the PC and iPhone on the same Wi-Fi network or connect both to a phone hots
 
 ## Try the WSL tunnel
 
-Run these commands in a WSL terminal such as Ubuntu, not in PowerShell. Node.js 22.13 or later and npm must be installed inside WSL; Windows installations are separate. Confirm `pwd` starts with `/mnt/c/` before continuing. From the repository's Windows-mounted `app/` directory, run:
+Run these commands in a WSL terminal such as Ubuntu, not in PowerShell. Node.js 22.13 or later and npm must be installed inside WSL; Windows installations are separate. Navigate to your checkout's repository root (the folder containing `app/`), then run:
 
 ```bash
-cd /mnt/c/Users/perfe/Downloads/KSU-GO/app
+cd app
 npm install
 npx expo login
 npx expo start --tunnel
 ```
 
-Sign in to Expo Go with the same account used by `npx expo login`, then scan the QR code. Record the time from saving an edit to seeing the refreshed screen. Tunnel access requires an internet connection; airplane mode is only for checking the already-loaded scene.
+If the checkout is on the Windows drive, its WSL path commonly starts with `/mnt/c/Users/`; use your own checkout location. Sign in to Expo Go with the same account used by `npx expo login`, then scan the QR code. Record the time from saving an edit to seeing the refreshed screen. Tunnel access requires an internet connection; airplane mode is only for checking the already-loaded scene.
 
 ## Device test record
 
