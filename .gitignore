@@ -1,7 +1,6 @@
 .env
 .env.*
 !.env.example
-CLAUDE.md
 .claude/
 .context/
 node_modules/
@@ -9,4 +8,4 @@ node_modules/
 __pycache__/
 .venv/
 dist/
-AGENTS.md
+server/data/
