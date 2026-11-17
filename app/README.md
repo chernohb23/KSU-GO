@@ -27,12 +27,13 @@ Scan the QR code in Expo Go. Record the time from saving an edit to seeing the r
 
 ## Device test record
 
-No physical iPhone scene run has been recorded yet. The first Windows launch reached the screen but stayed on “Starting…” because the inlined three.js module still referenced a separate core file. The viewer now embeds both files and imports them from local Blob URLs; the phone check needs a retry. WSL is unavailable in the environment used to prepare this spike. Do not treat the entries below as a successful device test; fill them in during the APP-1 phone check.
+The scene and message exchange were checked in Expo Go on a physical iPhone. The tester reported smooth orbiting at 120 FPS, continued operation in airplane mode after loading, working messages in both directions, and an approximately 2-second reload. The network setup used for this run was not specified, so it does not identify which of the Windows or WSL connection setups worked. WSL is unavailable in the environment used to prepare this spike.
 
-| Setup | Connected in Expo Go | Reload time | FPS while orbiting | Steps or notes |
-|---|---|---|---|---|
-| WSL `expo start --tunnel` | Not tried (WSL is not installed here) | Not measured | Not measured | Run from WSL as described above. |
-| Expo on Windows, same Wi-Fi/hotspot | Initial launch stayed on “Starting…”; retry pending | Not measured | Not measured | SDK mismatch fixed; three.js core import is now embedded locally. Use Node.js 22.13 or later. |
+| Setup | Connected in Expo Go | Airplane mode after load | Reload time | FPS while orbiting | Messages both ways | Steps or notes |
+|---|---|---|---|---|---|---|
+| WSL `expo start --tunnel` | Not tried (WSL is not installed here) | — | Not measured | Not measured | Not tried | Run from WSL as described above. |
+| Expo on Windows, same Wi-Fi/hotspot | Initial launch stayed on “Starting…”; retry pending | — | Not measured | Not measured | Not tried | SDK mismatch fixed; three.js core import is now embedded locally. Use Node.js 22.13 or later. |
+| Expo Go on physical iPhone (network setup not specified) | Yes | Yes | About 2 seconds | 120 FPS reported while orbiting | Yes | Scene loaded before airplane mode was enabled. |
 
 ## If Expo Go or WebGL fails
 
