@@ -65,6 +65,24 @@ def test_fragmented_video_is_rejected_when_total_duration_exceeds_three_minutes(
     }
 
 
+def test_longer_audio_track_counts_towards_the_video_duration_limit(client):
+    response = upload(client, video=movie_bytes(seconds=179, fragments=2, audio_seconds=181))
+    assert response.status_code == 422
+    assert response.json()["error"] == {
+        "code": "video_rejected", "message": "The video is longer than 3 minutes.",
+    }
+
+
+def test_flat_video_with_fragmented_audio_is_accepted(client, monkeypatch):
+    import mock_pipeline
+
+    monkeypatch.setattr(mock_pipeline, "STAGE_SECONDS", 0.02)
+    response = upload(client, video=movie_bytes(seconds=1, audio_seconds=5))
+    assert response.status_code == 202
+    draft, _ = wait_for_draft(client, response.json()["id"])
+    assert draft["stats"]["videoSec"] == 5
+
+
 def test_upload_with_malformed_multipart_uses_contract_error(client):
     response = client.post(
         "/api/routes", content=b"not multipart", headers={"Content-Type": "multipart/form-data"},

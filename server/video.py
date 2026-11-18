@@ -87,10 +87,7 @@ def _usable_video_description(source: BinaryIO, box: _Box) -> bool:
     )
 
 
-def _video_tracks(
-    source: BinaryIO, movie: _Box,
-) -> Iterator[tuple[_Box, _Box, dict[bytes, _Box]]]:
-    needed = {b"stsd", b"stsz", b"stz2", b"stco", b"co64"}
+def _media_tracks(source: BinaryIO, movie: _Box) -> Iterator[tuple[_Box, _Box, bytes]]:
     for track in _boxes(source, movie.payload, movie.end):
         if track.kind != b"trak":
             continue
@@ -98,18 +95,20 @@ def _video_tracks(
         if media is None:
             continue
         handler = _child(source, media, b"hdlr")
-        if handler is None or _read(source, handler.payload + 8, 4, handler.end) != b"vide":
-            continue
-        info = _child(source, media, b"minf")
-        table = _child(source, info, b"stbl") if info else None
-        if table is None:
-            continue
-        tables = {
-            box.kind: box for box in _boxes(source, table.payload, table.end) if box.kind in needed
-        }
-        description = tables.get(b"stsd")
-        if description and _usable_video_description(source, description):
-            yield track, media, tables
+        if handler:
+            kind = _read(source, handler.payload + 8, 4, handler.end)
+            yield track, media, kind
+
+
+def _video_tables(source: BinaryIO, media: _Box) -> dict[bytes, _Box] | None:
+    info = _child(source, media, b"minf")
+    table = _child(source, info, b"stbl") if info else None
+    if table is None:
+        return None
+    needed = {b"stsd", b"stsz", b"stz2", b"stco", b"co64"}
+    tables = {box.kind: box for box in _boxes(source, table.payload, table.end) if box.kind in needed}
+    description = tables.get(b"stsd")
+    return tables if description and _usable_video_description(source, description) else None
 
 
 def _first_video_sample(source: BinaryIO, tables: dict[bytes, _Box]) -> tuple[int, int] | None:
@@ -128,8 +127,11 @@ def _first_video_sample(source: BinaryIO, tables: dict[bytes, _Box]) -> tuple[in
 
 
 def _has_flat_samples(source: BinaryIO, movie: _Box, file_size: int) -> bool:
-    for _, _, tables in _video_tracks(source, movie):
-        sample = _first_video_sample(source, tables)
+    for _, media, kind in _media_tracks(source, movie):
+        if kind != b"vide":
+            continue
+        tables = _video_tables(source, media)
+        sample = _first_video_sample(source, tables) if tables else None
         if sample is None:
             continue
         start, end = sample
@@ -229,7 +231,8 @@ def _fragment_media(source: BinaryIO, fragment: _Box, file_size: int) -> _Box:
 
 def _fragmented_seconds(source: BinaryIO, movie: _Box, file_size: int, *, has_flat: bool) -> float:
     scales = {}
-    for track, media, _ in _video_tracks(source, movie):
+    video_tracks = set()
+    for track, media, kind in _media_tracks(source, movie):
         track_header = _child(source, track, b"tkhd")
         media_header = _child(source, media, b"mdhd")
         if track_header and media_header:
@@ -237,6 +240,8 @@ def _fragmented_seconds(source: BinaryIO, movie: _Box, file_size: int, *, has_fl
             scale, _ = _time_header(source, media_header)
             if scale:
                 scales[track_id] = scale
+                if kind == b"vide" and _video_tables(source, media):
+                    video_tracks.add(track_id)
     extension = _child(source, movie, b"mvex")
     if not scales or extension is None:
         raise APIError("video_rejected")
@@ -246,6 +251,7 @@ def _fragmented_seconds(source: BinaryIO, movie: _Box, file_size: int, *, has_fl
     }
 
     times: dict[int, tuple[int, int]] = {}
+    has_video = has_flat
     for fragment in _boxes(source, 0, file_size):
         if fragment.kind != b"moof":
             continue
@@ -276,6 +282,7 @@ def _fragmented_seconds(source: BinaryIO, movie: _Box, file_size: int, *, has_fl
                 ticks += run.ticks
                 cursor = next_chunk
             if track_id in scales and ticks:
+                has_video = has_video or track_id in video_tracks
                 decode_header = _child(source, track, b"tfdt")
                 first, last = times.get(track_id, (0, 0))
                 start = last
@@ -284,9 +291,16 @@ def _fragmented_seconds(source: BinaryIO, movie: _Box, file_size: int, *, has_fl
                 if track_id not in times and not has_flat:
                     first = start
                 times[track_id] = min(first, start), max(last, start + ticks)
-    if not times:
+    if not has_video:
         raise APIError("video_rejected")
-    return max((last - first) / scales[track_id] for track_id, (first, last) in times.items())
+    # Audio can extend playback beyond the last video sample.
+    first_seconds = min(
+        (first / scales[track_id] for track_id, (first, _) in times.items()), default=0.0,
+    )
+    last_seconds = max(
+        (last / scales[track_id] for track_id, (_, last) in times.items()), default=0.0,
+    )
+    return last_seconds - first_seconds
 
 
 def video_duration(source: BinaryIO) -> float:
