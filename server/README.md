@@ -14,10 +14,10 @@ On Windows PowerShell, activate the environment with
 
 Open `http://localhost:8000/api/health` to check for
 `{"ok":true,"pipelineMode":"mock"}`. Mock mode is the default and needs no keys.
-An MP4 or MOV upload with readable movie metadata, up to 100 MB and 3 minutes,
-returns a processing route. After about ten seconds it becomes a sample draft
-with planted checks for the organizer to resolve. The mock server checks the
-container metadata locally and uses fixture steps for the draft.
+An MP4 or MOV upload with readable movie metadata and a video sample, up to
+100 MB and 3 minutes, returns a processing route. After about ten seconds it
+becomes a sample draft with planted checks for the organizer to resolve. Mock
+mode checks the container structure locally and uses fixture steps for the draft.
 
 Run `pytest` from this directory to check the API. The tests use temporary
 storage and require no external services.

@@ -2,7 +2,7 @@ from time import monotonic
 
 import pytest
 
-from video_helpers import movie_bytes, upload, wait_for_draft
+from video_helpers import header_only_movie, movie_bytes, upload, wait_for_draft
 
 
 def test_upload_returns_processing_and_runs_every_stage(client, monkeypatch):
@@ -60,10 +60,15 @@ def test_upload_rejects_unknown_event(client):
 
 @pytest.mark.parametrize("content", [
     b"not a video",
+    header_only_movie(),
     movie_bytes(handler=b"soun"),
+    movie_bytes(chunk_offset=0),
     movie_bytes()[:-1],
     movie_bytes(seconds=181),
-], ids=["unreadable", "audio-only", "truncated", "longer-than-three-minutes"])
+], ids=[
+    "unreadable", "header-only", "audio-only", "invalid-chunk-offset", "truncated",
+    "longer-than-three-minutes",
+])
 def test_rejected_video_returns_contract_error(client, content):
     response = upload(client, video=content)
     assert response.status_code == 422
