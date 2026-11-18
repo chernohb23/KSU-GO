@@ -44,6 +44,27 @@ def test_upload_requires_video_and_form_fields(client):
     assert response.json()["error"]["code"] == "invalid_request"
 
 
+@pytest.mark.parametrize("unknown_duration", [0, 0xFFFFFFFF])
+def test_fragmented_upload_uses_duration_from_all_fragments(client, monkeypatch, unknown_duration):
+    import mock_pipeline
+
+    monkeypatch.setattr(mock_pipeline, "STAGE_SECONDS", 0.02)
+    response = upload(
+        client, video=movie_bytes(seconds=180, fragments=2, unknown_duration=unknown_duration),
+    )
+    assert response.status_code == 202
+    draft, _ = wait_for_draft(client, response.json()["id"])
+    assert draft["stats"]["videoSec"] == 180
+
+
+def test_fragmented_video_is_rejected_when_total_duration_exceeds_three_minutes(client):
+    response = upload(client, video=movie_bytes(seconds=181, fragments=2))
+    assert response.status_code == 422
+    assert response.json()["error"] == {
+        "code": "video_rejected", "message": "The video is longer than 3 minutes.",
+    }
+
+
 def test_upload_with_malformed_multipart_uses_contract_error(client):
     response = client.post(
         "/api/routes", content=b"not multipart", headers={"Content-Type": "multipart/form-data"},
@@ -63,11 +84,12 @@ def test_upload_rejects_unknown_event(client):
     header_only_movie(),
     movie_bytes(handler=b"soun"),
     movie_bytes(chunk_offset=0),
+    movie_bytes(chunk_offset=0, fragments=2),
     movie_bytes()[:-1],
     movie_bytes(seconds=181),
 ], ids=[
-    "unreadable", "header-only", "audio-only", "invalid-chunk-offset", "truncated",
-    "longer-than-three-minutes",
+    "unreadable", "header-only", "audio-only", "invalid-chunk-offset",
+    "invalid-fragment-offset", "truncated", "longer-than-three-minutes",
 ])
 def test_rejected_video_returns_contract_error(client, content):
     response = upload(client, video=content)

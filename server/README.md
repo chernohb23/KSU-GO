@@ -14,8 +14,9 @@ On Windows PowerShell, activate the environment with
 
 Open `http://localhost:8000/api/health` to check for
 `{"ok":true,"pipelineMode":"mock"}`. Mock mode is the default and needs no keys.
-The mock server accepts standard, non-fragmented MP4 and MOV uploads up to
-100 MB and 3 minutes. It checks the container and sample metadata locally.
+The mock server accepts MP4 and MOV uploads up to 100 MB and 3 minutes. It checks
+the container and sample metadata locally and reads durations from movie
+fragments when needed.
 Each upload returns a processing route and becomes a sample draft with planted
 checks after about ten seconds of processing. Two uploads can run at once.
 Additional uploads wait at the ingest stage for a worker.
