@@ -78,4 +78,3 @@ def run_pipeline(
             "status": "failed", "progress": None,
             "error": "The video could not be processed. Upload the video again.",
         }))
-

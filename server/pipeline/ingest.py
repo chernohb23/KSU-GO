@@ -95,4 +95,3 @@ def ingest_video(upload_path: str | Path, stripped_path: str | Path) -> Ingested
         raise AssertionError("GPS location metadata remains after video stripping.")
 
     return IngestedVideo(path=destination, duration_seconds=stripped_duration, sha256=_sha256(source))
-

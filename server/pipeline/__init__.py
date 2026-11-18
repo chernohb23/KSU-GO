@@ -1,2 +1,1 @@
 """Video processing pipeline modules."""
-

@@ -135,4 +135,3 @@ def test_upload_worker_receives_original_and_stripped_paths(make_client, data_di
         assert upload_path.parent == data_dir / "uploads"
         assert upload_path.is_file()
         assert stripped_path == data_dir / "videos" / f"{response.json()['id']}.mov"
-
