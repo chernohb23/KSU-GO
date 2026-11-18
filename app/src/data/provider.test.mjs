@@ -72,6 +72,31 @@ test('falls back when health does not answer before the timeout', async () => {
   controller.stop();
 });
 
+test('falls back when the events request hangs after a healthy response', async () => {
+  let eventsSignal;
+  const { controller } = makeController({
+    eventsTimeoutMs: 5,
+    clientFactory: () => ({
+      health: async () => ({ ok: true, pipelineMode: 'mock' }),
+      listEvents: (_range, signal) => {
+        eventsSignal = signal;
+        return new Promise(() => {});
+      },
+      getRoute: async () => null,
+    }),
+  });
+
+  const started = await Promise.race([
+    controller.start().then(() => true),
+    new Promise((resolve) => setTimeout(() => resolve(false), 50)),
+  ]);
+  controller.stop();
+
+  assert.equal(started, true, 'startup should finish after the events timeout');
+  assert.equal(controller.state.source, 'fixtures');
+  assert.equal(eventsSignal?.aborted, true);
+});
+
 test('polls every ten seconds and switches back to server data when health recovers', async () => {
   let healthy = false;
   const { controller, getPoll, getInterval } = makeController({

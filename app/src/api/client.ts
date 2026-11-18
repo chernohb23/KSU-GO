@@ -22,7 +22,7 @@ export type UploadRouteInput = {
 
 export type ApiClient = {
   health(signal?: AbortSignal): Promise<HealthResponse>;
-  listEvents(range?: EventRange): Promise<Event[]>;
+  listEvents(range?: EventRange, signal?: AbortSignal): Promise<Event[]>;
   getEvent(id: string): Promise<Event>;
   register(id: string, deviceId: string): Promise<RegisterResponse>;
   uploadRoute(input: UploadRouteInput): Promise<Route>;
@@ -97,7 +97,7 @@ export function createApiClient(
 
   return {
     health: (signal) => request<HealthResponse>('/health', signal ? { signal } : undefined),
-    listEvents: (range) => request<Event[]>(`/events${range ? `?range=${range}` : ''}`),
+    listEvents: (range, signal) => request<Event[]>(`/events${range ? `?range=${range}` : ''}`, signal ? { signal } : undefined),
     getEvent: (id) => request<Event>(`/events/${encodeURIComponent(id)}`),
     register: (id, deviceId) => request<RegisterResponse>(`/events/${encodeURIComponent(id)}/register`, json('POST', { deviceId })),
     uploadRoute: (input) => {

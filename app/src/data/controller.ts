@@ -4,6 +4,7 @@ import { normalizeServerUrl, resolveServerUrl } from '../settings/storage.ts';
 
 export const HEALTH_TIMEOUT_MS = 2_000;
 export const HEALTH_POLL_INTERVAL_MS = 10_000;
+export const EVENTS_TIMEOUT_MS = 2_000;
 
 type DataApi = Pick<ApiClient, 'health' | 'listEvents' | 'getRoute'>;
 type PollScheduler = (callback: () => Promise<void>, intervalMs: number) => unknown;
@@ -25,6 +26,7 @@ export type AppDataControllerOptions = {
   fixtureRoute: (id: string) => Route | null;
   clientFactory: (url: string) => DataApi;
   healthTimeoutMs?: number;
+  eventsTimeoutMs?: number;
   pollIntervalMs?: number;
   schedulePoll?: PollScheduler;
   cancelPoll?: PollCanceler;
@@ -39,6 +41,7 @@ export class AppDataController {
   private readonly fixtureRoute: (id: string) => Route | null;
   private readonly clientFactory: (url: string) => DataApi;
   private readonly healthTimeoutMs: number;
+  private readonly eventsTimeoutMs: number;
   private readonly pollIntervalMs: number;
   private readonly schedulePoll: PollScheduler;
   private readonly cancelPoll: PollCanceler;
@@ -59,6 +62,7 @@ export class AppDataController {
     this.fixtureRoute = options.fixtureRoute;
     this.clientFactory = options.clientFactory;
     this.healthTimeoutMs = options.healthTimeoutMs ?? HEALTH_TIMEOUT_MS;
+    this.eventsTimeoutMs = options.eventsTimeoutMs ?? EVENTS_TIMEOUT_MS;
     this.pollIntervalMs = options.pollIntervalMs ?? HEALTH_POLL_INTERVAL_MS;
     this.schedulePoll = options.schedulePoll ?? ((callback, intervalMs) => setInterval(() => { void callback(); }, intervalMs));
     this.cancelPoll = options.cancelPoll ?? ((handle) => clearInterval(handle as ReturnType<typeof setInterval>));
@@ -178,7 +182,23 @@ export class AppDataController {
         if (timeout !== undefined) clearTimeout(timeout);
       }
       if (!health.ok) throw new Error('Health check did not report ok.');
-      const events = await client.listEvents('today');
+      const eventsController = new AbortController();
+      let eventsTimeout: ReturnType<typeof setTimeout> | undefined;
+      const eventsTimeoutPromise = new Promise<never>((_, reject) => {
+        eventsTimeout = setTimeout(() => {
+          eventsController.abort();
+          reject(new Error('Events request timed out.'));
+        }, this.eventsTimeoutMs);
+      });
+      let events: Event[];
+      try {
+        events = await Promise.race([
+          client.listEvents('today', eventsController.signal),
+          eventsTimeoutPromise,
+        ]);
+      } finally {
+        if (eventsTimeout !== undefined) clearTimeout(eventsTimeout);
+      }
       if (generation !== this.generation) return;
       this.update({ source: 'server', offline: false, serverUrl: url, events, now: this.now() });
     } catch {
