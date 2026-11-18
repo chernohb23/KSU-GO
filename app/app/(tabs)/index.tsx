@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useAppData } from '../src/data/AppDataContext';
-import { getEventFlagState } from '../src/data/events';
+import { useAppData } from '../../src/data/AppDataContext';
+import { getEventFlagState } from '../../src/data/events';
 
 export default function MapScreen() {
   const { events, now, source, refresh } = useAppData();
