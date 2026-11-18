@@ -9,12 +9,12 @@ if (!container) throw new Error("Missing viewer container");
 let campus: ReturnType<typeof createCampusScene> | undefined;
 let route: ReturnType<typeof createRouteScene> | undefined;
 
-installBridge(window, (message) => {
+const send = installBridge(window, (message) => {
   switch (message.type) {
     case "campus:load":
       route?.dispose();
       route = undefined;
-      campus ??= createCampusScene(container);
+      campus ??= createCampusScene(container, (eventId) => send({ type: "campus:flagTapped", eventId }));
       campus.load(message);
       break;
     case "route:load":
@@ -31,7 +31,12 @@ installBridge(window, (message) => {
       route?.handle(message);
       break;
   }
-}, (message) => console.log(message));
+}, (message) => {
+  console.log(message);
+  if (message.type === "campus:flagTapped") {
+    window.ksugo?.receive({ type: "campus:select", eventId: message.eventId });
+  }
+});
 
 if (!window.ReactNativeWebView) {
   const now = new Date();

@@ -7,6 +7,7 @@ import type { CampusCommand, CampusLoad } from "../bridge";
 import { palette } from "../palette";
 import type { ViewerScene } from "../scene";
 import { createCampusWorld, type CampusInfo } from "./build";
+import { createFlags } from "./flags";
 import { createRenderLoop } from "./renderLoop";
 
 // Map "pitch": polar angle from straight down. Portrait looks a little more
@@ -16,7 +17,10 @@ const TILT_PORTRAIT = MathUtils.degToRad(49);
 const AZIMUTH = MathUtils.degToRad(112); // camera sits east-north-east of the target
 const MIN_DISTANCE = 70;
 
-export function createCampusScene(container: HTMLElement): ViewerScene<CampusLoad, CampusCommand> {
+export function createCampusScene(
+  container: HTMLElement,
+  onFlagTap: (eventId: string) => void,
+): ViewerScene<CampusLoad, CampusCommand> {
   const renderer = new WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
@@ -60,6 +64,20 @@ export function createCampusScene(container: HTMLElement): ViewerScene<CampusLoa
   // ---- render on demand: frames run only while something moves --------------
   let userMoved = false;
   let info: CampusInfo | undefined;
+  let selectedId: string | null = null;
+  let focus: { from: Vector3; to: Vector3; started: number; duration: number } | undefined;
+  const lastTarget = new Vector3();
+
+  function updateCamera() {
+    if (!focus) return controls.update();
+    const progress = focus.duration === 0 ? 1 : Math.min((performance.now() - focus.started) / focus.duration, 1);
+    lastTarget.copy(controls.target);
+    controls.target.lerpVectors(focus.from, focus.to, 1 - (1 - progress) ** 3);
+    camera.position.add(controls.target).sub(lastTarget);
+    controls.update();
+    if (progress === 1) focus = undefined;
+    return true;
+  }
 
   function render() {
     const d = camera.position.distanceTo(controls.target);
@@ -70,11 +88,12 @@ export function createCampusScene(container: HTMLElement): ViewerScene<CampusLoa
 
   const loop = createRenderLoop(
     { request: (callback) => requestAnimationFrame(callback), cancel: (id) => cancelAnimationFrame(id) },
-    { updateCamera: () => controls.update(), render },
+    { updateCamera, render },
   );
   const requestRender = loop.requestRender;
 
   controls.addEventListener("start", () => {
+    focus = undefined;
     userMoved = true;
     requestRender();
   });
@@ -85,6 +104,53 @@ export function createCampusScene(container: HTMLElement): ViewerScene<CampusLoa
   const raycaster = new Raycaster();
   const spherical = new Spherical();
   const projected = new Vector3();
+  let pointer: { id: number; x: number; y: number } | undefined;
+
+  function startTap(event: PointerEvent) {
+    pointer = event.isPrimary && event.button === 0
+      ? { id: event.pointerId, x: event.clientX, y: event.clientY }
+      : undefined;
+  }
+
+  function finishTap(event: PointerEvent) {
+    const start = pointer;
+    pointer = undefined;
+    if (!start || start.id !== event.pointerId || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) return;
+
+    const rect = renderer.domElement.getBoundingClientRect();
+    let closest = 25;
+    let eventId: string | undefined;
+    for (const flag of world.flagsLayer.children) {
+      const marker = flag.getObjectByName("flag-marker");
+      if (!marker) continue;
+      marker.getWorldPosition(projected).project(camera);
+      if (Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1 || Math.abs(projected.z) > 1) continue;
+      const x = rect.left + rect.width * (projected.x + 1) / 2;
+      const y = rect.top + rect.height * (1 - projected.y) / 2;
+      const distance = Math.hypot(x - event.clientX, y - event.clientY);
+      if (distance < closest) {
+        closest = distance;
+        eventId = flag.name;
+      }
+    }
+    if (eventId) onFlagTap(eventId);
+  }
+
+  function cancelTap() {
+    pointer = undefined;
+  }
+
+  renderer.domElement.addEventListener("pointerdown", startTap);
+  renderer.domElement.addEventListener("pointerup", finishTap);
+  renderer.domElement.addEventListener("pointercancel", cancelTap);
+
+  function selectFlag(eventId: string | null) {
+    focus = undefined;
+    const selected = world.flagsLayer.children.find(flag => flag.name === eventId);
+    selectedId = selected?.name ?? null;
+    for (const flag of world.flagsLayer.children) flag.userData.selected = flag === selected;
+    return selected;
+  }
 
   function placeCamera(target: Vector3, distance: number, tilt: number) {
     spherical.set(distance, tilt, AZIMUTH);
@@ -120,6 +186,10 @@ export function createCampusScene(container: HTMLElement): ViewerScene<CampusLoa
    */
   function fitView(campusInfo: CampusInfo, tilt: number) {
     const points = campusInfo.focusPoints.map(([x, y, z]) => new Vector3(x, y, z));
+    for (const flag of world.flagsLayer.children) {
+      const marker = flag.getObjectByName("flag-marker");
+      if (marker) points.push(marker.getWorldPosition(new Vector3()));
+    }
     const target = new Vector3();
     points.forEach((p) => target.add(p));
     target.divideScalar(points.length).setY(0);
@@ -168,7 +238,7 @@ export function createCampusScene(container: HTMLElement): ViewerScene<CampusLoa
       anchored(distance);
     }
     controls.target.copy(target);
-    controls.maxDistance = Math.min(Math.max(distance * 1.5, 300), 380);
+    controls.maxDistance = Math.max(distance, Math.min(Math.max(distance * 1.5, 300), 380));
     controls.update();
   }
 
@@ -203,20 +273,8 @@ export function createCampusScene(container: HTMLElement): ViewerScene<CampusLoa
       const first = !world.built;
       const built = world.load(message.campus); // builds buildings on the first load only
 
-      // ---- MAP-4 FLAGS SEAM ---------------------------------------------------
-      // replaceFlags disposes the previous load's flags handle, then asks for
-      // the next one. The contract (CreateFlags, FlagsHandle) is in ./flagsSeam.
-      // When MAP-4's ./flags.ts exists, add at the top of this file:
-      //   import { createFlags } from "./flags";
-      // and replace `return null;` below with:
-      //   return createFlags(world.flagsLayer, message.campus, message.events, message.now);
-      // The loop calls the handle's update(dt) on every frame it draws and keeps
-      // drawing while update returns true (live flags pulsing). Buildings are
-      // never rebuilt; they are in built.buildings, keyed by building id.
-      loop.replaceFlags(() => {
-        return null;
-      });
-      // -------------------------------------------------------------------------
+      loop.replaceFlags(() => createFlags(world.flagsLayer, message.campus, message.events, message.now));
+      selectFlag(selectedId);
 
       if (first) {
         info = built.info;
@@ -230,13 +288,26 @@ export function createCampusScene(container: HTMLElement): ViewerScene<CampusLoa
       }
       requestRender();
     },
-    handle() {
-      // campus:select (highlight a flag and move the camera to it) belongs to MAP-4.
+    handle({ eventId }) {
+      const marker = selectFlag(eventId)?.getObjectByName("flag-marker");
+      if (marker) {
+        userMoved = true;
+        focus = {
+          from: controls.target.clone(),
+          to: marker.getWorldPosition(new Vector3()).setY(0),
+          started: performance.now(),
+          duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450,
+        };
+      }
+      requestRender();
     },
     dispose() {
       loop.dispose(); // cancels the frame and disposes the flags handle
       observer.disconnect();
       controls.dispose();
+      renderer.domElement.removeEventListener("pointerdown", startTap);
+      renderer.domElement.removeEventListener("pointerup", finishTap);
+      renderer.domElement.removeEventListener("pointercancel", cancelTap);
       world.dispose();
       renderer.dispose();
       renderer.domElement.remove();
