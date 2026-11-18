@@ -1,6 +1,7 @@
 """FastAPI entry point for the KSU-GO server."""
 
 import os
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -114,8 +115,17 @@ def create_app(
             store.get_event(event_id)
         video_sec = video_duration(video.file)
         check_budget(data_dir, app.state.budget_cap)
+        upload_id = f"route-{uuid4()}"
+        upload_dir = data_dir / "uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        upload_path = upload_dir / f"{upload_id}.mov"
+        with upload_path.open("wb") as upload_copy:
+            video.file.seek(0)
+            shutil.copyfileobj(video.file, upload_copy)
+        stripped_path = data_dir / "videos" / f"{upload_id}.mov"
+
         pending = Route(
-            id=f"route-{uuid4()}", status="processing",
+            id=upload_id, status="processing",
             progress=Progress(stage="ingest", pct=0), error=None,
             buildingId=building_id, destination=destination,
             startFloor=start_floor, destinationFloor=destination_floor,
@@ -125,7 +135,7 @@ def create_app(
         store.add_upload(pending, event_id)
         app.state.workers.submit(
             run_pipeline, store, pending, app.state.draft_template, video_sec,
-            app.state.pipeline_mode, app.state.stopping,
+            app.state.pipeline_mode, app.state.stopping, upload_path, stripped_path,
         )
         return pending
 

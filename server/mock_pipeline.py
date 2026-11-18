@@ -9,6 +9,7 @@ from time import monotonic
 
 from errors import APIError
 from models import Door, PipelineMode, Progress, Route, Stage, Stats
+from pipeline.ingest import ingest_video
 from store import Store
 
 
@@ -32,9 +33,16 @@ def check_budget(data_dir: Path, cap: Decimal) -> None:
 
 def run_pipeline(
     store: Store, route: Route, template: Route, video_sec: float,
-    mode: PipelineMode, stopping: Event,
+    mode: PipelineMode, stopping: Event, upload_path: Path, stripped_path: Path,
 ) -> None:
     try:
+        try:
+            ingested = ingest_video(upload_path, stripped_path)
+        finally:
+            upload_path.unlink(missing_ok=True)
+        video_path = ingested.path
+        video_sha256 = ingested.sha256
+
         if mode == "live":
             store.update_upload(route.model_copy(update={
                 "status": "failed", "progress": None,
