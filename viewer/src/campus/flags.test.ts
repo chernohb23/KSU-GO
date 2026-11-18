@@ -1,4 +1,4 @@
-﻿import { Group, Line, LineBasicMaterial, Mesh, PerspectiveCamera } from "three";
+﻿import { Group, Line, LineBasicMaterial, Mesh } from "three";
 import { describe, expect, it, vi } from "vitest";
 import fixture from "../../../shared/fixtures/campus.json";
 import type { Campus, Event } from "../../../shared/types";
@@ -64,26 +64,29 @@ describe("campus event flags", () => {
     flags.dispose();
   });
 
-  it("returns a world-space camera target, pulses a selected live marker, and only replaces its own objects", () => {
+  it("requests frames while live flags pulse and disposes before a static reload", () => {
     const group = new Group();
-    group.position.set(10, 0, 20);
     const buildingObject = new Group();
     group.add(buildingObject);
     const flags = createFlags(group, campus, [event("live", -10, 30)], minutes(0));
-    const target = flags.select("live");
-    expect(target?.toArray()).toEqual([building.entrance[0] + 10, 30, building.entrance[1] + 20]);
-    const marker = group.getObjectByName("live")?.children[1] as Mesh;
-    flags.project(new PerspectiveCamera(), 240);
-    expect(marker.scale.x).toBeGreaterThan(1.35);
-    expect(flags.select(null)).toBeUndefined();
+    const marker = group.getObjectByName("live")?.getObjectByName("flag-marker") as Mesh;
+    expect(flags.update(0)).toBe(true);
+    expect(flags.update(0.24)).toBe(true);
+    expect(marker.scale.x).toBeGreaterThan(1);
 
-    const onDispose = vi.fn();
-    pole(group, "live").geometry.addEventListener("dispose", onDispose);
-    flags.update(campus, [event("new", 60, 90)], minutes(0));
-    expect(onDispose).toHaveBeenCalledOnce();
-    expect(group.getObjectByName("live")).toBeUndefined();
-    expect(group.getObjectByName("new")).toBeDefined();
+    const geometryDisposed = vi.fn();
+    const materialDisposed = vi.fn();
+    pole(group, "live").geometry.addEventListener("dispose", geometryDisposed);
+    pole(group, "live").material.addEventListener("dispose", materialDisposed);
     flags.dispose();
+    expect(geometryDisposed).toHaveBeenCalledOnce();
+    expect(materialDisposed).toHaveBeenCalledOnce();
+    expect(group.children).toEqual([buildingObject]);
+
+    const next = createFlags(group, campus, [event("new", 60, 90)], minutes(0));
+    expect(next.update(0.25)).toBe(false);
+    expect(group.getObjectByName("new")).toBeDefined();
+    next.dispose();
     expect(group.children).toEqual([buildingObject]);
   });
 });
