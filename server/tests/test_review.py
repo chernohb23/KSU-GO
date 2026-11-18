@@ -105,13 +105,18 @@ def test_uploaded_draft_edits_and_confirmed_room_links_survive_restart(
     fixtures_dir = copytree(FIXTURES_DIR, tmp_path / "fixtures")
     seeds_path = fixtures_dir / "events.seed.json"
     seeds = json.loads(seeds_path.read_text())
+    building_id = next(seed["location"]["buildingId"] for seed in seeds if seed["id"] == "ev-04")
     for seed in seeds:
         if seed["id"] in {"ev-02", "ev-10"}:
             seed["location"]["room"] = " 204 "
+        if seed["id"] == "ev-06":
+            seed["location"]["buildingId"] = building_id
     seeds_path.write_text(json.dumps(seeds))
 
     with make_client(fixtures_dir) as client:
-        response = upload(client, destination=" rOoM 204  ", eventId="ev-04")
+        response = upload(
+            client, buildingId=building_id, destination=" rOoM 204  ", eventId="ev-04",
+        )
         assert response.status_code == 202
         route_id = response.json()["id"]
         draft, _ = wait_for_draft(client, route_id)

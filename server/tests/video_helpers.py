@@ -58,7 +58,7 @@ def movie_bytes(seconds=1, handler=b"vide", chunk_offset=None):
 
 def upload(client, *, video=None, **fields):
     form = {
-        "buildingId": "b-engineering",
+        "buildingId": "b-mathematics",
         "destination": "Room 204",
         "startFloor": "1",
         "destinationFloor": "2",
