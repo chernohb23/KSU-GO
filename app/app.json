@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "KSU-GO Corridor Spike",
-    "slug": "ksu-go-corridor-spike",
+    "name": "KSU-GO",
+    "slug": "ksu-go",
+    "scheme": "ksu-go",
     "version": "1.0.0",
     "orientation": "portrait",
-    "ios": {
-      "supportsTablet": true
-    }
+    "plugins": ["expo-router"],
+    "ios": { "supportsTablet": true }
   }
 }

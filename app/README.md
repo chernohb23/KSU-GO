@@ -42,3 +42,27 @@ iPhone check pending.
 ## If Expo Go or WebGL fails
 
 Follow the APP-1 fallback in `SCOPE.md` risk 1 in order: first load the viewer from a URL served by the laptop; if WebGL itself fails, try `expo-gl` with three.js. Record which fallback was attempted and what happened in the PR. No change to section 6 is expected unless the phone run reveals that one of its message shapes cannot pass through the WebView.
+
+## APP-2 app shell
+
+The app now starts in Expo Router with **Map**, **Route**, and **Organizer** tabs. The Map screen lists today’s events and labels each as live, starting soon, or later. A small header badge identifies whether data is from the server or fixtures.
+
+If the app has no configured server URL, it starts in fixture mode. The title can be long-pressed on any screen to open hidden **Server settings**. Enter the server base URL without `/api`; the app saves it on the device and checks it immediately. Leaving the field blank clears the override and returns to `EXPO_PUBLIC_API_URL`, if configured. Health is rechecked every 10 seconds, with a 2-second timeout.
+
+The typed API client lives in `src/api/client.ts`. Fixture conversion and fallback live in `src/data/`. `ViewerWebView` and the typed section 6 bridge live in `src/viewer/` and load HTML strings as required by the contract.
+
+From `app/`, install and run with Expo Go:
+
+```powershell
+npm.cmd ci
+npx.cmd expo start --lan
+```
+
+Run the local checks with Node 22.13 or later:
+
+```powershell
+npm.cmd run typecheck
+npm.cmd test
+```
+
+The Expo bundle and TypeScript checks were verified in this worktree. The updated screens have not yet been opened on a physical phone.
