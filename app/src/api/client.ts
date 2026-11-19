@@ -27,8 +27,8 @@ export type ApiClient = {
   register(id: string, deviceId: string, signal?: AbortSignal): Promise<RegisterResponse>;
   uploadRoute(input: UploadRouteInput, onProgress?: (percent: number) => void): Promise<Route>;
   getRoute(id: string, signal?: AbortSignal): Promise<Route>;
-  updateRouteSteps(id: string, steps: Step[]): Promise<Route>;
-  confirmRoute(id: string): Promise<Route>;
+  updateRouteSteps(id: string, steps: Step[], signal?: AbortSignal): Promise<Route>;
+  confirmRoute(id: string, signal?: AbortSignal): Promise<Route>;
 };
 
 export class ApiRequestError extends Error {
@@ -149,7 +149,7 @@ export function createApiClient(
       }).finally(() => clearTimeout(idleTimer));
     },
     getRoute: (id, signal) => request<Route>(`/routes/${encodeURIComponent(id)}`, signal ? { signal } : undefined),
-    updateRouteSteps: (id, steps) => request<Route>(`/routes/${encodeURIComponent(id)}/steps`, json('PUT', { steps })),
-    confirmRoute: (id) => request<Route>(`/routes/${encodeURIComponent(id)}/confirm`, { method: 'POST' }),
+    updateRouteSteps: (id, steps, signal) => request<Route>(`/routes/${encodeURIComponent(id)}/steps`, { ...json('PUT', { steps }), ...(signal && { signal }) }),
+    confirmRoute: (id, signal) => request<Route>(`/routes/${encodeURIComponent(id)}/confirm`, { method: 'POST', ...(signal && { signal }) }),
   };
 }
