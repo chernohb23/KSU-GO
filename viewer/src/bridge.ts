@@ -38,6 +38,24 @@ const incomingTypes = {
   "route:play": true,
 } satisfies Record<IncomingMessage["type"], true>;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const payloadValidators = {
+  "campus:load": (message) => isRecord(message.campus)
+    && Array.isArray(message.events) && message.events.every(isRecord)
+    && typeof message.now === "string"
+    && (message.savedEventIds === undefined || (
+      Array.isArray(message.savedEventIds) && message.savedEventIds.every((id) => typeof id === "string")
+    )),
+  "campus:select": (message) => message.eventId === null || typeof message.eventId === "string",
+  "route:load": (message) => isRecord(message.route),
+  "route:goto": (message) => typeof message.stepIndex === "number"
+    && Number.isFinite(message.stepIndex) && Number.isInteger(message.stepIndex) && message.stepIndex >= 0,
+  "route:play": (message) => typeof message.playing === "boolean",
+} satisfies Record<IncomingMessage["type"], (message: Record<string, unknown>) => boolean>;
+
 export function installBridge(
   host: BridgeHost,
   dispatch: (message: IncomingMessage) => void,
@@ -61,6 +79,11 @@ export function installBridge(
           type: "error",
           message: typeof type === "string" ? `Unknown message type: ${type}` : "Missing message type",
         });
+        return;
+      }
+
+      if (!isRecord(message) || !payloadValidators[type as IncomingMessage["type"]](message)) {
+        send({ type: "error", message: `Invalid payload for message type: ${type}` });
         return;
       }
 

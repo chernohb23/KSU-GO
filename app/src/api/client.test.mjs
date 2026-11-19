@@ -68,3 +68,16 @@ test('preserves the contract error code, message, and HTTP status', async () => 
     return true;
   });
 });
+
+test('passes cancellation signals to route and registration requests', async () => {
+  const calls = [];
+  const client = createApiClient('http://campus.example', jsonFetcher({}, calls));
+  const controller = new AbortController();
+
+  await client.getRoute('route-1', controller.signal);
+  await client.register('event-1', 'device-1', controller.signal);
+
+  assert.equal(calls[0].init.signal, controller.signal);
+  assert.equal(calls[1].init.signal, controller.signal);
+  assert.deepEqual(JSON.parse(calls[1].init.body), { deviceId: 'device-1' });
+});

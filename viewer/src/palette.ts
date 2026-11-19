@@ -39,6 +39,8 @@ export const palette = {
   light: { sky: 0xf2f8ff, ground: 0x9cc77f, sun: 0xfff0d8 },
   /** Overlays such as the map credit and labels: dark `text` on a light `surface`, and a dark `scrim`. */
   ui: { text: 0x34514a, surface: 0xffffff, surfaceWarm: CREAM, scrim: 0x142828 },
+  /** Event flag markers and poles, colored by live, soon or later state. */
+  flags: { live: 0xff8672, soon: 0xf3c66e, later: 0x9ab9e9 },
 } as const;
 
 export type Palette = typeof palette;

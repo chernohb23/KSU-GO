@@ -1,0 +1,69 @@
+{
+  "startFloor": "unknown",
+  "endRoom": "113",
+  "motionLog": [
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_right",
+    "forward",
+    "forward",
+    "rotating_left",
+    "still"
+  ],
+  "events": [
+    {
+      "type": "door",
+      "startSec": 0,
+      "endSec": 3,
+      "confidence": 0.95,
+      "note": "glass entrance door"
+    },
+    {
+      "type": "walk",
+      "startSec": 3,
+      "endSec": 28.5,
+      "confidence": 0.95,
+      "note": "long corridor"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 28.5,
+      "endSec": 30.8,
+      "confidence": 0.95,
+      "note": "into alcove"
+    },
+    {
+      "type": "walk",
+      "startSec": 30.8,
+      "endSec": 33.5,
+      "confidence": 0.9,
+      "note": "to classroom door"
+    },
+    {
+      "type": "pan",
+      "startSec": 33.5,
+      "endSec": 35,
+      "confidence": 0.9,
+      "note": "left to sign"
+    },
+    {
+      "type": "sign",
+      "startSec": 35,
+      "endSec": 37,
+      "confidence": 0.98,
+      "note": "Classroom 113"
+    }
+  ]
+}

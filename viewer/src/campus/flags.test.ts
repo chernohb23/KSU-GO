@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import fixture from "../../../shared/fixtures/campus.json";
 import type { Campus, Event } from "../../../shared/types";
 import { createFlags } from "./flags";
+import { palette } from "../palette";
 
 const now = Date.UTC(2026, 10, 17, 12);
 const minutes = (offset: number) => new Date(now + offset * 60_000).toISOString();
@@ -28,13 +29,13 @@ function pole(group: Group, id: string) {
 
 describe("campus event flags", () => {
   it.each([
-    [-15, 15, 0xff8672, 30],
-    [0, 30, 0xff8672, 30],
-    [1, 31, 0xf3c66e, 29.925],
-    [60, 90, 0xf3c66e, 25.5],
-    [61, 91, 0x9ab9e9, 25.425],
-    [240, 270, 0x9ab9e9, 12],
-    [400, 430, 0x9ab9e9, 12],
+    [-15, 15, palette.flags.live, 30],
+    [0, 30, palette.flags.live, 30],
+    [1, 31, palette.flags.soon, 29.925],
+    [60, 90, palette.flags.soon, 25.5],
+    [61, 91, palette.flags.later, 25.425],
+    [240, 270, palette.flags.later, 12],
+    [400, 430, palette.flags.later, 12],
   ])("draws the correct flag at %s minutes until start", (start, end, color, height) => {
     const group = new Group();
     const flags = createFlags(group, campus, [event("sample", start, end)], minutes(0));

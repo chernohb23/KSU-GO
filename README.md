@@ -143,14 +143,3 @@ cloudflared tunnel --url http://localhost:8000   # optional: lets a phone on ano
 ```
 
 **Tests:** `npm run typecheck` in `app/`, `npm test` in `viewer/`, `pytest` in `server/`.
-
-## How to grab a ticket
-
-1. Open the board and pick a card in **Todo** that is not marked blocked (its **Blocked by** tickets are merged). Tickets marked 🚦 go first, then tickets with a long **Blocks** list. TICKETS.md explains the four dependency fields.
-2. Assign yourself and move it to **In Progress**. One at a time, unless you are waiting on something.
-3. Create a branch: `{your-name}-{ticket}-{short-summary}`.
-4. Give your coding agent the ticket text. It reads `AGENTS.md` on its own, and the ticket plus `CONTRACTS.md` is all the context it needs.
-5. Build and test in mock mode. Tests use recorded responses, never paid calls. If the ticket is 💳, live runs happen on Juan's laptop with his OK. If it lists "Pre-approved libraries", you can add those; ask before adding anything else.
-6. Open a PR, move the card to **In Review**, and merge once the local type check and tests pass. Get a teammate's review only if you touched `CONTRACTS.md` or `shared/types.ts`.
-
-Never put an API key anywhere in the repo, the app, an issue or a chat. If one leaks, tell Juan right away.

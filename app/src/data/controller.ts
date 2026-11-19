@@ -5,6 +5,8 @@ import { normalizeServerUrl, resolveServerUrl } from '../settings/storage.ts';
 export const HEALTH_TIMEOUT_MS = 2_000;
 export const HEALTH_POLL_INTERVAL_MS = 10_000;
 export const EVENTS_TIMEOUT_MS = 2_000;
+export const ROUTE_TIMEOUT_MS = 5_000;
+export const REGISTER_TIMEOUT_MS = 5_000;
 
 type DataApi = Pick<ApiClient, 'health' | 'listEvents' | 'getRoute' | 'register'>;
 type PollScheduler = (callback: () => Promise<void>, intervalMs: number) => unknown;
@@ -27,6 +29,8 @@ export type AppDataControllerOptions = {
   clientFactory: (url: string) => DataApi;
   healthTimeoutMs?: number;
   eventsTimeoutMs?: number;
+  routeTimeoutMs?: number;
+  registerTimeoutMs?: number;
   pollIntervalMs?: number;
   schedulePoll?: PollScheduler;
   cancelPoll?: PollCanceler;
@@ -42,6 +46,8 @@ export class AppDataController {
   private readonly clientFactory: (url: string) => DataApi;
   private readonly healthTimeoutMs: number;
   private readonly eventsTimeoutMs: number;
+  private readonly routeTimeoutMs: number;
+  private readonly registerTimeoutMs: number;
   private readonly pollIntervalMs: number;
   private readonly schedulePoll: PollScheduler;
   private readonly cancelPoll: PollCanceler;
@@ -63,6 +69,8 @@ export class AppDataController {
     this.clientFactory = options.clientFactory;
     this.healthTimeoutMs = options.healthTimeoutMs ?? HEALTH_TIMEOUT_MS;
     this.eventsTimeoutMs = options.eventsTimeoutMs ?? EVENTS_TIMEOUT_MS;
+    this.routeTimeoutMs = options.routeTimeoutMs ?? ROUTE_TIMEOUT_MS;
+    this.registerTimeoutMs = options.registerTimeoutMs ?? REGISTER_TIMEOUT_MS;
     this.pollIntervalMs = options.pollIntervalMs ?? HEALTH_POLL_INTERVAL_MS;
     this.schedulePoll = options.schedulePoll ?? ((callback, intervalMs) => setInterval(() => { void callback(); }, intervalMs));
     this.cancelPoll = options.cancelPoll ?? ((handle) => clearInterval(handle as ReturnType<typeof setInterval>));
@@ -127,7 +135,10 @@ export class AppDataController {
     if (this.current.source !== 'server' || !this.current.serverUrl) return fallback;
 
     try {
-      return await this.clientFactory(this.current.serverUrl).getRoute(id);
+      const client = this.clientFactory(this.current.serverUrl);
+      return await this.withTimeout(
+        (signal) => client.getRoute(id, signal), this.routeTimeoutMs, 'Route request timed out.',
+      );
     } catch (error) {
       if (error instanceof ApiRequestError) throw error;
       const now = this.now();
@@ -145,7 +156,10 @@ export class AppDataController {
   async registerEvent(eventId: string, deviceId: string): Promise<number> {
     if (this.current.source === 'server' && this.current.serverUrl) {
       try {
-        const response = await this.clientFactory(this.current.serverUrl).register(eventId, deviceId);
+        const client = this.clientFactory(this.current.serverUrl);
+        const response = await this.withTimeout(
+          (signal) => client.register(eventId, deviceId, signal), this.registerTimeoutMs, 'Registration request timed out.',
+        );
         this.update({
           ...this.current,
           events: this.current.events.map((event) => event.id === eventId
@@ -167,6 +181,22 @@ export class AppDataController {
       events: this.current.events.map((item) => item.id === eventId ? { ...item, registeredCount } : item),
     });
     return registeredCount;
+  }
+
+  private async withTimeout<T>(request: (signal: AbortSignal) => Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeout = setTimeout(() => {
+        controller.abort();
+        reject(new Error(message));
+      }, timeoutMs);
+    });
+    try {
+      return await Promise.race([request(controller.signal), timeoutPromise]);
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
+    }
   }
 
   private get effectiveServerUrl(): string | null {

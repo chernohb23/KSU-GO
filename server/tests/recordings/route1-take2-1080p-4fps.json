@@ -1,0 +1,107 @@
+{
+  "startFloor": "unknown",
+  "endRoom": "D215",
+  "motionLog": [
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_right",
+    "on_stairs",
+    "on_stairs",
+    "on_stairs",
+    "rotating_left",
+    "rotating_left",
+    "on_stairs",
+    "forward",
+    "rotating_right",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_left",
+    "still",
+    "still"
+  ],
+  "events": [
+    {
+      "type": "door",
+      "startSec": 0,
+      "endSec": 3.75,
+      "confidence": 0.98,
+      "note": "Open glass entrance door with DOOR ACCESS REMINDER sign and enter hallway"
+    },
+    {
+      "type": "walk",
+      "startSec": 3.75,
+      "endSec": 14.75,
+      "confidence": 0.96,
+      "note": "Walk down hallway past propped-open double doors with windows on left and brick wall on right"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 14.75,
+      "endSec": 16,
+      "confidence": 0.95,
+      "note": "Turn right toward staircase"
+    },
+    {
+      "type": "stairs_up",
+      "startSec": 16,
+      "endSec": 22,
+      "confidence": 0.97,
+      "note": "Climb first flight of stairs to brick landing"
+    },
+    {
+      "type": "u_turn_left",
+      "startSec": 22,
+      "endSec": 25.5,
+      "confidence": 0.96,
+      "note": "180-degree U-turn left on stair landing"
+    },
+    {
+      "type": "stairs_up",
+      "startSec": 25.5,
+      "endSec": 28.5,
+      "confidence": 0.97,
+      "note": "Climb second flight of stairs"
+    },
+    {
+      "type": "walk",
+      "startSec": 28.5,
+      "endSec": 30.25,
+      "confidence": 0.9,
+      "note": "Step onto upper landing toward closed double doors"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 30.25,
+      "endSec": 32,
+      "confidence": 0.96,
+      "note": "Turn right toward second-floor hallway"
+    },
+    {
+      "type": "walk",
+      "startSec": 32,
+      "endSec": 38.25,
+      "confidence": 0.96,
+      "note": "Pass through open doorway and walk down second-floor corridor"
+    },
+    {
+      "type": "turn_left",
+      "startSec": 38.25,
+      "endSec": 40.75,
+      "confidence": 0.93,
+      "note": "Turn left toward closed door and wall plaque on left"
+    },
+    {
+      "type": "sign",
+      "startSec": 40.75,
+      "endSec": 43.5,
+      "confidence": 0.99,
+      "note": "KENNESAW STATE UNIVERSITY Dr. Liancheng Wang, Ph.D. Professor of Mathematics D215"
+    }
+  ]
+}

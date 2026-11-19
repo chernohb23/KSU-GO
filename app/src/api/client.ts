@@ -24,9 +24,9 @@ export type ApiClient = {
   health(signal?: AbortSignal): Promise<HealthResponse>;
   listEvents(range?: EventRange, signal?: AbortSignal): Promise<Event[]>;
   getEvent(id: string): Promise<Event>;
-  register(id: string, deviceId: string): Promise<RegisterResponse>;
+  register(id: string, deviceId: string, signal?: AbortSignal): Promise<RegisterResponse>;
   uploadRoute(input: UploadRouteInput): Promise<Route>;
-  getRoute(id: string): Promise<Route>;
+  getRoute(id: string, signal?: AbortSignal): Promise<Route>;
   updateRouteSteps(id: string, steps: Step[]): Promise<Route>;
   confirmRoute(id: string): Promise<Route>;
 };
@@ -99,7 +99,10 @@ export function createApiClient(
     health: (signal) => request<HealthResponse>('/health', signal ? { signal } : undefined),
     listEvents: (range, signal) => request<Event[]>(`/events${range ? `?range=${range}` : ''}`, signal ? { signal } : undefined),
     getEvent: (id) => request<Event>(`/events/${encodeURIComponent(id)}`),
-    register: (id, deviceId) => request<RegisterResponse>(`/events/${encodeURIComponent(id)}/register`, json('POST', { deviceId })),
+    register: (id, deviceId, signal) => request<RegisterResponse>(`/events/${encodeURIComponent(id)}/register`, {
+      ...json('POST', { deviceId }),
+      ...(signal ? { signal } : {}),
+    }),
     uploadRoute: (input) => {
       const body = formDataFactory();
       body.append('video', input.video as unknown as Blob);
@@ -110,7 +113,7 @@ export function createApiClient(
       if (input.eventId) body.append('eventId', input.eventId);
       return request<Route>('/routes', { method: 'POST', body });
     },
-    getRoute: (id) => request<Route>(`/routes/${encodeURIComponent(id)}`),
+    getRoute: (id, signal) => request<Route>(`/routes/${encodeURIComponent(id)}`, signal ? { signal } : undefined),
     updateRouteSteps: (id, steps) => request<Route>(`/routes/${encodeURIComponent(id)}/steps`, json('PUT', { steps })),
     confirmRoute: (id) => request<Route>(`/routes/${encodeURIComponent(id)}/confirm`, { method: 'POST' }),
   };
