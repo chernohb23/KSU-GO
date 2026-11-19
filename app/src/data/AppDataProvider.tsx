@@ -7,7 +7,7 @@ import routeSample from '../../../shared/fixtures/route.sample.json';
 import routeDraft from '../../../shared/fixtures/route.draft-flawed.json';
 import { bundledDrafts } from './bundledDrafts';
 import { createApiClient } from '../api/client.ts';
-import { loadFixtureEvents } from './events.ts';
+import { eventsInRange, loadFixtureEvents } from './events.ts';
 import { findFixtureRoute } from './routes.ts';
 import { AppDataContext } from './AppDataContext.ts';
 import { AppDataController } from './controller.ts';
@@ -30,7 +30,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       defaultApiUrl: process.env.EXPO_PUBLIC_API_URL,
       loadServerUrlOverride: () => loadServerUrlOverride(AsyncStorage),
       saveServerUrlOverride: (url) => saveServerUrlOverride(AsyncStorage, url),
-      fixtureEvents: (now) => loadFixtureEvents(fixtureSeeds, now, 'today'),
+      fixtureEvents: (now) => loadFixtureEvents(fixtureSeeds, now, 'week'),
       fixtureRoute: (id) => findFixtureRoute(fixtureRoutes, id),
       clientFactory: (url) => createApiClient(url),
     }),
@@ -84,20 +84,22 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     return registeredCount;
   }, [controller, deviceId, offlineRegisteredCounts, registeredEventIds, registrationsReady, state.events]);
 
-  const events = useMemo(() => state.events.map((event) => {
+  const weekEvents = useMemo(() => state.events.map((event) => {
     const offlineCount = offlineRegisteredCounts[event.id];
     return state.source === 'fixtures' && offlineCount !== undefined
       ? { ...event, registeredCount: offlineCount }
       : event;
   }), [offlineRegisteredCounts, state.events, state.source]);
 
+  const events = useMemo(() => eventsInRange(weekEvents, state.now, 'today'), [weekEvents, state.now]);
+
   const refresh = useCallback(() => controller.refresh(), [controller]);
   const setServerUrl = useCallback((url: string) => controller.setServerUrl(url), [controller]);
   const getRoute = useCallback((id: string) => controller.getRoute(id), [controller]);
 
   const value = useMemo(
-    () => ({ ...state, events, deviceId, registeredEventIds, registrationsReady, registerEvent, refresh, setServerUrl, getRoute }),
-    [deviceId, events, getRoute, refresh, registerEvent, registeredEventIds, registrationsReady, setServerUrl, state],
+    () => ({ ...state, events, weekEvents, deviceId, registeredEventIds, registrationsReady, registerEvent, refresh, setServerUrl, getRoute }),
+    [deviceId, events, weekEvents, getRoute, refresh, registerEvent, registeredEventIds, registrationsReady, setServerUrl, state],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

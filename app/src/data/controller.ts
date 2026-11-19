@@ -250,7 +250,7 @@ export class AppDataController {
       let events: Event[];
       try {
         events = await Promise.race([
-          client.listEvents('today', eventsController.signal),
+          client.listEvents('week', eventsController.signal),
           eventsTimeoutPromise,
         ]);
       } finally {

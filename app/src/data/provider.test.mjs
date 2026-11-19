@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { getOrCreateDeviceId, loadOfflineRegisteredCounts, loadRegisteredEventIds, loadServerUrlOverride, resolveServerUrl, saveOfflineRegisteredCounts, saveRegisteredEventIds, saveServerUrlOverride } from '../settings/storage.ts';
 import { AppDataController } from './controller.ts';
+import { WeekChoices } from '../week/choices.ts';
 import { ApiRequestError } from '../api/client.ts';
 
 function memoryStorage() {
@@ -112,10 +113,11 @@ test('falls back when the events request hangs after a healthy response', async 
 
 test('polls every ten seconds and switches back to server data when health recovers', async () => {
   let healthy = false;
+  let requestedRange;
   const { controller, getPoll, getInterval } = makeController({
     clientFactory: () => ({
       health: async () => { if (!healthy) throw new Error('offline'); return { ok: true, pipelineMode: 'mock' }; },
-      listEvents: async () => [{ id: 'server' }],
+      listEvents: async range => { requestedRange = range; return [{ id: 'server' }]; },
       getRoute: async () => ({ id: 'route-server' }),
     }),
   });
@@ -127,6 +129,7 @@ test('polls every ten seconds and switches back to server data when health recov
   await getPoll()();
   assert.equal(controller.state.source, 'server');
   assert.equal(controller.state.offline, false);
+  assert.equal(requestedRange, 'week');
   assert.deepEqual(controller.state.events, [{ id: 'server' }]);
   controller.stop();
 });
@@ -300,4 +303,37 @@ test('route and registration API errors are rethrown without switching to fixtur
   await assert.rejects(controller.getRoute('missing'), (caught) => caught === error);
   await assert.rejects(controller.registerEvent('missing', 'device-1'), (caught) => caught === error);
   assert.equal(controller.state.source, 'server');
+});
+
+test('weekly choices serialize, survive restart, and reset independently of registration', async () => {
+  const storage = memoryStorage();
+  await saveRegisteredEventIds(storage, ['a']);
+  const first = new WeekChoices(storage);
+  const event = { id: 'a', title: 'Studio', startsAt: '2026-11-20T10:00:00Z', organizer: 'Arts', category: 'arts' };
+  await Promise.all([first.choose(event, 'save'), first.choose(event, 'skip'), first.choose({ ...event, id: 'b' }, 'skip')]);
+  const restarted = new WeekChoices(storage);
+  await restarted.load();
+  assert.deepEqual(restarted.snapshot(), first.snapshot());
+  assert.deepEqual(restarted.snapshot().map(vote => vote.id), ['a', 'b']);
+  assert.equal(restarted.snapshot()[0].saved.title, 'Studio');
+  await restarted.remove('a');
+  assert.deepEqual(restarted.snapshot().map(vote => vote.id), ['b']);
+  await restarted.reset();
+  const fresh = new WeekChoices(storage);
+  await fresh.load();
+  assert.deepEqual(fresh.snapshot(), []);
+  assert.deepEqual(await loadRegisteredEventIds(storage), ['a']);
+});
+
+test('a failed preference write leaves the card available for retry', async () => {
+  const storage = memoryStorage();
+  const store = new WeekChoices(storage);
+  const event = { id: 'a', title: 'Studio', startsAt: '2026-11-20T10:00:00Z', organizer: 'Arts', category: 'arts' };
+  const write = storage.setItem;
+  storage.setItem = async () => { throw new Error('disk full'); };
+  await assert.rejects(store.choose(event, 'save'), /disk full/);
+  assert.deepEqual(store.snapshot(), []);
+  storage.setItem = write;
+  await store.choose(event, 'save');
+  assert.equal(store.snapshot()[0].id, 'a');
 });

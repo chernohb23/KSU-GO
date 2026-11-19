@@ -8,6 +8,7 @@ import { useAppData } from '../../src/data/AppDataContext';
 import { getEventFlagState } from '../../src/data/events';
 import { ViewerWebView, type ViewerWebViewHandle } from '../../src/viewer/ViewerWebView';
 import type { ViewerToAppMessage } from '../../src/viewer/bridge';
+import { useWeekChoices } from '../../src/week/useWeekChoices';
 import { viewerHtml } from '../../src/viewerHtml';
 
 const campus = campusFixture as Campus;
@@ -28,13 +29,14 @@ export default function MapScreen() {
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
 
+  const { choices } = useWeekChoices();
   const initialMessage = useMemo(() => ({
     type: 'campus:load' as const,
     campus,
     events,
     now: now.toISOString(),
-    savedEventIds: registeredEventIds,
-  }), [events, now, registeredEventIds]);
+    savedEventIds: choices?.filter(choice => choice.saved).map(choice => choice.id) ?? [],
+  }), [events, now, choices]);
 
   const selectedEvent = events.find((event) => event.id === selectedEventId) ?? null;
   const routeEvent = events.find((event) => event.routeId !== null) ?? null;
