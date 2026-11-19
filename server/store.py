@@ -9,6 +9,7 @@ from pydantic import Field, TypeAdapter
 from checks import refresh_mock_checks
 from errors import APIError
 from models import Check, ContractModel, Door, Event, EventRange, EventSeed, PipelineMode, Route, Step
+from pipeline.motion import SavedMotion
 from pipeline.verify import verify
 
 
@@ -17,6 +18,7 @@ class Upload(ContractModel):
     event_id: str | None
     pipeline_mode: PipelineMode = "mock"
     assemble_warnings: list[Check] = Field(default_factory=list)
+    motion: SavedMotion | None = None
 
 
 class SavedState(ContractModel):
@@ -143,23 +145,29 @@ class Store:
             self._save_upload(Upload(route=route, event_id=event_id, pipeline_mode=mode))
             self._routes[route.id] = route
 
-    def update_upload(self, route: Route, *, assemble_warnings: list[Check] | None = None) -> None:
+    def update_upload(
+        self, route: Route, *, assemble_warnings: list[Check] | None = None,
+        motion: SavedMotion | None = None,
+    ) -> None:
         with self._lock:
             # A restart fails any processing record regardless of its last stage.
             if route.status != "processing":
-                self._replace_route(route, assemble_warnings=assemble_warnings)
+                self._replace_route(route, assemble_warnings=assemble_warnings, motion=motion)
             else:
                 self._routes[route.id] = route
 
     def _replace_route(
         self, route: Route, attached_events: tuple[str, ...] = (), *,
         assemble_warnings: list[Check] | None = None,
+        motion: SavedMotion | None = None,
     ) -> None:
         upload = self._saved.uploads.get(route.id)
         if upload is not None:
             changes = {"route": route}
             if assemble_warnings is not None:
                 changes["assemble_warnings"] = assemble_warnings
+            if motion is not None:
+                changes["motion"] = motion
             self._save_upload(upload.model_copy(update=changes), attached_events)
         self._routes[route.id] = route
 
@@ -176,7 +184,7 @@ class Store:
             checks = (
                 verify(steps, start_floor=route.startFloor, destination_floor=route.destinationFloor,
                        video_sec=route.stats.videoSec if route.stats else None,
-                       assemble_warnings=upload.assemble_warnings)
+                       assemble_warnings=upload.assemble_warnings, motion=upload.motion)
                 if upload is not None and upload.pipeline_mode == "live"
                 else refresh_mock_checks(steps, route.checks)
             )

@@ -5,6 +5,9 @@ from __future__ import annotations
 import re
 
 from models import Check, Door, Stairs, Step, Turn, Walk
+from pipeline.motion import (
+    SIDE_DEAD_ZONE_DEGREES, TURN_EVENT_TYPES, MotionTrace, detect_candidates, magnitude_at_least, measure_turn,
+)
 from pipeline.timeline import GAP_WALK_NOTE, Timeline, TimelineEvent
 
 TURN_DIRECTIONS = {
@@ -54,7 +57,7 @@ def _walking_seconds(event: TimelineEvent, pauses: list[TimelineEvent]) -> float
 
 def assemble(
     timeline: Timeline, *, destination: str, start_floor: str, destination_floor: str,
-    motion: object | None = None,
+    motion: MotionTrace | None = None, turn_midpoints: dict[str, float] | None = None,
 ) -> tuple[list[Step], list[Check]]:
     """Return fresh steps and assembly warnings; organizer floors are authoritative.
 
@@ -75,14 +78,33 @@ def assemble(
     # Associate notes by interval distance, before adjacent walks are merged.
     walks: list[tuple[Walk, TimelineEvent]] = []
     flights: list[tuple[Stairs, TimelineEvent]] = []
+    turn_intervals: dict[int, tuple[float, float]] = {}
+    candidates = detect_candidates(motion, excluded_intervals=[
+        (event.startSec, event.endSec) for event in events
+        if event.type in TURN_EVENT_TYPES or event.type == "pan"
+    ]) if motion is not None else []
     room_turn = None
     for event in events:
         if event.type == "walk":
-            seconds = _walking_seconds(event, pauses)
-            if seconds > 0:
-                walk = Walk(**_base(event), type="walk", lengthM=seconds * 0.7)
-                steps.append(walk)
-                walks.append((walk, event))
+            turns = [candidate for candidate in candidates
+                     if event.startSec < candidate.midpoint_sec < event.endSec
+                     and not any(pause.startSec <= candidate.midpoint_sec < pause.endSec for pause in pauses)]
+            cursor = event.startSec
+            for candidate in [*turns, None]:
+                end = candidate.midpoint_sec if candidate else event.endSec
+                segment = event.model_copy(update={"startSec": cursor, "endSec": end})
+                seconds = _walking_seconds(segment, pauses)
+                if seconds > 0:
+                    walk = Walk(**_base(segment), type="walk", lengthM=seconds * 0.7)
+                    steps.append(walk)
+                    walks.append((walk, segment))
+                if candidate:
+                    turn = Turn(id="", type="turn", direction=candidate.side, source="ai",
+                                confidence=0.3, tSec=candidate.midpoint_sec, note=None)
+                    steps.append(turn)
+                    turn_intervals[id(turn)] = (candidate.midpoint_sec, candidate.midpoint_sec)
+                    warn("turn_from_motion", "The video turns here but the AI did not report it. Keep or delete.", turn)
+                cursor = end
         elif event.type in TURN_DIRECTIONS or event.type == "turn_into_room":
             direction = TURN_DIRECTIONS.get(event.type)
             if direction is None:
@@ -91,6 +113,7 @@ def assemble(
                 direction = next(iter(sides)) if len(sides) == 1 else "right"
             turn = Turn(**_base(event), type="turn", direction=direction)
             steps.append(turn)
+            turn_intervals[id(turn)] = (event.startSec, event.endSec)
             if event.type == "turn_into_room":
                 if len(set(re.findall(r"\b(left|right)\b", event.note.lower()))) != 1:
                     warn("room_turn_side", "The room turn's side was unclear. A right turn was used; review it.", turn)
@@ -150,15 +173,16 @@ def assemble(
             turns[0].direction = "u_" + turns[0].direction
             turns[0].confidence = min(turn.confidence for turn in turns)
             _note(turns[0], turns[1].note or "")
+            turn_intervals[id(turns[0])] = (turn_intervals[id(turns[0])][0], turn_intervals[id(turns[1])][1])
             steps = [step for step in steps if step is not turns[1]]
         elif not turns:
-            # TODO(AI-7): use optional motion results for the switchback side.
-            # TODO(AI-7): supplement missing turns and attach turn_from_motion;
-            # verify.py will attach turn_motion_mismatch, skipping organizer steps.
-            turn = Turn(id="", type="turn", direction="u_right", source="ai",
+            measured = measure_turn(motion, first_event.endSec, second_event.startSec) if motion else None
+            side = measured.side if measured and magnitude_at_least(measured.degrees, SIDE_DEAD_ZONE_DEGREES) else "right"
+            turn = Turn(id="", type="turn", direction="u_" + side, source="ai",
                         confidence=0.3, tSec=first_event.endSec, note=None)
             steps.insert(second_index, turn)
-            warn("switchback_turn", "No turn was reported between stair flights. A right U-turn was added; review it.", turn)
+            turn_intervals[id(turn)] = (first_event.endSec, second_event.startSec)
+            warn("switchback_turn", f"No turn was reported between stair flights. A {side} U-turn was added; review it.", turn)
 
     # Drop destination sign notes for the entire final walk group, including a
     # sign attached to an earlier walk that will merge into the last one.
@@ -200,6 +224,9 @@ def assemble(
                        type="door", label=destination))
     for index, step in enumerate(merged, 1):
         step.id = f"s{index}"
+        if isinstance(step, Turn) and turn_midpoints is not None:
+            start, end = turn_intervals[id(step)]
+            turn_midpoints[step.id] = (start + end) / 2
         # Deduplicate complete fragments before truncating, including standalone
         # notes. Truncating earlier would lose fragments needed by later merges.
         _note(step, "")

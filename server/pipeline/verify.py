@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from models import Check, Elevator, Stairs, Step, Walk
+from models import Check, Elevator, Stairs, Step, Turn, Walk
+from pipeline.motion import SIDE_DEAD_ZONE_DEGREES, SavedMotion, magnitude_at_least, oversized_right_angle
 
 
 def verify(
     steps: Sequence[Step], *, start_floor: str, destination_floor: str,
     video_sec: float | None = None, assemble_warnings: Sequence[Check] = (),
-    motion: object | None = None,
+    motion: SavedMotion | None = None,
 ) -> list[Check]:
     checks: list[Check] = []
 
@@ -38,8 +39,14 @@ def verify(
                 floor = step.toFloor
         if step.source == "ai" and step.confidence is not None and step.confidence < 0.6:
             add("low_confidence", "warn", f"The AI's confidence in this step ({step.id}) is {step.confidence:g}, under 0.6.", step.id)
-        # TODO(AI-7): attach turn_motion_mismatch and turn_from_motion from motion;
-        # never check a step against video when source is "organizer".
+        if isinstance(step, Turn) and step.source == "ai" and motion is not None:
+            measured = motion.measure_step(step.id)
+            if measured is not None and magnitude_at_least(measured.degrees, SIDE_DEAD_ZONE_DEGREES):
+                if step.direction.removeprefix("u_") != measured.side:
+                    add("turn_motion_mismatch", "warn", f"The video turns {measured.side} here.", step.id)
+                elif oversized_right_angle(step.direction, measured):
+                    add("turn_motion_mismatch", "warn",
+                        "The video turns at least 150 degrees here; review this quarter-turn.", step.id)
 
     if not any(check.id == "leg_length_range" for check in checks):
         add("leg_length_range", "pass", "No walk is shorter than 0.5 m.")
