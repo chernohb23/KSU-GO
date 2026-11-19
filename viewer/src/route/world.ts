@@ -11,13 +11,21 @@ const WALL_HEIGHT = 0.85;
 const WALL_DEPTH = 0.12;
 const ROUTE_RADIUS = 0.075;
 
-export type RouteWorld = { root: Group; dispose(): void };
+export type RouteWorld = { root: Group; marker: Mesh; dispose(): void };
 
 /** Creates all route geometry from the shared, coordinate-free route layout. */
 export function createRouteWorld(route: Route): RouteWorld {
   const layout = layoutRoute(route);
   const root = new Group();
   root.name = "route-world";
+  const marker = new Mesh(
+    new SphereGeometry(0.24, 14, 10),
+    new MeshStandardMaterial({ color: 0x2c81c5, roughness: 0.35, emissive: 0x164975, emissiveIntensity: 0.22 }),
+  );
+  marker.name = "walkthrough-marker";
+  const initialPosition = layout.centerline[0] ?? [0, 0, 0];
+  marker.position.set(initialPosition[0], initialPosition[1] + 0.24, initialPosition[2]);
+  root.add(marker);
 
   for (const floor of layout.floors) {
     const floorGroup = new Group();
@@ -59,6 +67,7 @@ export function createRouteWorld(route: Route): RouteWorld {
   let disposed = false;
   return {
     root,
+    marker,
     dispose() {
       if (disposed) return;
       disposed = true;
