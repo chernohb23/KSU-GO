@@ -45,10 +45,11 @@ export const ViewerWebView = forwardRef<ViewerWebViewHandle, ViewerWebViewProps>
       const wasReady = ready.current;
       ready.current = true;
       if (!wasReady) {
-        onReady?.();
         const queued = pending.current;
         pending.current = null;
         if (queued) webView.current?.injectJavaScript(serializeAppMessage(queued));
+        // Restore a screen's current step only after its queued scene is loaded.
+        onReady?.();
       }
     }
     onMessage(message);
