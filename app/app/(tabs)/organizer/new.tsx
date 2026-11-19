@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { fetch as fetchLocal } from 'expo/fetch';
 import { useIsFocused, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import events from '../../../../shared/fixtures/events.seed.json';
@@ -9,6 +9,7 @@ import type { UploadRouteInput } from '../../../src/api/client';
 import { useAppData } from '../../../src/data/AppDataContext';
 import { useOrganizer } from '../../../src/organizer/context';
 import { defaultDestinationFloor, selectedVideoFile, uploadInput } from '../../../src/organizer/form';
+import { createVideoPicker } from '../../../src/organizer/picker';
 import { Action, buildingName, ProgressBar, styles } from '../../../src/organizer/ui';
 
 // Keep the original recording, including full-resolution room signs.
@@ -40,33 +41,15 @@ function NewRouteForm({ initial }: { initial: UploadRouteInput | null }) {
   const [picking, setPicking] = useState(false);
   const event = events.find((item) => item.id === eventId);
 
-  const acceptSelection = useCallback(async (result: ImagePicker.ImagePickerResult | ImagePicker.ImagePickerErrorResult | null) => {
-    if (!result) return;
-    if ('code' in result) throw new Error(result.message);
-    if (result.canceled) return;
-    setFile(null);
-    setFile(await selectedVideoFile(result.assets[0], fetchLocal));
-  }, []);
+  const [selectVideo] = useState(() => createVideoPicker({
+    readFile: (asset) => selectedVideoFile(asset, fetchLocal), setFile, setError, setPicking,
+  }));
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      void ImagePicker.getPendingResultAsync().then(acceptSelection).catch((cause: unknown) => {
-        setError(cause instanceof Error ? cause.message : 'Could not restore the selected video.');
-      });
+      void selectVideo('restore', ImagePicker.getPendingResultAsync);
     }
-  }, [acceptSelection]);
-
-  async function pickVideo() {
-    setPicking(true);
-    setError('');
-    try {
-      await acceptSelection(await ImagePicker.launchImageLibraryAsync(PICK_VIDEO));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not open this video. Choose another from the camera roll.');
-    } finally {
-      setPicking(false);
-    }
-  }
+  }, [selectVideo]);
 
   function submit() {
     if (!event || !file) return;
@@ -117,7 +100,7 @@ function NewRouteForm({ initial }: { initial: UploadRouteInput | null }) {
         <Text style={styles.label}>Walkthrough video</Text>
         <Text style={styles.body}>{file?.name ?? 'Up to 3 minutes and 100 MB.'}</Text>
         <Action label={picking ? 'Opening camera roll…' : file ? 'Change video' : 'Choose video'} secondary
-          disabled={picking} onPress={() => { void pickVideo(); }} />
+          disabled={picking} onPress={() => { void selectVideo('choose', () => ImagePicker.launchImageLibraryAsync(PICK_VIDEO)); }} />
       </View>
       {error && <Text accessibilityRole="alert" style={styles.notice}>{error}</Text>}
       {!serverUrl && <Action label="Set server address" secondary onPress={() => router.push('/settings')} />}
