@@ -97,10 +97,15 @@ export class AppDataController {
   async start(): Promise<void> {
     if (this.started) return;
     this.started = true;
-    this.override = normalizeServerUrl(await this.loadServerUrlOverride());
     const generation = ++this.generation;
+    const override = await this.loadServerUrlOverride();
+    if (!this.started) return;
+    if (this.pollHandle === null) {
+      this.pollHandle = this.schedulePoll(() => this.refresh(), this.pollIntervalMs);
+    }
+    if (generation !== this.generation) return;
+    this.override = normalizeServerUrl(override);
     this.update({ ...this.current, serverUrl: this.effectiveServerUrl });
-    this.pollHandle = this.schedulePoll(() => this.refresh(), this.pollIntervalMs);
     await this.refreshGeneration(generation);
   }
 

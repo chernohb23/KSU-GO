@@ -1,22 +1,25 @@
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 
+import { DemoSessionProvider } from '../src/settings/DemoSession';
 import { AppDataProvider } from '../src/data/AppDataProvider';
 import { AppTitle, DataSourceBadge, headerStyles } from '../src/navigation/AppHeader';
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppDataProvider>
-        <Stack screenOptions={{
-          headerTitle: () => <AppTitle />,
-          headerRight: () => <DataSourceBadge />,
-          headerStyle: headerStyles.header,
-        }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="settings" options={{ title: 'Server settings' }} />
-        </Stack>
-      </AppDataProvider>
+      <DemoSessionProvider>
+        <AppDataProvider>
+          <Stack screenOptions={{
+            headerTitle: () => <AppTitle />,
+            headerRight: () => <DataSourceBadge />,
+            headerStyle: headerStyles.header,
+          }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="settings" options={{ title: 'Server settings' }} />
+          </Stack>
+        </AppDataProvider>
+      </DemoSessionProvider>
     </GestureHandlerRootView>
   );
 }

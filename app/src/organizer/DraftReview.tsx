@@ -1,3 +1,4 @@
+import { palette } from '../navigation/Brand';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -149,10 +150,10 @@ const local = StyleSheet.create({
   list: { flex: 1 },
   rows: { padding: 12, gap: 8 },
   step: { minHeight: 44, justifyContent: 'center', gap: 4 },
-  active: { borderColor: '#805b08', backgroundColor: '#fffaf0' },
+  active: { borderColor: palette.amber, backgroundColor: '#fffaf0' },
   controls: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   choice: { justifyContent: 'center', minHeight: 44, paddingHorizontal: 10, borderWidth: 1, borderRadius: 8, borderColor: '#8999a4' },
-  chosen: { backgroundColor: '#f2dfaf', borderColor: '#805b08' },
+  chosen: { backgroundColor: '#f2dfaf', borderColor: palette.amber },
   actions: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   footer: { paddingHorizontal: 12, paddingVertical: 8, gap: 4, backgroundColor: '#fff' },
 });

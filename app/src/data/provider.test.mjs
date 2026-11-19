@@ -4,6 +4,7 @@ import test from 'node:test';
 import { getOrCreateDeviceId, loadOfflineRegisteredCounts, loadRegisteredEventIds, loadServerUrlOverride, resolveServerUrl, saveOfflineRegisteredCounts, saveRegisteredEventIds, saveServerUrlOverride } from '../settings/storage.ts';
 import { AppDataController } from './controller.ts';
 import { WeekChoices } from '../week/choices.ts';
+import { DemoStorage } from '../settings/demoStorage.ts';
 import { ApiRequestError } from '../api/client.ts';
 
 function memoryStorage() {
@@ -336,4 +337,42 @@ test('a failed preference write leaves the card available for retry', async () =
   storage.setItem = write;
   await store.choose(event, 'save');
   assert.equal(store.snapshot()[0].id, 'a');
+});
+
+test('demo reset clears KSU-GO data, orders pending writes, and isolates the next session', async () => {
+  const keys = new Map([['expo.preference', 'keep'], ['ksu-go.device-id', 'old'], ['ksu-go.organizer-mode', 'on']]);
+  const backing = {
+    getItem: async key => keys.get(key) ?? null,
+    getAllKeys: async () => [...keys.keys()],
+    setItem: async (key, value) => { keys.set(key, value); },
+    removeItem: async key => { keys.delete(key); },
+    multiRemove: async list => { list.forEach(key => keys.delete(key)); },
+  };
+  const old = new DemoStorage(backing);
+  const pending = old.setItem('ksu-go.uploaded-route.r1', '1');
+  const reset = old.reset();
+  const late = old.setItem('ksu-go.registered-event-ids', '["event"]');
+  await Promise.all([pending, reset, late]);
+  assert.deepEqual([...keys.keys()], ['expo.preference']);
+  const fresh = new DemoStorage(backing);
+  await fresh.setItem('ksu-go.device-id', 'fresh');
+  await old.removeItem('ksu-go.device-id');
+  await old.reset();
+  assert.equal(await fresh.getItem('ksu-go.device-id'), 'fresh');
+  backing.multiRemove = async () => { throw new Error('disk'); };
+  await assert.rejects(fresh.reset(), /disk/);
+  await fresh.setItem('ksu-go.organizer-mode', 'on');
+  assert.equal(await fresh.getItem('ksu-go.organizer-mode'), 'on');
+});
+
+test('a discarded demo session cannot start its poll after storage finishes loading', async () => {
+  let resolveRead;
+  const { controller, getPoll } = makeController({
+    loadServerUrlOverride: () => new Promise(resolve => { resolveRead = resolve; }),
+  });
+  const starting = controller.start();
+  controller.stop();
+  resolveRead(null);
+  await starting;
+  assert.equal(getPoll(), undefined);
 });

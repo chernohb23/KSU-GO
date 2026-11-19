@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile, readdir } from 'node:fs/promises';
 import test from 'node:test';
 
 import { eventsInRange, getEventFlagState, loadFixtureEvents } from './events.ts';
@@ -95,4 +96,24 @@ test('half swipes and canceled swipes leave the card in the deck', () => {
   assert.equal(swipeDecision(300, 350, true), null);
   assert.equal(swipeDecision(180, 350, false), 'save');
   assert.equal(swipeDecision(-180, 350, false), 'skip');
+});
+
+test('every linked seed event opens a confirmed offline route to its room', async () => {
+  const fixtures = new URL('../../../shared/fixtures/', import.meta.url);
+  const readFixture = async name => JSON.parse(await readFile(new URL(name, fixtures), 'utf8'));
+  const files = await readdir(new URL('routes/', fixtures));
+  const routes = await Promise.all([
+    ...files.filter(file => file.endsWith('.json')).map(file => readFixture('routes/' + file)),
+    readFixture('route.sample.json'),
+  ]);
+  const events = await readFixture('events.seed.json');
+  const linked = events.filter(event => event.routeId !== null);
+  assert.ok(linked.length > 0, 'The offline demo needs an event with a route');
+  for (const event of linked) {
+    const route = findFixtureRoute(routes, event.routeId);
+    assert.equal(route?.status, 'confirmed', event.title);
+    assert.equal(route.buildingId, event.location.buildingId, event.title);
+    assert.equal(route.steps.at(-1)?.type, 'door', event.title);
+    assert.equal(route.steps.at(-1)?.label, route.destination, event.title);
+  }
 });
