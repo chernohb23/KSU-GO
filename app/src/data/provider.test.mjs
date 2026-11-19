@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { getOrCreateDeviceId, loadOfflineRegisteredCounts, loadRegisteredEventIds, loadServerUrlOverride, resolveServerUrl, saveOfflineRegisteredCounts, saveRegisteredEventIds, saveServerUrlOverride } from '../settings/storage.ts';
 import { AppDataController } from './controller.ts';
+import { ApiRequestError } from '../api/client.ts';
 
 function memoryStorage() {
   const values = new Map();
@@ -212,4 +213,91 @@ test('falls back to a local registration when the server is unreachable', async 
   assert.equal(registeredCount, 5);
   assert.equal(controller.state.events[0].registeredCount, 5);
   controller.stop();
+});
+
+test('a stalled route request aborts at its configured deadline and returns the fixture route', async (t) => {
+  const fixture = { id: 'route-fixture' };
+  let signal;
+  let finishRequest;
+  const { controller } = makeController({
+    routeTimeoutMs: 25,
+    fixtureRoute: (id) => id === fixture.id ? fixture : null,
+    clientFactory: () => ({
+      health: async () => ({ ok: true, pipelineMode: 'mock' }),
+      listEvents: async () => [{ id: 'server' }],
+      getRoute: (_id, requestSignal) => {
+        signal = requestSignal;
+        return new Promise((resolve) => { finishRequest = resolve; });
+      },
+    }),
+  });
+  t.after(() => controller.stop());
+  await controller.start();
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+
+  const pending = controller.getRoute(fixture.id);
+  t.mock.timers.tick(24);
+  assert.equal(signal.aborted, false);
+  assert.equal(controller.state.source, 'server');
+  t.mock.timers.tick(1);
+  assert.equal(await pending, fixture);
+  assert.equal(signal.aborted, true);
+  assert.equal(controller.state.offline, true);
+  assert.deepEqual(controller.state.events, [{ id: 'fixture' }]);
+
+  finishRequest({ id: 'late-server-route' });
+  await Promise.resolve();
+  assert.equal(controller.state.source, 'fixtures');
+});
+
+test('a stalled registration aborts at its configured deadline and increments the fixture count once', async (t) => {
+  let signal;
+  let finishRequest;
+  const { controller } = makeController({
+    registerTimeoutMs: 25,
+    fixtureEvents: () => [{ id: 'event-1', registeredCount: 4 }],
+    clientFactory: () => ({
+      health: async () => ({ ok: true, pipelineMode: 'mock' }),
+      listEvents: async () => [{ id: 'event-1', registeredCount: 20 }],
+      register: (_id, _deviceId, requestSignal) => {
+        signal = requestSignal;
+        return new Promise((resolve) => { finishRequest = resolve; });
+      },
+    }),
+  });
+  t.after(() => controller.stop());
+  await controller.start();
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+
+  const pending = controller.registerEvent('event-1', 'device-1');
+  t.mock.timers.tick(24);
+  assert.equal(signal.aborted, false);
+  assert.equal(controller.state.source, 'server');
+  t.mock.timers.tick(1);
+  assert.equal(await pending, 5);
+  assert.equal(signal.aborted, true);
+  assert.equal(controller.state.offline, true);
+  assert.equal(controller.state.events[0].registeredCount, 5);
+
+  finishRequest({ registered: true, registeredCount: 21 });
+  await Promise.resolve();
+  assert.equal(controller.state.events[0].registeredCount, 5);
+});
+
+test('route and registration API errors are rethrown without switching to fixtures', async (t) => {
+  const error = new ApiRequestError(404, 'not_found', 'Not found.');
+  const { controller } = makeController({
+    clientFactory: () => ({
+      health: async () => ({ ok: true, pipelineMode: 'mock' }),
+      listEvents: async () => [{ id: 'server' }],
+      getRoute: async () => { throw error; },
+      register: async () => { throw error; },
+    }),
+  });
+  t.after(() => controller.stop());
+  await controller.start();
+
+  await assert.rejects(controller.getRoute('missing'), (caught) => caught === error);
+  await assert.rejects(controller.registerEvent('missing', 'device-1'), (caught) => caught === error);
+  assert.equal(controller.state.source, 'server');
 });
