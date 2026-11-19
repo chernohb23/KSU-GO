@@ -6,15 +6,18 @@ export type EventFlagState = 'live' | 'soon' | 'later' | 'ended';
 const MINUTE_MS = 60_000;
 
 export function loadFixtureEvents(seed: EventSeed[], now: Date, range: EventRange): Event[] {
-  const startLimit = now.getTime() + (range === 'today' ? 24 : 7 * 24) * 60 * MINUTE_MS;
+  const events = seed.map((event): Event => {
+    const startsAt = new Date(now.getTime() + event.startsInMin * MINUTE_MS);
+    const endsAt = new Date(startsAt.getTime() + event.durationMin * MINUTE_MS);
+    const { startsInMin: _startsInMin, durationMin: _durationMin, ...details } = event;
+    return { ...details, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
+  });
+  return eventsInRange(events, now, range);
+}
 
-  return seed
-    .map((event): Event => {
-      const startsAt = new Date(now.getTime() + event.startsInMin * MINUTE_MS);
-      const endsAt = new Date(startsAt.getTime() + event.durationMin * MINUTE_MS);
-      const { startsInMin: _startsInMin, durationMin: _durationMin, ...details } = event;
-      return { ...details, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
-    })
+export function eventsInRange(events: Event[], now: Date, range: EventRange): Event[] {
+  const startLimit = now.getTime() + (range === 'today' ? 24 : 7 * 24) * 60 * MINUTE_MS;
+  return events
     .filter((event) => Date.parse(event.endsAt) > now.getTime() && Date.parse(event.startsAt) < startLimit)
     .sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt));
 }

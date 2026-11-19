@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAppData } from '../src/data/AppDataContext';
+import { weekChoices } from '../src/week/useWeekChoices';
 
 export default function SettingsScreen() {
   const { serverUrl, setServerUrl, offline } = useAppData();
@@ -47,6 +48,18 @@ export default function SettingsScreen() {
           ? 'Address saved. Could not connect to the API. Check the address and that the server is running.'
           : 'Address saved. Connected to server.')}
       </Text>
+      <Pressable accessibilityRole="button" style={styles.reset}
+        onPress={() => Alert.alert('Reset weekly events?', 'Clear saved events and start the swipe deck over.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Reset', style: 'destructive', onPress: () => {
+            void weekChoices.reset().then(
+              () => Alert.alert('Weekly events reset'),
+              () => Alert.alert('Could not reset weekly events', 'Please try again.'),
+            );
+          } },
+        ])}>
+        <Text style={styles.buttonText}>Reset weekly events</Text>
+      </Pressable>
     </View>
   );
 }
@@ -58,5 +71,6 @@ const styles = StyleSheet.create({
   input: { marginTop: 20, borderWidth: 1, borderColor: '#c5ced5', borderRadius: 8, backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 11, color: '#17212a' },
   button: { marginTop: 14, paddingVertical: 12, borderRadius: 8, backgroundColor: '#e4b850', alignItems: 'center' },
   buttonText: { color: '#17212a', fontWeight: '700' },
+  reset: { marginTop: 18, alignItems: 'center', padding: 12, borderRadius: 8, borderColor: '#8999a4', borderWidth: 1 },
   message: { color: '#53616c', marginTop: 12, minHeight: 20 },
 });

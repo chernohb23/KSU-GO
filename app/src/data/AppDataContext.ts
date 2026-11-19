@@ -1,9 +1,10 @@
 import { createContext, useContext } from 'react';
 
 import type { AppDataState } from './controller.ts';
-import type { Route } from '../../../shared/types.ts';
+import type { Event, Route } from '../../../shared/types.ts';
 
 export type AppDataContextValue = AppDataState & {
+  weekEvents: Event[];
   deviceId: string | null;
   registeredEventIds: string[];
   registrationsReady: boolean;
