@@ -1,0 +1,107 @@
+{
+  "startFloor": "unknown",
+  "endRoom": "D215",
+  "motionLog": [
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_right",
+    "on_stairs",
+    "on_stairs",
+    "on_stairs",
+    "rotating_left",
+    "rotating_left",
+    "on_stairs",
+    "forward",
+    "rotating_right",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_left",
+    "still",
+    "still"
+  ],
+  "events": [
+    {
+      "type": "door",
+      "startSec": 0,
+      "endSec": 4,
+      "confidence": 0.95,
+      "note": "Enter through glass door with Door Access Reminder sign"
+    },
+    {
+      "type": "walk",
+      "startSec": 4,
+      "endSec": 14.5,
+      "confidence": 0.95,
+      "note": "Walk down long hallway with glass windows on left and brick wall on right"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 14.5,
+      "endSec": 16,
+      "confidence": 0.95,
+      "note": "Turn right toward stairwell"
+    },
+    {
+      "type": "stairs_up",
+      "startSec": 16,
+      "endSec": 22,
+      "confidence": 0.95,
+      "note": "Walk up first flight of stairs to landing"
+    },
+    {
+      "type": "u_turn_left",
+      "startSec": 22,
+      "endSec": 25.5,
+      "confidence": 0.95,
+      "note": "U-turn left on stair landing"
+    },
+    {
+      "type": "stairs_up",
+      "startSec": 25.5,
+      "endSec": 28.5,
+      "confidence": 0.95,
+      "note": "Walk up second flight of stairs"
+    },
+    {
+      "type": "walk",
+      "startSec": 28.5,
+      "endSec": 30.5,
+      "confidence": 0.9,
+      "note": "Walk forward off stairs toward closed wooden doors"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 30.5,
+      "endSec": 32.5,
+      "confidence": 0.95,
+      "note": "Turn right through open doorway into corridor"
+    },
+    {
+      "type": "walk",
+      "startSec": 32.5,
+      "endSec": 38.5,
+      "confidence": 0.95,
+      "note": "Walk down corridor"
+    },
+    {
+      "type": "turn_left",
+      "startSec": 38.5,
+      "endSec": 40.5,
+      "confidence": 0.9,
+      "note": "Turn left toward office door"
+    },
+    {
+      "type": "sign",
+      "startSec": 40.5,
+      "endSec": 43.5,
+      "confidence": 0.98,
+      "note": "Kennesaw State University Dr. Liancheng Wang, Ph.D. Professor of Mathematics D215"
+    }
+  ]
+}

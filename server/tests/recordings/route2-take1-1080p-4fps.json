@@ -1,0 +1,69 @@
+{
+  "startFloor": "unknown",
+  "endRoom": "113",
+  "motionLog": [
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_right",
+    "forward",
+    "forward",
+    "rotating_left",
+    "still"
+  ],
+  "events": [
+    {
+      "type": "door",
+      "startSec": 0.0,
+      "endSec": 3.5,
+      "confidence": 0.95,
+      "note": "Entrance glass door with DOOR ACCESS REMINDER sign"
+    },
+    {
+      "type": "walk",
+      "startSec": 3.5,
+      "endSec": 28.5,
+      "confidence": 0.98,
+      "note": "Walk straight down long corridor with windows on left and brick wall on right"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 28.5,
+      "endSec": 30.25,
+      "confidence": 0.95,
+      "note": "Turn right into alcove past water fountain"
+    },
+    {
+      "type": "walk",
+      "startSec": 30.25,
+      "endSec": 34.0,
+      "confidence": 0.95,
+      "note": "Walk forward toward Classroom 113 door"
+    },
+    {
+      "type": "pan",
+      "startSec": 34.0,
+      "endSec": 35.25,
+      "confidence": 0.95,
+      "note": "Pan left from door to room sign"
+    },
+    {
+      "type": "sign",
+      "startSec": 35.25,
+      "endSec": 37.25,
+      "confidence": 0.98,
+      "note": "Classroom 113"
+    }
+  ]
+}
