@@ -25,7 +25,7 @@ export type ApiClient = {
   listEvents(range?: EventRange, signal?: AbortSignal): Promise<Event[]>;
   getEvent(id: string): Promise<Event>;
   register(id: string, deviceId: string, signal?: AbortSignal): Promise<RegisterResponse>;
-  uploadRoute(input: UploadRouteInput): Promise<Route>;
+  uploadRoute(input: UploadRouteInput, onProgress?: (percent: number) => void): Promise<Route>;
   getRoute(id: string, signal?: AbortSignal): Promise<Route>;
   updateRouteSteps(id: string, steps: Step[]): Promise<Route>;
   confirmRoute(id: string): Promise<Route>;
@@ -63,10 +63,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function responseError(status: number, body: unknown): ApiRequestError {
+  const error = isRecord(body) && isRecord(body.error) ? body.error : null;
+  const message = typeof error?.message === 'string' ? error.message : `Request failed with status ${status}.`;
+  return new ApiRequestError(status, parseApiErrorCode(error?.code), message);
+}
+
 export function createApiClient(
   baseUrl: string,
   fetcher: Fetcher = fetch,
   formDataFactory: FormDataFactory = () => new FormData(),
+  createXHR: () => XMLHttpRequest = () => new XMLHttpRequest(),
 ): ApiClient {
   const base = baseUrl.trim().replace(/\/+$/, '');
 
@@ -79,10 +86,7 @@ export function createApiClient(
       } catch {
         body = null;
       }
-      const error = isRecord(body) && isRecord(body.error) ? body.error : null;
-      const code = parseApiErrorCode(error?.code);
-      const message = typeof error?.message === 'string' ? error.message : `Request failed with status ${response.status}.`;
-      throw new ApiRequestError(response.status, code, message);
+      throw responseError(response.status, body);
     }
     return (await response.json()) as T;
   }
@@ -103,7 +107,7 @@ export function createApiClient(
       ...json('POST', { deviceId }),
       ...(signal ? { signal } : {}),
     }),
-    uploadRoute: (input) => {
+    uploadRoute: (input, onProgress) => {
       const body = formDataFactory();
       body.append('video', input.video as unknown as Blob);
       body.append('buildingId', input.buildingId);
@@ -111,7 +115,38 @@ export function createApiClient(
       body.append('startFloor', input.startFloor);
       body.append('destinationFloor', input.destinationFloor);
       if (input.eventId) body.append('eventId', input.eventId);
-      return request<Route>('/routes', { method: 'POST', body });
+      if (!onProgress) return request<Route>('/routes', { method: 'POST', body });
+      // React Native exposes multipart byte counts on XMLHttpRequest.upload.
+      let idleTimer: ReturnType<typeof setTimeout>;
+      return new Promise<Route>((resolve, reject) => {
+        const xhr = createXHR();
+        xhr.open('POST', `${base}/api/routes`);
+        function resetDeadline() {
+          clearTimeout(idleTimer);
+          idleTimer = setTimeout(() => {
+            reject(new Error('The upload connection stopped responding.'));
+            xhr.abort();
+          }, 90_000);
+        }
+        xhr.upload.onprogress = ({ loaded, total, lengthComputable }) => {
+          resetDeadline();
+          if (lengthComputable && total > 0) onProgress(Math.min(100, Math.floor(100 * loaded / total)));
+        };
+        xhr.onerror = xhr.onabort = xhr.ontimeout = () => reject(new Error('The upload connection was interrupted.'));
+        xhr.onload = () => {
+          let result: unknown;
+          try {
+            result = JSON.parse(xhr.responseText);
+          } catch {
+            reject(new Error('The server returned an unreadable upload response.'));
+            return;
+          }
+          if (xhr.status >= 200 && xhr.status < 300) resolve(result as Route);
+          else reject(responseError(xhr.status, result));
+        };
+        resetDeadline();
+        xhr.send(body);
+      }).finally(() => clearTimeout(idleTimer));
     },
     getRoute: (id, signal) => request<Route>(`/routes/${encodeURIComponent(id)}`, signal ? { signal } : undefined),
     updateRouteSteps: (id, steps) => request<Route>(`/routes/${encodeURIComponent(id)}/steps`, json('PUT', { steps })),

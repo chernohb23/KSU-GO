@@ -5,7 +5,7 @@ import type { EventSeed, Route } from '../../../shared/types.ts';
 import campusEvents from '../../../shared/fixtures/events.seed.json';
 import routeSample from '../../../shared/fixtures/route.sample.json';
 import routeDraft from '../../../shared/fixtures/route.draft-flawed.json';
-import routePlaceholder from '../../../shared/fixtures/routes/placeholder.draft.json';
+import { bundledDrafts } from './bundledDrafts';
 import { createApiClient } from '../api/client.ts';
 import { loadFixtureEvents } from './events.ts';
 import { findFixtureRoute } from './routes.ts';
@@ -22,7 +22,7 @@ import {
 } from '../settings/storage.ts';
 
 const fixtureSeeds = campusEvents as unknown as EventSeed[];
-const fixtureRoutes = [routeSample, routeDraft, routePlaceholder] as unknown as Route[];
+const fixtureRoutes = [routeSample, routeDraft, ...bundledDrafts] as unknown as Route[];
 
 export function AppDataProvider({ children }: PropsWithChildren) {
   const controller = useMemo(

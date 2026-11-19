@@ -81,3 +81,52 @@ test('passes cancellation signals to route and registration requests', async () 
   assert.equal(calls[1].init.signal, controller.signal);
   assert.deepEqual(JSON.parse(calls[1].init.body), { deviceId: 'device-1' });
 });
+
+test('sends actual byte progress and preserves server errors on the multipart transport', async () => {
+  const form = { append() {} };
+  const requests = [];
+  const createXHR = () => {
+    const request = { upload: {}, open(method, url) { this.method = method; this.url = url; }, send(body) { this.body = body; } };
+    requests.push(request);
+    return request;
+  };
+  const client = createApiClient('http://campus.example/', () => { throw Error('Unexpected fetch'); }, () => form, createXHR);
+  const video = { uri: 'file:///clip.mov', name: 'clip.mov', type: 'video/quicktime' };
+  const input = { video, eventId: 'ev-04', buildingId: 'building', destination: 'Room 204', startFloor: '1', destinationFloor: '2' };
+  const progress = [];
+  const first = client.uploadRoute(input, (pct) => progress.push(pct));
+  const xhr = requests[0];
+  assert.equal(xhr.method, 'POST');
+  assert.equal(xhr.url, 'http://campus.example/api/routes');
+  assert.equal(xhr.body, form);
+  xhr.upload.onprogress({ lengthComputable: true, loaded: 40, total: 100 });
+  assert.deepEqual(progress, [40]);
+  xhr.status = 202;
+  xhr.responseText = '{"id":"route-new","status":"processing"}';
+  xhr.onload();
+  assert.equal((await first).id, 'route-new');
+  const second = client.uploadRoute(input, () => {});
+  requests[1].status = 402;
+  requests[1].responseText = '{"error":{"code":"budget_exceeded","message":"Budget reached."}}';
+  requests[1].onload();
+  await assert.rejects(second, (error) => error instanceof ApiRequestError && error.code === 'budget_exceeded');
+  const interrupted = client.uploadRoute(input, () => {});
+  requests[2].onerror();
+  await assert.rejects(interrupted, /network|connection/i);
+});
+
+test('an active upload can keep going, but a stalled transfer or response releases Retry', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let aborted = false;
+  const xhr = { upload: {}, open() {}, send() {}, abort() { aborted = true; this.onabort(); } };
+  const client = createApiClient('http://campus.example', fetch, () => ({ append() {} }), () => xhr);
+  const upload = client.uploadRoute({ video: {}, buildingId: '', destination: '', startFloor: '1', destinationFloor: '1' }, () => {});
+  const rejected = assert.rejects(upload, /connection/i);
+  t.mock.timers.tick(80_000);
+  xhr.upload.onprogress({ lengthComputable: true, loaded: 100, total: 100 });
+  t.mock.timers.tick(80_000);
+  assert.equal(aborted, false);
+  t.mock.timers.tick(10_001);
+  assert.equal(aborted, true);
+  await rejected;
+});
