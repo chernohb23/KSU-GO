@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run typecheck && vite build",
+    "build:app": "npm run build && node scripts/export-html.mjs ../app/src/viewerHtml.ts",
+    "check:app": "npm run build && node scripts/check-app.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

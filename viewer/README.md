@@ -60,9 +60,11 @@ From `viewer/`, build and export the HTML for APP-2:
 
 ```sh
 npm test
-npm run build
-node scripts/export-html.mjs ../app/src/viewerHtml.ts
+npm run build:app
 ```
+
+`build:app` builds the viewer and refreshes `app/src/viewerHtml.ts`.
+Run `npm run check:app` to rebuild and check that the embedded copy is current, ignoring line endings.
 
 APP-2 can pass the exported string to `source={{ html: viewerHtml }}`. To finish the phone check, open the app in Expo Go on a physical iPhone, load each scene, turn on airplane mode, then verify that each scene can still redraw and respond to gestures.
 
