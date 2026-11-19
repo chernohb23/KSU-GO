@@ -34,20 +34,24 @@ def check_budget(data_dir: Path, cap: Decimal) -> None:
 def run_pipeline(
     store: Store, route: Route, template: Route, video_sec: float,
     mode: PipelineMode, stopping: Event, upload_path: Path, stripped_path: Path,
+    *, data_dir: Path | None = None, cap: Decimal = Decimal(14), client_factory=None,
 ) -> None:
+    started_at = monotonic()
     try:
+        if stopping.is_set():
+            return
         try:
             ingested = ingest_video(upload_path, stripped_path)
         finally:
             upload_path.unlink(missing_ok=True)
-        video_path = ingested.path
-        video_sha256 = ingested.sha256
-
         if mode == "live":
-            store.update_upload(route.model_copy(update={
-                "status": "failed", "progress": None,
-                "error": "Live processing is not available yet. Use mock mode.",
-            }))
+            # Local import avoids the timeline -> budget guard import cycle.
+            from pipeline.run import run_live
+
+            if data_dir is None:
+                raise ValueError("Live processing requires a data directory.")
+            run_live(store, route, ingested, stopping, data_dir=data_dir, cap=cap,
+                     started_at=started_at, client_factory=client_factory)
             return
 
         started_at = monotonic()
@@ -72,9 +76,18 @@ def run_pipeline(
             "checks": template.checks,
             "stats": Stats(videoSec=video_sec, processingSec=monotonic() - started_at, costUsd=0),
         }))
-    except Exception:
-        LOGGER.exception("Processing failed for route %s", route.id)
+    except Exception as error:
+        from pipeline.timeline import TimelineError
+
+        if isinstance(error, APIError) and error.code == "budget_exceeded":
+            message = "The spend cap is reached. Ask the organizer to check the budget."
+        elif isinstance(error, TimelineError):
+            message = "The AI couldn't read the video. Please try again."
+        else:
+            message = "The video could not be processed. Upload the video again."
+        # Provider/setup exceptions can contain secrets. Never log their text or traceback.
+        LOGGER.error("Processing failed for route %s (%s)", route.id, type(error).__name__)
         store.update_upload(route.model_copy(update={
             "status": "failed", "progress": None,
-            "error": "The video could not be processed. Upload the video again.",
+            "error": message,
         }))

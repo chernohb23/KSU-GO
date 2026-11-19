@@ -40,6 +40,7 @@ def error_response(error: APIError) -> JSONResponse:
 
 def create_app(
     *, data_dir: Path = SERVER_DIR / "data", fixtures_dir: Path = FIXTURES_DIR,
+    timeline_client_factory=None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -132,10 +133,15 @@ def create_app(
             steps=[], checks=[], stats=None,
             createdAt=datetime.now(UTC), confirmedAt=None,
         )
-        store.add_upload(pending, event_id)
+        store.add_upload(pending, event_id, app.state.pipeline_mode)
+        live_options = (
+            dict(data_dir=data_dir, cap=app.state.budget_cap, client_factory=timeline_client_factory)
+            if app.state.pipeline_mode == "live" else {}
+        )
         app.state.workers.submit(
             run_pipeline, store, pending, app.state.draft_template, video_sec,
             app.state.pipeline_mode, app.state.stopping, upload_path, stripped_path,
+            **live_options,
         )
         return pending
 
