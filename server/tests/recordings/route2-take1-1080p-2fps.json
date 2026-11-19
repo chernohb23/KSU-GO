@@ -1,0 +1,69 @@
+{
+  "startFloor": "unknown",
+  "endRoom": "113",
+  "motionLog": [
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_right",
+    "forward",
+    "forward",
+    "rotating_left",
+    "still"
+  ],
+  "events": [
+    {
+      "type": "door",
+      "startSec": 0,
+      "endSec": 3.5,
+      "confidence": 0.96,
+      "note": "glass entrance door with Door Access Reminder sign"
+    },
+    {
+      "type": "walk",
+      "startSec": 3.5,
+      "endSec": 28.7,
+      "confidence": 0.98,
+      "note": "long glass-walled hallway with brick wall and bulletin boards on right"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 28.7,
+      "endSec": 30.2,
+      "confidence": 0.95,
+      "note": "turn right into brick alcove past water fountain"
+    },
+    {
+      "type": "walk",
+      "startSec": 30.2,
+      "endSec": 34.0,
+      "confidence": 0.94,
+      "note": "approach wooden door"
+    },
+    {
+      "type": "pan",
+      "startSec": 34.0,
+      "endSec": 35.5,
+      "confidence": 0.93,
+      "note": "pan left from door to wall plaque"
+    },
+    {
+      "type": "sign",
+      "startSec": 35.5,
+      "endSec": 37.5,
+      "confidence": 0.99,
+      "note": "Classroom 113"
+    }
+  ]
+}

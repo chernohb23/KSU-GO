@@ -1,0 +1,63 @@
+{
+  "startFloor": "unknown",
+  "endRoom": "113",
+  "motionLog": [
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_right",
+    "forward",
+    "forward",
+    "forward",
+    "still",
+    "still"
+  ],
+  "events": [
+    {
+      "type": "door",
+      "startSec": 0.0,
+      "endSec": 3.5,
+      "confidence": 0.95,
+      "note": "Entrance glass door"
+    },
+    {
+      "type": "walk",
+      "startSec": 3.5,
+      "endSec": 29.25,
+      "confidence": 0.98,
+      "note": "Straight hallway with windows on left and bulletin boards on right"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 29.25,
+      "endSec": 31.0,
+      "confidence": 0.95,
+      "note": "Turn right into alcove past drinking fountain"
+    },
+    {
+      "type": "walk",
+      "startSec": 31.0,
+      "endSec": 35.5,
+      "confidence": 0.95,
+      "note": "Approach closed door of Classroom 113"
+    },
+    {
+      "type": "sign",
+      "startSec": 35.5,
+      "endSec": 38.25,
+      "confidence": 0.99,
+      "note": "Classroom 113"
+    }
+  ]
+}

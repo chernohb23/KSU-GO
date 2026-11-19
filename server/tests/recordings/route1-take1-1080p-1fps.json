@@ -1,0 +1,100 @@
+{
+  "startFloor": "unknown",
+  "endRoom": "D215",
+  "motionLog": [
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_right",
+    "on_stairs",
+    "on_stairs",
+    "on_stairs",
+    "rotating_left",
+    "rotating_left",
+    "on_stairs",
+    "on_stairs",
+    "rotating_left",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_left",
+    "still"
+  ],
+  "events": [
+    {
+      "type": "door",
+      "startSec": 0,
+      "endSec": 3.5,
+      "confidence": 0.95,
+      "note": "Opening glass entrance door"
+    },
+    {
+      "type": "walk",
+      "startSec": 3.5,
+      "endSec": 15,
+      "confidence": 0.95,
+      "note": "Walking down first-floor glass and brick hallway"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 15,
+      "endSec": 17,
+      "confidence": 0.95,
+      "note": "Turning right toward staircase"
+    },
+    {
+      "type": "stairs_up",
+      "startSec": 17,
+      "endSec": 22,
+      "confidence": 0.95,
+      "note": "Walking up first flight of stairs"
+    },
+    {
+      "type": "u_turn_left",
+      "startSec": 22,
+      "endSec": 26,
+      "confidence": 0.95,
+      "note": "Making 180-degree left U-turn on stair landing"
+    },
+    {
+      "type": "stairs_up",
+      "startSec": 26,
+      "endSec": 30,
+      "confidence": 0.95,
+      "note": "Walking up second flight of stairs"
+    },
+    {
+      "type": "turn_left",
+      "startSec": 30,
+      "endSec": 33,
+      "confidence": 0.95,
+      "note": "Turning left into second-floor hallway"
+    },
+    {
+      "type": "walk",
+      "startSec": 33,
+      "endSec": 39.5,
+      "confidence": 0.95,
+      "note": "Walking down second-floor hallway"
+    },
+    {
+      "type": "pan",
+      "startSec": 39.5,
+      "endSec": 41.5,
+      "confidence": 0.9,
+      "note": "Panning left toward office door and nameplate"
+    },
+    {
+      "type": "sign",
+      "startSec": 41.5,
+      "endSec": 43,
+      "confidence": 0.98,
+      "note": "KENNESAW STATE UNIVERSITY Dr. Liancheng Wang, Ph.D. Professor of Mathematics D215"
+    }
+  ]
+}

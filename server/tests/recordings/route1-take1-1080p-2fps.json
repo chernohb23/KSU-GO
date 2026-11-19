@@ -1,0 +1,121 @@
+{
+  "startFloor": "unknown",
+  "endRoom": "D215",
+  "motionLog": [
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_right",
+    "on_stairs",
+    "on_stairs",
+    "on_stairs",
+    "rotating_left",
+    "rotating_left",
+    "on_stairs",
+    "on_stairs",
+    "rotating_right",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_left",
+    "rotating_left",
+    "still"
+  ],
+  "events": [
+    {
+      "type": "walk",
+      "startSec": 0,
+      "endSec": 2,
+      "confidence": 0.95,
+      "note": "approaching glass entrance doors"
+    },
+    {
+      "type": "door",
+      "startSec": 2,
+      "endSec": 3.5,
+      "confidence": 0.98,
+      "note": "opening glass entrance door"
+    },
+    {
+      "type": "walk",
+      "startSec": 3.5,
+      "endSec": 14.5,
+      "confidence": 0.97,
+      "note": "walking down glass-walled hallway"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 14.5,
+      "endSec": 17,
+      "confidence": 0.95,
+      "note": "turning right toward staircase"
+    },
+    {
+      "type": "stairs_up",
+      "startSec": 17,
+      "endSec": 22.5,
+      "confidence": 0.98,
+      "note": "climbing first flight of stairs"
+    },
+    {
+      "type": "u_turn_left",
+      "startSec": 22.5,
+      "endSec": 26,
+      "confidence": 0.97,
+      "note": "making left U-turn on stair landing"
+    },
+    {
+      "type": "stairs_up",
+      "startSec": 26,
+      "endSec": 29.5,
+      "confidence": 0.98,
+      "note": "climbing second flight of stairs"
+    },
+    {
+      "type": "walk",
+      "startSec": 29.5,
+      "endSec": 31,
+      "confidence": 0.92,
+      "note": "stepping onto upper landing"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 31,
+      "endSec": 33,
+      "confidence": 0.95,
+      "note": "turning right toward upstairs hallway"
+    },
+    {
+      "type": "door",
+      "startSec": 33,
+      "endSec": 34,
+      "confidence": 0.9,
+      "note": "passing through open hallway doorway"
+    },
+    {
+      "type": "walk",
+      "startSec": 34,
+      "endSec": 39,
+      "confidence": 0.97,
+      "note": "walking down upstairs hallway"
+    },
+    {
+      "type": "turn_left",
+      "startSec": 39,
+      "endSec": 41,
+      "confidence": 0.95,
+      "note": "turning left to face room D215 sign"
+    },
+    {
+      "type": "sign",
+      "startSec": 41,
+      "endSec": 44,
+      "confidence": 0.99,
+      "note": "KENNESAW STATE UNIVERSITY Dr. Liancheng Wang, Ph.D. Professor of Mathematics D215"
+    }
+  ]
+}

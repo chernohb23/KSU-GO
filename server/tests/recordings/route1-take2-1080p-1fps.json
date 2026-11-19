@@ -1,0 +1,107 @@
+{
+  "startFloor": "unknown",
+  "endRoom": "D215",
+  "motionLog": [
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_right",
+    "on_stairs",
+    "on_stairs",
+    "on_stairs",
+    "rotating_left",
+    "rotating_left",
+    "on_stairs",
+    "forward",
+    "rotating_left",
+    "forward",
+    "forward",
+    "forward",
+    "rotating_left",
+    "still",
+    "still"
+  ],
+  "events": [
+    {
+      "type": "door",
+      "startSec": 0,
+      "endSec": 3.5,
+      "confidence": 0.95,
+      "note": "Glass entrance door with Door Access Reminder sign"
+    },
+    {
+      "type": "walk",
+      "startSec": 3.5,
+      "endSec": 14.3,
+      "confidence": 0.95,
+      "note": "Corridor with windows on left and brick wall on right"
+    },
+    {
+      "type": "turn_right",
+      "startSec": 14.3,
+      "endSec": 16,
+      "confidence": 0.95,
+      "note": "Turn right toward stairwell"
+    },
+    {
+      "type": "stairs_up",
+      "startSec": 16,
+      "endSec": 21.5,
+      "confidence": 0.95,
+      "note": "First flight of stairs"
+    },
+    {
+      "type": "u_turn_left",
+      "startSec": 21.5,
+      "endSec": 25.5,
+      "confidence": 0.95,
+      "note": "U-turn left at stair landing"
+    },
+    {
+      "type": "stairs_up",
+      "startSec": 25.5,
+      "endSec": 28,
+      "confidence": 0.95,
+      "note": "Second flight of stairs"
+    },
+    {
+      "type": "walk",
+      "startSec": 28,
+      "endSec": 30.2,
+      "confidence": 0.9,
+      "note": "Step off stairs onto upper landing"
+    },
+    {
+      "type": "turn_left",
+      "startSec": 30.2,
+      "endSec": 32,
+      "confidence": 0.95,
+      "note": "Turn left through open doorway into hallway"
+    },
+    {
+      "type": "walk",
+      "startSec": 32,
+      "endSec": 38.2,
+      "confidence": 0.95,
+      "note": "Hallway lined with office doors"
+    },
+    {
+      "type": "pan",
+      "startSec": 38.2,
+      "endSec": 40.5,
+      "confidence": 0.9,
+      "note": "Stop and look left at office door and plaque"
+    },
+    {
+      "type": "sign",
+      "startSec": 40.5,
+      "endSec": 43,
+      "confidence": 0.98,
+      "note": "Kennesaw State University Dr. Liancheng Wang, Ph.D. Professor of Mathematics D215"
+    }
+  ]
+}
