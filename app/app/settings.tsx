@@ -4,36 +4,34 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAppData } from '../src/data/AppDataContext';
 
 export default function SettingsScreen() {
-  const { serverUrl, setServerUrl } = useAppData();
+  const { serverUrl, setServerUrl, offline } = useAppData();
   const [url, setUrl] = useState(serverUrl ?? '');
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saving = status === 'saving';
 
   useEffect(() => setUrl(serverUrl ?? ''), [serverUrl]);
 
   async function save() {
-    setSaving(true);
-    setMessage('Checking server…');
+    setStatus('saving');
     try {
       await setServerUrl(url);
-      setMessage('Server address saved.');
+      setStatus('saved');
     } catch {
-      setMessage('Could not save the server address.');
-    } finally {
-      setSaving(false);
+      setStatus('error');
     }
   }
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Server settings</Text>
-      <Text style={styles.body}>Set a tunnel or local server address. Leave blank to use EXPO_PUBLIC_API_URL, if set.</Text>
+      <Text style={styles.body}>Enter the API server's base address. For the PC mock server, use the Wi-Fi address ending in :8000. Leave blank to use the default.</Text>
       <TextInput
         accessibilityLabel="Server URL"
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="url"
-        onChangeText={setUrl}
+        editable={!saving}
+        onChangeText={(value) => { setUrl(value); setStatus('idle'); }}
         placeholder="https://example-tunnel.ngrok.app"
         value={url}
         style={styles.input}
@@ -41,7 +39,14 @@ export default function SettingsScreen() {
       <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={styles.button}>
         <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Save server address'}</Text>
       </Pressable>
-      <Text accessibilityLiveRegion="polite" style={styles.message}>{message}</Text>
+      <Text accessibilityLiveRegion="polite" style={styles.message}>
+        {saving && 'Checking server…'}
+        {status === 'error' && 'Could not save the server address.'}
+        {status === 'saved' && !serverUrl && 'Address cleared. Using offline data.'}
+        {status === 'saved' && serverUrl && (offline
+          ? 'Address saved. Could not connect to the API. Check the address and that the server is running.'
+          : 'Address saved. Connected to server.')}
+      </Text>
     </View>
   );
 }
