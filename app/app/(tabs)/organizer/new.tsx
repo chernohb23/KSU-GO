@@ -103,7 +103,7 @@ function NewRouteForm({ initial }: { initial: UploadRouteInput | null }) {
           disabled={picking} onPress={() => { void selectVideo('choose', () => ImagePicker.launchImageLibraryAsync(PICK_VIDEO)); }} />
       </View>
       {error && <Text accessibilityRole="alert" style={styles.notice}>{error}</Text>}
-      {!serverUrl && <Action label="Set server address" secondary onPress={() => router.push('/settings')} />}
+      <Action label={serverUrl ? 'Change server address' : 'Set server address'} secondary onPress={() => router.push('/settings')} />
       <Action label="Upload video" disabled={!serverUrl || !event || !file || picking} onPress={submit} />
       <View style={styles.card}>
         <Text accessibilityRole="header" style={styles.heading}>Filming guide</Text>
@@ -139,6 +139,7 @@ export default function NewRouteScreen() {
         <>
           <Text accessibilityRole="alert" style={styles.notice}>{transfer.message}</Text>
           <Action label="Retry upload" onPress={() => { void session.upload(transfer.input); }} />
+          <Action label="Change server address" secondary onPress={() => router.push('/settings')} />
           <Action label="Change upload" secondary onPress={() => { setInitial(transfer.input); session.clearTransfer(); }} />
         </>
       )}
