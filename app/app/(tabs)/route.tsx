@@ -1,39 +1,99 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { stepInstruction } from '../../../shared/instructions.ts';
 import type { Route } from '../../../shared/types.ts';
 import { useAppData } from '../../src/data/AppDataContext';
-import { ViewerWebView } from '../../src/viewer/ViewerWebView';
+import {
+  initialStepperState, isConfirmedRoute, stepperReducer, stepperTransition, totalWalkingDistance,
+  type StepperAction, type StepperState,
+} from '../../src/route/stepper';
+import { ViewerWebView, type ViewerWebViewHandle } from '../../src/viewer/ViewerWebView';
+import type { ViewerToAppMessage } from '../../src/viewer/bridge';
 import { viewerHtml } from '../../src/viewerHtml';
+
+const viewerSource = { html: viewerHtml };
 
 export default function RouteScreen() {
   const { routeId } = useLocalSearchParams<{ routeId?: string }>();
   const { getRoute } = useAppData();
   const [route, setRoute] = useState<Route | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewerError, setViewerError] = useState<string | null>(null);
+  const viewer = useRef<ViewerWebViewHandle>(null);
+  const stepCount = route?.steps.length ?? 0;
+  const [stepper, dispatch] = useReducer(
+    (state: StepperState, action: StepperAction) => stepperReducer(state, action, stepCount),
+    initialStepperState,
+  );
+  // Update synchronously between bridge messages and rapid taps, before React's
+  // next render, so every command uses the same index as its reducer transition.
+  const currentStepper = useRef(initialStepperState);
+
+  const resetSteps = useCallback((count: number) => {
+    const action: StepperAction = { type: 'loaded', stepCount: count };
+    currentStepper.current = stepperReducer(currentStepper.current, action, count);
+    dispatch(action);
+  }, []);
+
+  const act = useCallback((action: StepperAction) => {
+    const transition = stepperTransition(currentStepper.current, action, stepCount);
+    currentStepper.current = transition.state;
+    dispatch(action);
+    // Before ready, retain the index locally without overwriting the queued
+    // route:load. onReady restores it once the scene has loaded.
+    if (viewer.current?.isReady()) {
+      transition.messages.forEach((message) => viewer.current?.send(message));
+    }
+  }, [stepCount]);
 
   useEffect(() => {
     let active = true;
     setRoute(null);
     setError(null);
+    setViewerError(null);
+    resetSteps(0);
     if (!routeId) return () => { active = false; };
 
     void getRoute(routeId).then((value) => {
       if (!active) return;
-      if (!value || value.status !== 'confirmed') {
+      if (!isConfirmedRoute(value)) {
         setError('A confirmed route is not available for this event.');
         return;
       }
+      resetSteps(value.steps.length);
       setRoute(value);
     }).catch(() => {
       if (active) setError('The route could not be loaded.');
     });
 
     return () => { active = false; };
-  }, [getRoute, routeId]);
+  }, [getRoute, resetSteps, routeId]);
 
   const initialMessage = useMemo(() => route ? ({ type: 'route:load' as const, route }) : undefined, [route]);
+
+  const handleViewerReady = useCallback(() => {
+    setViewerError(null);
+    // ViewerWebView flushes initialMessage (route:load) before this callback,
+    // including after a reload. Restore the current step and leave play paused.
+    if (stepCount > 0) viewer.current?.send({ type: 'route:goto', stepIndex: currentStepper.current.index });
+    act({ type: 'pause' });
+  }, [act, stepCount]);
+
+  const handleViewerError = useCallback(() => {
+    setViewerError('The 3D view has a problem. You can still follow the written directions.');
+    act({ type: 'pause' });
+  }, [act]);
+
+  const handleViewerMessage = useCallback((message: ViewerToAppMessage) => {
+    if (message.type === 'route:stepChanged') act({ type: 'stepChanged', index: message.stepIndex });
+    if (message.type === 'error') handleViewerError();
+  }, [act, handleViewerError]);
+
+  const atStart = stepper.index === 0;
+  const atEnd = stepCount === 0 || stepper.index === stepCount - 1;
+  const playDisabled = atEnd && !stepper.playing;
 
   return (
     <View style={styles.container}>
@@ -48,11 +108,67 @@ export default function RouteScreen() {
           <Text accessibilityRole="alert" style={styles.body}>{error}</Text>
         </View>
       ) : route ? (
-        <ViewerWebView
-          source={{ html: viewerHtml }}
-          initialMessage={initialMessage}
-          onMessage={() => {}}
-        />
+        <>
+          <View style={styles.header}>
+            <Text accessibilityRole="header" style={styles.title}>{route.destination}</Text>
+            <Text style={styles.body}>≈ {totalWalkingDistance(route)} m walk</Text>
+            {route.startFloor !== route.destinationFloor ? (
+              <Text style={styles.floor}>Floor {route.startFloor} → {route.destinationFloor}</Text>
+            ) : null}
+          </View>
+          <View style={styles.viewer}>
+            <ViewerWebView
+              key={route.id}
+              ref={viewer}
+              source={viewerSource}
+              initialMessage={initialMessage}
+              onReady={handleViewerReady}
+              onMessage={handleViewerMessage}
+              onError={handleViewerError}
+            />
+          </View>
+          <View style={styles.instructions}>
+            {viewerError ? (
+              <Text accessibilityLiveRegion="polite" style={styles.notice}>{viewerError}</Text>
+            ) : null}
+            <Text accessible accessibilityLiveRegion="polite" style={styles.instruction}>
+              {stepInstruction(route, stepper.index)}
+            </Text>
+            <Text style={styles.counter}>Step {stepCount > 0 ? stepper.index + 1 : 0} of {stepCount}</Text>
+            <View style={styles.controls}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Previous route step"
+                accessibilityState={{ disabled: atStart }}
+                disabled={atStart}
+                onPress={() => act({ type: 'back' })}
+                style={[styles.button, atStart && styles.disabledButton]}
+              >
+                <Text style={styles.buttonText}>Back</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={stepper.playing ? 'Pause route playback' : 'Play route'}
+                accessibilityState={{ disabled: playDisabled, selected: stepper.playing }}
+                disabled={playDisabled}
+                onPress={() => act({ type: currentStepper.current.playing ? 'pause' : 'play' })}
+                style={[styles.button, styles.playButton, playDisabled && styles.disabledButton]}
+              >
+                <Text style={styles.playButtonText}>{stepper.playing ? 'Pause' : 'Play'}</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Next route step"
+                accessibilityState={{ disabled: atEnd }}
+                disabled={atEnd}
+                onPress={() => act({ type: 'next' })}
+                style={[styles.button, atEnd && styles.disabledButton]}
+              >
+                <Text style={styles.buttonText}>Next</Text>
+              </Pressable>
+            </View>
+          </View>
+        </>
       ) : (
         <View style={styles.message}>
           <Text style={styles.title}>Loading route…</Text>
@@ -64,6 +180,19 @@ export default function RouteScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#101820' },
+  header: { paddingHorizontal: 22, paddingVertical: 16, backgroundColor: '#f5f7f8' },
+  floor: { color: '#53616c', marginTop: 5, fontSize: 15 },
+  viewer: { flex: 1, minHeight: 120 },
+  instructions: { paddingHorizontal: 20, paddingVertical: 18, backgroundColor: '#f5f7f8' },
+  instruction: { color: '#17212a', fontSize: 20, lineHeight: 28, fontWeight: '600' },
+  counter: { color: '#53616c', fontSize: 14, marginTop: 8 },
+  controls: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  button: { flex: 1, minHeight: 48, minWidth: 64, paddingHorizontal: 10, paddingVertical: 12, borderWidth: 1, borderColor: '#a9b5bc', borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  buttonText: { color: '#17212a', fontSize: 16, fontWeight: '700' },
+  playButton: { backgroundColor: '#805b08', borderColor: '#805b08' },
+  playButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  disabledButton: { opacity: 0.45 },
+  notice: { color: '#805b08', fontSize: 13, lineHeight: 18, marginBottom: 12 },
   message: { flex: 1, padding: 24, backgroundColor: '#f5f7f8' },
   title: { color: '#17212a', fontSize: 24, fontWeight: '700' },
   body: { color: '#53616c', marginTop: 8, fontSize: 15 },
