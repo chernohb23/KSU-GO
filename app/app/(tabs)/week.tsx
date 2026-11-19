@@ -1,3 +1,4 @@
+import { palette } from '../../src/navigation/Brand';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
@@ -8,13 +9,15 @@ import type { Event } from '../../../shared/types';
 import { useAppData } from '../../src/data/AppDataContext';
 import { Action, buildingName } from '../../src/organizer/ui';
 import { rankDeck, swipeDecision, type Decision } from '../../src/week/choices';
-import { useWeekChoices, weekChoices } from '../../src/week/useWeekChoices';
+import { useDemoSession } from '../../src/settings/DemoSession';
+import { useWeekChoices } from '../../src/week/useWeekChoices';
 
 const eventTime = (iso: string) => new Date(iso).toLocaleString(undefined, {
   weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
 });
 
 function EventCard({ event, onError }: { event: Event; onError(message: string): void }) {
+  const { weekChoices } = useDemoSession();
   const { width } = useWindowDimensions();
   const offset = useSharedValue(0);
   const leaving = useSharedValue(false);
@@ -79,6 +82,7 @@ function EventCard({ event, onError }: { event: Event; onError(message: string):
 }
 
 export default function WeekScreen() {
+  const { weekChoices } = useDemoSession();
   const { weekEvents } = useAppData();
   const { choices, loadFailed, retry } = useWeekChoices();
   const [view, setView] = useState<'deck' | 'saved'>('deck');
@@ -133,27 +137,27 @@ export default function WeekScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f5f7f8' },
+  screen: { flex: 1, backgroundColor: palette.paper },
   content: { padding: 20, paddingBottom: 40, gap: 18 },
   section: { gap: 14 },
-  title: { color: '#17212a', fontSize: 30, fontWeight: '700' },
+  title: { color: palette.ink, fontSize: 30, fontWeight: '700' },
   actions: { flexDirection: 'row', gap: 10 },
   action: { flex: 1 },
   tab: { paddingHorizontal: 16, minHeight: 44, justifyContent: 'center', borderRadius: 22 },
-  selected: { backgroundColor: '#17212a' },
+  selected: { backgroundColor: palette.ink },
   tabText: { color: '#634700', fontWeight: '700', fontSize: 15 },
   selectedText: { color: '#fff' },
   card: { backgroundColor: '#fff', borderRadius: 18, padding: 22, gap: 10, borderColor: '#d5dde1', borderWidth: 1, borderTopColor: '#c49a39', borderTopWidth: 5 },
   category: { color: '#775709', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, fontSize: 12 },
-  eventTitle: { color: '#17212a', fontSize: 29, lineHeight: 34, fontWeight: '700' },
+  eventTitle: { color: palette.ink, fontSize: 29, lineHeight: 34, fontWeight: '700' },
   organizer: { color: '#43515c', fontWeight: '600', fontSize: 16 },
   description: { color: '#263740', marginVertical: 9, lineHeight: 23, fontSize: 16 },
   details: { borderTopWidth: 1, borderColor: '#e3e7e9', paddingTop: 14, gap: 4 },
-  when: { color: '#17212a', fontSize: 15, fontWeight: '600' },
+  when: { color: palette.ink, fontSize: 15, fontWeight: '600' },
   body: { color: '#43515c', fontSize: 15, lineHeight: 22 },
-  hint: { textAlign: 'center', color: '#53616c', fontSize: 14 },
+  hint: { textAlign: 'center', color: palette.muted, fontSize: 14 },
   savedCard: { padding: 16, gap: 6, borderRadius: 12, borderWidth: 1, borderColor: '#d5dde1', backgroundColor: '#fff' },
-  savedTitle: { color: '#17212a', fontSize: 20, fontWeight: '700' },
+  savedTitle: { color: palette.ink, fontSize: 20, fontWeight: '700' },
   remove: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', paddingRight: 12 },
   error: { color: '#7a3225' },
 });

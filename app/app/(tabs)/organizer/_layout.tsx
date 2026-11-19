@@ -1,11 +1,11 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDemoSession } from '../../../src/settings/DemoSession';
 import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, AppState, Text, View } from 'react-native';
 
 import { createApiClient } from '../../../src/api/client';
 import { useAppData } from '../../../src/data/AppDataContext';
-import { bundledDrafts } from '../../../src/data/bundledDrafts';
+import { bundledDrafts } from '../../../src/data/bundledRoutes';
 import { OrganizerContext } from '../../../src/organizer/context';
 import { OrganizerSession, ROUTE_POLL_MS } from '../../../src/organizer/session';
 import { ModeSwitch, styles } from '../../../src/organizer/ui';
@@ -14,24 +14,25 @@ export const unstable_settings = { initialRouteName: 'index' };
 const MODE_KEY = 'ksu-go.organizer-mode';
 
 export default function OrganizerLayout() {
+  const { storage } = useDemoSession();
   const { serverUrl } = useAppData();
   const api = useMemo(() => serverUrl ? createApiClient(serverUrl) : null, [serverUrl]);
-  const [session] = useState(() => new OrganizerSession(api, AsyncStorage, bundledDrafts));
+  const [session] = useState(() => new OrganizerSession(api, storage, bundledDrafts));
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [modeError, setModeError] = useState(false);
 
   useEffect(() => {
     let active = true;
-    void AsyncStorage.getItem(MODE_KEY).then((value) => {
+    void storage.getItem(MODE_KEY).then((value) => {
       if (active) setEnabled(value === 'on');
     }).catch(() => { if (active) setEnabled(false); });
     return () => { active = false; };
-  }, []);
+  }, [storage]);
 
   function changeMode(next: boolean) {
     setEnabled(next);
     setModeError(false);
-    void AsyncStorage.setItem(MODE_KEY, next ? 'on' : 'off').catch(() => setModeError(true));
+    void storage.setItem(MODE_KEY, next ? 'on' : 'off').catch(() => setModeError(true));
   }
 
   useEffect(() => { session.setApi(api); }, [api, session]);

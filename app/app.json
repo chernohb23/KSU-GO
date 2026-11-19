@@ -4,6 +4,8 @@
     "slug": "ksu-go",
     "scheme": "ksu-go",
     "version": "1.0.0",
+    "icon": "./assets/campus-mark.png",
+    "userInterfaceStyle": "light",
     "orientation": "portrait",
     "plugins": ["expo-router"],
     "ios": { "supportsTablet": true }

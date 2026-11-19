@@ -1,11 +1,11 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDemoSession } from '../settings/DemoSession';
 import { useCallback, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 
 import type { EventSeed, Route } from '../../../shared/types.ts';
 import campusEvents from '../../../shared/fixtures/events.seed.json';
 import routeSample from '../../../shared/fixtures/route.sample.json';
 import routeDraft from '../../../shared/fixtures/route.draft-flawed.json';
-import { bundledDrafts } from './bundledDrafts';
+import { bundledRoutes } from './bundledRoutes';
 import { createApiClient } from '../api/client.ts';
 import { eventsInRange, loadFixtureEvents } from './events.ts';
 import { findFixtureRoute } from './routes.ts';
@@ -22,19 +22,20 @@ import {
 } from '../settings/storage.ts';
 
 const fixtureSeeds = campusEvents as unknown as EventSeed[];
-const fixtureRoutes = [routeSample, routeDraft, ...bundledDrafts] as unknown as Route[];
+const fixtureRoutes = [...bundledRoutes, routeSample, routeDraft] as unknown as Route[];
 
 export function AppDataProvider({ children }: PropsWithChildren) {
+  const { storage } = useDemoSession();
   const controller = useMemo(
     () => new AppDataController({
       defaultApiUrl: process.env.EXPO_PUBLIC_API_URL,
-      loadServerUrlOverride: () => loadServerUrlOverride(AsyncStorage),
-      saveServerUrlOverride: (url) => saveServerUrlOverride(AsyncStorage, url),
+      loadServerUrlOverride: () => loadServerUrlOverride(storage),
+      saveServerUrlOverride: (url) => saveServerUrlOverride(storage, url),
       fixtureEvents: (now) => loadFixtureEvents(fixtureSeeds, now, 'week'),
       fixtureRoute: (id) => findFixtureRoute(fixtureRoutes, id),
       clientFactory: (url) => createApiClient(url),
     }),
-    [],
+    [storage],
   );
   const [state, setState] = useState(controller.state);
   const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -47,9 +48,9 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     const unsubscribe = controller.subscribe(setState);
     void controller.start();
     void Promise.all([
-      getOrCreateDeviceId(AsyncStorage),
-      loadRegisteredEventIds(AsyncStorage),
-      loadOfflineRegisteredCounts(AsyncStorage),
+      getOrCreateDeviceId(storage),
+      loadRegisteredEventIds(storage),
+      loadOfflineRegisteredCounts(storage),
     ]).then(([id, savedIds, savedCounts]) => {
       if (!mounted) return;
       setDeviceId(id);
@@ -62,7 +63,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       unsubscribe();
       controller.stop();
     };
-  }, [controller]);
+  }, [controller, storage]);
 
   const registerEvent = useCallback(async (eventId: string) => {
     if (!deviceId) throw new Error('The device ID is not ready.');
@@ -73,16 +74,16 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
     const registeredCount = await controller.registerEvent(eventId, deviceId);
     const nextIds = [...registeredEventIds, eventId];
-    await saveRegisteredEventIds(AsyncStorage, nextIds);
+    await saveRegisteredEventIds(storage, nextIds);
     setRegisteredEventIds(nextIds);
 
     if (controller.state.source === 'fixtures') {
       const nextCounts = { ...offlineRegisteredCounts, [eventId]: registeredCount };
-      await saveOfflineRegisteredCounts(AsyncStorage, nextCounts);
+      await saveOfflineRegisteredCounts(storage, nextCounts);
       setOfflineRegisteredCounts(nextCounts);
     }
     return registeredCount;
-  }, [controller, deviceId, offlineRegisteredCounts, registeredEventIds, registrationsReady, state.events]);
+  }, [controller, deviceId, offlineRegisteredCounts, registeredEventIds, registrationsReady, state.events, storage]);
 
   const weekEvents = useMemo(() => state.events.map((event) => {
     const offlineCount = offlineRegisteredCounts[event.id];

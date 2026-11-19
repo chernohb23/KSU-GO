@@ -1,4 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
+import { palette } from '../../src/navigation/Brand';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -16,6 +17,7 @@ import { viewerHtml } from '../../src/viewerHtml';
 const viewerSource = { html: viewerHtml };
 
 export default function RouteScreen() {
+  const router = useRouter();
   const { routeId } = useLocalSearchParams<{ routeId?: string }>();
   const { getRoute } = useAppData();
   const [route, setRoute] = useState<Route | null>(null);
@@ -100,7 +102,10 @@ export default function RouteScreen() {
       {!routeId ? (
         <View style={styles.message}>
           <Text style={styles.title}>Route</Text>
-          <Text style={styles.body}>Choose an event with a confirmed route to view directions.</Text>
+          <Text style={styles.body}>Open an event on the map and choose “Take me there” for directions to its room.</Text>
+          <Pressable accessibilityRole="button" onPress={() => router.navigate('/')} style={styles.mapLink}>
+            <Text style={styles.playButtonText}>Open map</Text>
+          </Pressable>
         </View>
       ) : error ? (
         <View style={styles.message}>
@@ -180,20 +185,21 @@ export default function RouteScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#101820' },
-  header: { paddingHorizontal: 22, paddingVertical: 16, backgroundColor: '#f5f7f8' },
-  floor: { color: '#53616c', marginTop: 5, fontSize: 15 },
+  header: { paddingHorizontal: 22, paddingVertical: 16, backgroundColor: palette.paper },
+  mapLink: { alignSelf: 'flex-start', marginTop: 18, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 11, backgroundColor: palette.amber },
+  floor: { color: palette.muted, marginTop: 5, fontSize: 15 },
   viewer: { flex: 1, minHeight: 120 },
-  instructions: { paddingHorizontal: 20, paddingVertical: 18, backgroundColor: '#f5f7f8' },
-  instruction: { color: '#17212a', fontSize: 20, lineHeight: 28, fontWeight: '600' },
-  counter: { color: '#53616c', fontSize: 14, marginTop: 8 },
+  instructions: { paddingHorizontal: 20, paddingVertical: 18, backgroundColor: palette.paper },
+  instruction: { color: palette.ink, fontSize: 20, lineHeight: 28, fontWeight: '600' },
+  counter: { color: palette.muted, fontSize: 14, marginTop: 8 },
   controls: { flexDirection: 'row', gap: 10, marginTop: 16 },
   button: { flex: 1, minHeight: 48, minWidth: 64, paddingHorizontal: 10, paddingVertical: 12, borderWidth: 1, borderColor: '#a9b5bc', borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { color: '#17212a', fontSize: 16, fontWeight: '700' },
-  playButton: { backgroundColor: '#805b08', borderColor: '#805b08' },
+  buttonText: { color: palette.ink, fontSize: 16, fontWeight: '700' },
+  playButton: { backgroundColor: palette.amber, borderColor: palette.amber },
   playButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   disabledButton: { opacity: 0.45 },
-  notice: { color: '#805b08', fontSize: 13, lineHeight: 18, marginBottom: 12 },
-  message: { flex: 1, padding: 24, backgroundColor: '#f5f7f8' },
-  title: { color: '#17212a', fontSize: 24, fontWeight: '700' },
-  body: { color: '#53616c', marginTop: 8, fontSize: 15 },
+  notice: { color: palette.amber, fontSize: 13, lineHeight: 18, marginBottom: 12 },
+  message: { flex: 1, padding: 24, backgroundColor: palette.paper },
+  title: { color: palette.ink, fontSize: 24, fontWeight: '700' },
+  body: { color: palette.muted, marginTop: 8, fontSize: 15 },
 });

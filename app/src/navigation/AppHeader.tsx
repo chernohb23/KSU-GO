@@ -2,11 +2,13 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppData } from '../data/AppDataContext';
+import { BrandMark, palette } from './Brand';
 
 export function AppTitle() {
   const router = useRouter();
   return (
-    <Pressable onLongPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Open server settings">
+    <Pressable style={styles.brand} onLongPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Open server settings">
+      <BrandMark size={29} />
       <Text style={styles.title}>KSU-GO</Text>
     </Pressable>
   );
@@ -22,11 +24,12 @@ export function DataSourceBadge() {
 }
 
 export const headerStyles = StyleSheet.create({
-  header: { backgroundColor: '#f5f7f8' },
+  header: { backgroundColor: palette.paper },
 });
 
 const styles = StyleSheet.create({
-  title: { color: '#17212a', fontSize: 17, fontWeight: '700' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  title: { color: palette.ink, fontSize: 18, fontWeight: '800', letterSpacing: 0.5 },
   badge: { marginRight: 10, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
   offline: { backgroundColor: '#ece3c8' },
   online: { backgroundColor: '#e0eee4' },
