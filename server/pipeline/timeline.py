@@ -152,10 +152,13 @@ def parse_timeline(answer: str, duration_seconds: float) -> Timeline:
     return timeline.model_copy(update={"events": normalized})
 
 
+GAP_WALK_NOTE = "Gap filled as walk; review."
+
+
 def _gap(start: float, end: float) -> TimelineEvent:
     return TimelineEvent(
         type="walk", startSec=start, endSec=end, confidence=0,
-        note="Gap filled as walk; review.",
+        note=GAP_WALK_NOTE,
     )
 
 

@@ -8,12 +8,15 @@ from pydantic import Field, TypeAdapter
 
 from checks import refresh_mock_checks
 from errors import APIError
-from models import ContractModel, Door, Event, EventRange, EventSeed, Route, Step
+from models import Check, ContractModel, Door, Event, EventRange, EventSeed, PipelineMode, Route, Step
+from pipeline.verify import verify
 
 
 class Upload(ContractModel):
     route: Route
     event_id: str | None
+    pipeline_mode: PipelineMode = "mock"
+    assemble_warnings: list[Check] = Field(default_factory=list)
 
 
 class SavedState(ContractModel):
@@ -135,23 +138,29 @@ class Store:
         event_routes = self._saved.event_routes | dict.fromkeys(attached_events, upload.route.id)
         self._save(self._saved.model_copy(update={"uploads": uploads, "event_routes": event_routes}))
 
-    def add_upload(self, route: Route, event_id: str | None) -> None:
+    def add_upload(self, route: Route, event_id: str | None, mode: PipelineMode = "mock") -> None:
         with self._lock:
-            self._save_upload(Upload(route=route, event_id=event_id))
+            self._save_upload(Upload(route=route, event_id=event_id, pipeline_mode=mode))
             self._routes[route.id] = route
 
-    def update_upload(self, route: Route) -> None:
+    def update_upload(self, route: Route, *, assemble_warnings: list[Check] | None = None) -> None:
         with self._lock:
             # A restart fails any processing record regardless of its last stage.
             if route.status != "processing":
-                self._replace_route(route)
+                self._replace_route(route, assemble_warnings=assemble_warnings)
             else:
                 self._routes[route.id] = route
 
-    def _replace_route(self, route: Route, attached_events: tuple[str, ...] = ()) -> None:
+    def _replace_route(
+        self, route: Route, attached_events: tuple[str, ...] = (), *,
+        assemble_warnings: list[Check] | None = None,
+    ) -> None:
         upload = self._saved.uploads.get(route.id)
         if upload is not None:
-            self._save_upload(upload.model_copy(update={"route": route}), attached_events)
+            changes = {"route": route}
+            if assemble_warnings is not None:
+                changes["assemble_warnings"] = assemble_warnings
+            self._save_upload(upload.model_copy(update=changes), attached_events)
         self._routes[route.id] = route
 
     def replace_steps(self, route_id: str, steps: list[Step]) -> Route:
@@ -163,9 +172,17 @@ class Store:
                 raise APIError("invalid_request", "The last door must be labeled with the destination.")
             if len({step.id for step in steps}) != len(steps):
                 raise APIError("invalid_request", "Each step must have a unique ID.")
+            upload = self._saved.uploads.get(route_id)
+            checks = (
+                verify(steps, start_floor=route.startFloor, destination_floor=route.destinationFloor,
+                       video_sec=route.stats.videoSec if route.stats else None,
+                       assemble_warnings=upload.assemble_warnings)
+                if upload is not None and upload.pipeline_mode == "live"
+                else refresh_mock_checks(steps, route.checks)
+            )
             updated = route.model_copy(update={
                 "steps": steps,
-                "checks": refresh_mock_checks(steps, route.checks),
+                "checks": checks,
             })
             self._replace_route(updated)
             return updated
