@@ -3,11 +3,10 @@
   Mesh, MeshBasicMaterial, OctahedronGeometry, SphereGeometry, Vector3,
 } from "three";
 import type { Event } from "../../../shared/types";
+import { palette } from "../palette";
 import type { CreateFlags } from "./flagsSeam";
 
 type State = "live" | "soon" | "later";
-
-const colors = { live: 0xff8672, soon: 0xf3c66e, later: 0x9ab9e9 };
 
 function appearance(event: Event, nowMs: number): { state: State; heightM: number } | undefined {
   const startMs = Date.parse(event.startsAt);
@@ -53,9 +52,9 @@ export const createFlags: CreateFlags = (flagsLayer, campus, events, now) => {
       const tip = new Vector3(x + offset * 0.4, heightM, z + offset * 0.92);
       const pole = new Line(
         new BufferGeometry().setFromPoints([base, tip]),
-        new LineBasicMaterial({ color: colors[state], transparent: true, opacity: 0.8 }),
+        new LineBasicMaterial({ color: palette.flags[state], transparent: true, opacity: 0.8 }),
       );
-      const marker = new Mesh(markerGeometry(state), new MeshBasicMaterial({ color: colors[state], depthTest: false }));
+      const marker = new Mesh(markerGeometry(state), new MeshBasicMaterial({ color: palette.flags[state], depthTest: false }));
       marker.name = "flag-marker";
       marker.position.copy(tip);
       marker.renderOrder = 2;
