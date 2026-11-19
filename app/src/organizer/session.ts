@@ -1,10 +1,11 @@
 import type { Route } from '../../../shared/types.ts';
 import { ApiRequestError, type ApiClient, type UploadRouteInput } from '../api/client.ts';
+import { canConfirm, type ReviewAction } from './review.ts';
 
 export const ROUTE_POLL_MS = 3_000;
 const UPLOAD_KEY_PREFIX = 'ksu-go.uploaded-route.';
 
-type RouteApi = Pick<ApiClient, 'uploadRoute' | 'getRoute'>;
+type RouteApi = Pick<ApiClient, 'uploadRoute' | 'getRoute' | 'updateRouteSteps' | 'confirmRoute'>;
 type DeviceStorage = {
   getAllKeys(): Promise<readonly string[]>;
   setItem(key: string, value: string): Promise<void>;
@@ -18,6 +19,7 @@ type Transfer =
 type SessionState = {
   routes: Record<string, Route>;
   readErrors: Record<string, string>;
+  reviews: Record<string, { action: ReviewAction; error: string | null } | undefined>;
   transfer: Transfer | null;
   storageNotice: string | null;
   loaded: boolean;
@@ -48,7 +50,7 @@ export class OrganizerSession {
     this.storage = storage;
     this.fixtures = Object.fromEntries(fixtures.map((route) => [route.id, route]));
     this.ids = new Set(Object.keys(this.fixtures));
-    this.current = { routes: api ? {} : this.fixtures, readErrors: {}, transfer: null, storageNotice: null, loaded: false };
+    this.current = { routes: api ? {} : this.fixtures, readErrors: {}, reviews: {}, transfer: null, storageNotice: null, loaded: false };
   }
 
   get state(): SessionState { return this.current; }
@@ -65,9 +67,12 @@ export class OrganizerSession {
 
   setApi(api: RouteApi | null) {
     if (api === this.api) return;
+    // Offline edits on bundled drafts can be retried once a server is configured.
+    // Edits made against one server belong to that server.
+    const reviews = this.api ? {} : this.current.reviews;
     this.api = api;
     this.reads.clear();
-    this.update({ routes: api ? {} : this.fixtures, readErrors: {}, loaded: false });
+    this.update({ routes: api ? {} : this.fixtures, readErrors: {}, reviews, loaded: false });
   }
 
   async refresh(): Promise<void> {
@@ -102,16 +107,18 @@ export class OrganizerSession {
   }
 
   private async readRoute(api: RouteApi, id: string): Promise<void> {
+    const startingRoute = this.current.routes[id];
+    const stale = () => api !== this.api || startingRoute !== this.current.routes[id];
     const abort = new AbortController();
     const timeout = setTimeout(() => abort.abort(), 8_000);
     try {
       const route = await api.getRoute(id, abort.signal);
-      if (api !== this.api) return;
+      if (stale()) return;
       const readErrors = { ...this.current.readErrors };
       delete readErrors[id];
       this.update({ routes: { ...this.current.routes, [id]: route }, readErrors });
     } catch (error) {
-      if (api !== this.api) return;
+      if (stale()) return;
       const routes = { ...this.current.routes };
       const readErrors = { ...this.current.readErrors };
       if (error instanceof ApiRequestError && error.status === 404) {
@@ -122,6 +129,49 @@ export class OrganizerSession {
         readErrors[id] = 'Could not refresh this route. Checking again when the server responds.';
       }
       this.update({ routes, readErrors });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async review(id: string, action: ReviewAction): Promise<void> {
+    const route = this.current.routes[id];
+    const previous = this.current.reviews[id];
+    if (route?.status !== 'draft' || (previous && !previous.error)) return;
+    if (action.kind === 'confirm' && (!canConfirm(route) || previous?.action.kind === 'save')) return;
+    const api = this.api;
+    if (!api) {
+      this.update({ reviews: { ...this.current.reviews, [id]: { action, error: 'Set a server address, then retry.' } } });
+      return;
+    }
+    const pending = { action, error: null };
+    this.update({ reviews: { ...this.current.reviews, [id]: pending } });
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 15_000);
+    try {
+      let updated: Route;
+      try {
+        updated = action.kind === 'save'
+          ? await api.updateRouteSteps(id, action.steps, abort.signal)
+          : await api.confirmRoute(id, abort.signal);
+      } catch (error) {
+        // A response can be lost after the server has already confirmed the route.
+        if (!(error instanceof ApiRequestError) || error.code !== 'wrong_status') throw error;
+        updated = await api.getRoute(id, abort.signal);
+        if (updated.status !== 'confirmed') throw error;
+      }
+      if (this.current.reviews[id] !== pending) return;
+      const reviews = { ...this.current.reviews };
+      const readErrors = { ...this.current.readErrors };
+      delete reviews[id];
+      delete readErrors[id];
+      this.update({ reviews, readErrors, routes: { ...this.current.routes, [id]: updated } });
+    } catch (error) {
+      if (this.current.reviews[id] !== pending) return;
+      const message = error instanceof ApiRequestError ? error.message
+        : 'Check the server connection and retry.';
+      this.update({ reviews: { ...this.current.reviews, [id]: { action, error: message } } });
+      if (error instanceof ApiRequestError && error.code === 'route_has_failed_checks') await this.read(id);
     } finally {
       clearTimeout(timeout);
     }

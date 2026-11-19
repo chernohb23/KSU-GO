@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
-import { stepInstruction } from '../../../../shared/instructions';
+import { DraftReview } from '../../../src/organizer/DraftReview';
 import { useOrganizer } from '../../../src/organizer/context';
 import { Action, buildingName, ProgressBar, styles } from '../../../src/organizer/ui';
 
@@ -18,6 +18,10 @@ export default function OrganizerRouteScreen() {
     void session.read(routeId).then(() => { if (active) setLookedUp(routeId); });
     return () => { active = false; };
   }, [routeId, session]);
+
+  if (route?.status === 'draft') {
+    return <DraftReview key={routeId} route={route} back={() => router.dismissTo('/organizer')} />;
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -40,14 +44,6 @@ export default function OrganizerRouteScreen() {
             <View style={styles.card}>
               <Text style={styles.heading}>Processing failed</Text>
               <Text accessibilityRole="alert" style={styles.notice}>{route.error ?? 'Choose a video and upload it again.'}</Text>
-            </View>
-          )}
-          {route.status === 'draft' && (
-            <View style={styles.card}>
-              <Text accessibilityRole="header" style={styles.heading}>Review draft</Text>
-              {route.steps.map((step, index) => (
-                <Text key={step.id} style={styles.body}>{index + 1}. {stepInstruction(route, index)}</Text>
-              ))}
             </View>
           )}
           {route.status === 'confirmed' && <Text style={styles.label}>Route confirmed</Text>}
