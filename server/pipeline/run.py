@@ -15,6 +15,7 @@ from mock_pipeline import check_budget
 from models import Progress, Route, Stats
 from pipeline.assemble import assemble
 from pipeline.ingest import IngestedVideo
+from pipeline.motion import measure_video, save_motion
 from pipeline.timeline import (
     DEFAULT_FPS, TimelineClient, TimelineError, create_gemini_client,
     draft_timeline, load_cached_timeline,
@@ -66,14 +67,27 @@ def run_live(
         LOGGER.warning("Timeline validation for route %s: %s", route.id, message)
     if stopping.is_set():
         return
+    motion = None
+    try:
+        motion = measure_video(video.path)
+    except Exception as error:
+        # Motion is an optional check. Decoder/setup errors must not discard a
+        # valid timeline, and exception text may contain private input details.
+        LOGGER.warning("Motion measurement unavailable for route %s (%s); continuing without it.",
+                       route.id, type(error).__name__)
+    if stopping.is_set():
+        return
+    turn_midpoints: dict[str, float] = {}
     store.update_upload(route.model_copy(update={"progress": Progress(stage="assemble", pct=65)}))
     steps, warnings = assemble(result.timeline, destination=route.destination,
-                               start_floor=route.startFloor, destination_floor=route.destinationFloor)
+                               start_floor=route.startFloor, destination_floor=route.destinationFloor,
+                               motion=motion, turn_midpoints=turn_midpoints)
+    saved_motion = save_motion(motion, turn_midpoints) if motion is not None else None
     if stopping.is_set():
         return
     store.update_upload(route.model_copy(update={"progress": Progress(stage="verify", pct=85)}))
     checks = verify(steps, start_floor=route.startFloor, destination_floor=route.destinationFloor,
-                    video_sec=video.duration_seconds, assemble_warnings=warnings)
+                    video_sec=video.duration_seconds, assemble_warnings=warnings, motion=saved_motion)
     if stopping.is_set():
         return
     store.update_upload(route.model_copy(update={
@@ -81,4 +95,4 @@ def run_live(
         "steps": steps, "checks": checks, "corridorWidthM": 2.0, "ceilingHeightM": 2.7,
         "stats": Stats(videoSec=video.duration_seconds,
                        processingSec=monotonic() - started_at, costUsd=float(result.cost_usd)),
-    }), assemble_warnings=warnings)
+    }), assemble_warnings=warnings, motion=saved_motion)
