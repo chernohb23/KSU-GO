@@ -1,53 +1,63 @@
-# KSU-GO
+# KSU GO
 
-A 3D campus events app. Every event today is a flag on a stylized campus map. Tap a flag to see the event and register. Then follow a low-poly 3D route from the building entrance to the room door. That route is drafted by AI from one phone video an organizer films.
+**A campus events app for Kennesaw State that makes events easy to find, easy to reach and easy to run.** Students see today's events as flags on a 3D campus, browse a list or swipe through Discover, and register in a tap. Organizers manage their organization and create events. **Take me there** gives step-by-step directions from the building entrance to the room door. The route is drafted by AI from one phone video an organizer films, checked by code, and confirmed by the organizer before any student sees it.
 
-> **Heads up:** the run commands below work once S-1 (repo skeleton) and the first ticket in each part have landed. Until then the folders are empty.
+Built in five days (November 16–20, 2026) for the KSU AI Club / IEEE-CS hackathon by Juan Castro, Chernoh Bah, Jorge Arriaga and David Henderson.
 
-| Read this | When |
+## Results (measured on campus, November 19–20, 2026)
+
+| What | Result |
 |---|---|
-| `SCOPE.md` | What we're building, the 5-minute demo, what's cut |
-| `TICKETS.md` | The work, grouped by part |
-| `CONTRACTS.md` | The shared formats every part must match |
-| `AGENTS.md` | The rules your coding agent follows (and so do you) |
-| `docs/pipeline.md` | Only for 🤖 AI + server tickets |
+| Stairs route to Room 215 | Gemini's draft matched the hand-measured route exactly: 6 of 6 steps, room read as D215 |
+| Motion check | 10 of 10 turn directions on four campus videos, 0 false alarms |
+| Room 113, end to end | about 20 s upload + 39.8 s processing, about 5¢, 0 organizer corrections |
+| Total AI spend for the project | $0.98 |
+| Campus map on iPhone | steady 60 fps from one 777 KB offline file |
+| Automated tests | 1,036 (app 148, viewer 109, shared 203, server 576) |
+
+## Try it
+
+- **No keys needed.** Everything runs in mock mode from fixtures; see [How to run each part](#how-to-run-each-part).
+- **Demo accounts:** student Maya Chen (`student@ksu-go.example` / `StudentDemo!26`) and organizer Noah Brooks (`organizer@ksu-go.example` / `OrganizerDemo!26`).
+- **Presentation:** [`pitch/KSU-GO-Presentation.pptx`](pitch/KSU-GO-Presentation.pptx), with a PDF copy alongside.
 
 ## How the app fits together
 
 ```mermaid
-flowchart LR
-    subgraph phone["iPhone (Expo Go)"]
-        app["📱 App<br/>screens, API client"]
-        viewer["🗺️🧭 Viewer<br/>three.js in a WebView"]
-        app <-->|messages| viewer
-    end
-    fixtures[("🧱 shared/fixtures<br/>events, campus, routes")]
-    server["🤖 Server<br/>FastAPI on Juan's laptop"]
-    gemini["Gemini 💳"]
-    replicate["Replicate MapAnything 💳<br/>optional"]
-
-    app -->|HTTP via tunnel| server
-    app -.->|no server? use these| fixtures
-    server --> fixtures
-    server -->|live mode only| gemini
-    server -.->|live mode, optional| replicate
+flowchart TB
+  subgraph Phone[iPhone, Expo Go]
+    App[KSU GO app<br/>React Native + TypeScript, expo-router]
+    Viewer[3D viewer in a WebView<br/>three.js campus and route, one offline HTML file]
+    App <-->|messages| Viewer
+  end
+  subgraph Server[FastAPI server, Python]
+    API[REST API<br/>events, accounts, organizations, routes]
+    Pipe[Video-to-route pipeline<br/>runs off the request thread]
+    Store[(JSON state files)]
+    API --> Store
+    API --> Pipe
+  end
+  App <-->|HTTPS, demo accounts with tokens| API
+  Pipe -->|timeline| Gemini[Gemini API]
+  OSM[OpenStreetMap building footprints] -.->|campus geometry, built once| Viewer
 ```
 
 ## Video to route
 
 ```mermaid
-flowchart TD
-    v["Organizer films one video<br/>+ enters start and destination floor"] --> i["Ingest<br/>strip GPS and metadata"]
-    i --> t["Timeline 💳<br/>Gemini lists turns, stairs, doors"]
-    t --> m["Motion check<br/>code compares turns with camera motion"]
-    m --> g["Geometry 💳 optional<br/>MapAnything measures walk lengths"]
-    g --> a["Assemble<br/>turn the timeline into route steps"]
-    a --> ve["Verify<br/>code attaches checks"]
-    ve --> c["Organizer confirms<br/>fixes flagged steps in the app"]
-    c --> s["Students see the route"]
+flowchart LR
+  V[Organizer films one phone video<br/>entrance to room] --> S[Strip location data<br/>ffmpeg]
+  S --> G[AI drafts a timeline<br/>Gemini: turns, stairs, signs, room]
+  G --> A[Assemble steps<br/>walk, turn, stairs, door]
+  A --> C[Code verifies<br/>length, floors, stairs checks]
+  A --> M[Motion cross-check<br/>OpenCV phase correlation]
+  C --> D[Draft with flags]
+  M --> D
+  D --> O[Organizer reviews<br/>fix or Looks right, then Confirm]
+  O --> R[Route belongs to the room<br/>every event there gets Take me there]
 ```
 
-Only the 💳 steps cost money, and they only run in live mode on Juan's server. Everything else is plain code.
+Gemini (`gemini-4-hydrogen`) watches the location-stripped video at 2 frames per second and returns a structured timeline. A route is stored as a short list of steps (about 2 KB), and the viewer draws the 3D directions from that list on the phone. MapAnything on Replicate was tested and cut: about $0.25 and 8 minutes per video, and its segments came back at different scales. Details are in [`docs/pipeline.md`](docs/pipeline.md).
 
 ## Route status
 
@@ -62,6 +72,25 @@ stateDiagram-v2
 ```
 
 Students only ever see `confirmed` routes.
+
+## What the code is
+
+```mermaid
+pie title What the ~24,400 lines are
+  "App, viewer, shared (TypeScript)" : 12160
+  "Tests" : 8645
+  "Server (Python)" : 3594
+```
+
+## Repo guide
+
+| Read this | When |
+|---|---|
+| `SCOPE.md` | What we built, the 5-minute demo, what was cut |
+| `TICKETS.md` | The work, grouped by part |
+| `CONTRACTS.md` | The shared formats every part must match |
+| `AGENTS.md` | The rules every coding agent follows (and so do we) |
+| `docs/pipeline.md` | The video-to-route pipeline in detail |
 
 ## Life of a ticket
 
@@ -109,12 +138,12 @@ flowchart LR
 | | Mock mode (default) | Live mode |
 |---|---|---|
 | Where it runs | Any laptop | Juan's laptop only |
-| API keys | None | Gemini (and Replicate for the optional geometry step), Juan's only |
+| API keys | None | Gemini, Juan's only |
 | Events, register, routes | ✅ | ✅ |
 | Upload a video | ✅ returns a flawed sample draft after ~10 s | ✅ runs the real pipeline |
 | Confirm screen, checks, edits | ✅ against the sample draft | ✅ against the real draft |
 | Real AI timeline from your video | ❌ | ✅ 💳 |
-| Cost | $0 | about $0.06 per route for Gemini, about $0.25 more with MapAnything |
+| Cost | $0 | about 5–6¢ per route (Gemini) |
 | Who can start it | Anyone | Juan, or with Juan's OK |
 
 The app also runs with **no server at all**, from bundled fixtures. It shows an "Offline data" badge when it does.
