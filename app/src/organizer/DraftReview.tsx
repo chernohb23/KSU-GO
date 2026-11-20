@@ -1,7 +1,7 @@
 import { palette } from '../navigation/Brand';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { stepInstruction } from '../../../shared/instructions';
 import type { Check, Route } from '../../../shared/types';
@@ -41,6 +41,7 @@ export function DraftReview({ route, back }: { route: Route; back(): void }) {
   const list = useRef<ComponentRef<typeof ScrollView>>(null);
   const offsets = useRef(new Map<string, number>());
   const [viewerError, setViewerError] = useState(false);
+  const [elevatorFloor, setElevatorFloor] = useState(route.destinationFloor);
 
   function showStep(index: number) {
     const step = preview.steps[index];
@@ -63,6 +64,12 @@ export function DraftReview({ route, back }: { route: Route; back(): void }) {
   function edit(change: StepEdit) {
     const steps = editSteps(preview.steps, selected, change);
     if (change.kind === 'delete') setSelectedId(steps[Math.min(selected, steps.length - 1)]?.id);
+    if (change.kind === 'insert_turn') setSelectedId(steps[selected + (change.position === 'before' ? 0 : 1)]?.id);
+    if (change.kind === 'split_walk') setSelectedId(steps[selected + 1]?.id);
+    if (change.kind === 'insert_elevator') {
+      const elevator = steps.at(-2);
+      if (elevator) setSelectedId(elevator.id);
+    }
     void submit({ kind: 'save', steps });
   }
 
@@ -112,6 +119,18 @@ export function DraftReview({ route, back }: { route: Route; back(): void }) {
                     onPress={() => edit({ kind: 'turn', direction })}>
                     <Text style={styles.label}>{label}</Text>
                   </Pressable>)}
+                {step.type === 'stairs' && (['up', 'down'] as const).map(direction =>
+                  <Pressable key={direction} accessibilityRole="radio" accessibilityState={{ checked: direction === step.direction, disabled: busy }}
+                    disabled={busy} style={[local.choice, direction === step.direction && local.chosen]}
+                    onPress={() => edit({ kind: 'stairs_direction', direction, startFloor: route.startFloor })}>
+                    <Text style={styles.label}>{direction === 'up' ? 'Up' : 'Down'}</Text>
+                  </Pressable>)}
+                {step.type === 'walk' && step.lengthM >= 2 &&
+                  <Action label="Add turn here" secondary disabled={busy} onPress={() => edit({ kind: 'split_walk', direction: 'right' })} />}
+                {index > 0 && <Action label="Insert turn before" secondary disabled={busy}
+                  onPress={() => edit({ kind: 'insert_turn', direction: 'right', position: 'before' })} />}
+                {index < preview.steps.length - 1 && <Action label="Insert turn after" secondary disabled={busy}
+                  onPress={() => edit({ kind: 'insert_turn', direction: 'right', position: 'after' })} />}
                 {flagged && step.source !== 'organizer' &&
                   <Action label="Looks right" secondary disabled={busy} onPress={() => edit({ kind: 'approve' })} />}
                 {index > 0 && index < preview.steps.length - 1 &&
@@ -120,6 +139,13 @@ export function DraftReview({ route, back }: { route: Route; back(): void }) {
             </View>
           );
         })}
+        <View style={styles.card}>
+          <Text style={styles.label}>Add elevator to floor</Text>
+          <TextInput accessibilityLabel="Elevator destination floor" keyboardType="number-pad" value={elevatorFloor}
+            onChangeText={setElevatorFloor} placeholder="Floor number" style={styles.input} editable={!busy} />
+          <Action label="Insert elevator before destination" secondary disabled={busy || !elevatorFloor.trim()}
+            onPress={() => edit({ kind: 'insert_elevator', toFloor: elevatorFloor })} />
+        </View>
       </ScrollView>
       <View style={local.footer}>
         {pending?.error && <>
