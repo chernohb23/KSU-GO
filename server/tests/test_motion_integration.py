@@ -3,8 +3,8 @@
 import json
 
 import pytest
-from fastapi.testclient import TestClient
 
+from conftest import SignedInClient
 from main import create_app
 from pipeline import run
 from pipeline.motion import MotionError
@@ -78,7 +78,7 @@ def test_put_rechecks_saved_midpoint_without_video_and_after_restart(data_dir, m
 
     monkeypatch.setattr(run, "measure_video", no_measure)
     monkeypatch.setenv("PIPELINE_MODE", "mock")
-    with TestClient(create_app(data_dir=data_dir)) as client:
+    with SignedInClient(create_app(data_dir=data_dir)) as client:
         updated = client.put(f"{url}/steps", json={"steps": steps})
         assert updated.status_code == 200
         assert motion_checks(updated.json()) == motion_checks(draft)
@@ -115,7 +115,7 @@ def test_organizer_can_approve_or_delete_inserted_turn_without_reinsertion(data_
             video.unlink()
 
     monkeypatch.setenv("PIPELINE_MODE", "mock")
-    with TestClient(create_app(data_dir=data_dir)) as client:
+    with SignedInClient(create_app(data_dir=data_dir)) as client:
         repeated = client.put(f"{url}/steps", json={"steps": steps})
         assert repeated.status_code == 200 and not motion_checks(repeated.json())
         assert not any(s["type"] == "turn" for s in repeated.json()["steps"])

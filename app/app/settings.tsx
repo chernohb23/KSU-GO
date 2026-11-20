@@ -1,12 +1,20 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 
+import { useAuth } from '../src/auth/AuthProvider';
+import { easternClock } from '../src/events/format';
 import { useAppData } from '../src/data/AppDataContext';
+import { showsSignIn } from '../src/navigation/access';
 import { useDemoSession } from '../src/settings/DemoSession';
 import { palette } from '../src/navigation/Brand';
 
 export default function SettingsScreen() {
-  const { serverUrl, setServerUrl, offline } = useAppData();
+  const router = useRouter();
+  const { state } = useAuth();
+  const { serverUrl, setServerUrl, offline, weekEvents } = useAppData();
+  // Opens the details of an event that has directions, through the normal event screen.
+  const eventWithRoute = showsSignIn(state) ? null : weekEvents.find((event) => event.routeId) ?? null;
   const [url, setUrl] = useState(serverUrl ?? '');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const { resetDemo } = useDemoSession();
@@ -50,13 +58,22 @@ export default function SettingsScreen() {
           ? 'Address saved. Could not connect to the API. Check the address and that the server is running.'
           : 'Address saved. Connected to server.')}
       </Text>
+      {eventWithRoute ? (
+        <Pressable accessibilityRole="button" style={styles.reset} disabled={saving || resetting}
+          onPress={() => router.push({ pathname: '/event/[eventId]', params: { eventId: eventWithRoute.id } })}>
+          <Text style={styles.buttonText}>Dev: event with route</Text>
+        </Pressable>
+      ) : null}
+      <Text style={styles.message}>
+        Campus time (ET) comes from {easternClock.source === 'intl' ? 'the phone’s time-zone data' : 'built-in US daylight-time rules'}.
+      </Text>
       <Pressable accessibilityRole="button" style={styles.reset} disabled={saving || resetting}
-        onPress={() => Alert.alert('Reset demo on this device?', 'Clear registrations, saved events, swipe history, organizer settings, upload history, and the saved server address.', [
+        onPress={() => Alert.alert('Reset demo on this device?', 'Sign out, and clear every account’s registrations record, saved events, swipe history and upload history on this phone, plus the saved server address. Server records stay on the server.', [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Reset', style: 'destructive', onPress: () => {
             setResetting(true);
             void resetDemo().then(
-              () => Alert.alert('Demo reset', 'This device is ready for another walkthrough.'),
+              () => Alert.alert('Demo reset', 'This phone is ready for another walkthrough.'),
               () => { setResetting(false); Alert.alert('Could not reset the demo', 'Please try again.'); },
             );
           } },

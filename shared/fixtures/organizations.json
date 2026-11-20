@@ -1,0 +1,149 @@
+[
+  {
+    "id": "org-tutoring-center",
+    "name": "Tutoring Center",
+    "description": "Peer tutors for most first- and second-year courses. Drop in with your own work; no appointment needed.",
+    "memberCount": 18,
+    "logo": { "initials": "TC", "color": "ink" }
+  },
+  {
+    "id": "org-campus-recreation",
+    "name": "Campus Recreation",
+    "description": "Runs intramurals, fitness classes and open gym hours for every skill level.",
+    "memberCount": 45,
+    "logo": { "initials": "CR", "color": "gold" }
+  },
+  {
+    "id": "org-career-services",
+    "name": "Career Services",
+    "description": "Helps students with resumes, interviews and internship searches, and hosts the campus career fairs.",
+    "memberCount": 12,
+    "logo": { "initials": "CS", "color": "ink" }
+  },
+  {
+    "id": "org-robotics-club",
+    "name": "Robotics Club",
+    "description": "Students who design, build and program robots for campus showcases and regional competitions. New members learn on club kits.",
+    "memberCount": 32,
+    "logo": { "initials": "RC", "color": "gold" }
+  },
+  {
+    "id": "org-spoken-word-society",
+    "name": "Spoken Word Society",
+    "description": "Poets and storytellers who write, workshop and perform together at monthly open mics.",
+    "memberCount": 15,
+    "logo": { "initials": "SW", "color": "ink" }
+  },
+  {
+    "id": "org-acm-student-chapter",
+    "name": "ACM Student Chapter",
+    "description": "The student computing chapter: coding nights, tech talks and programming contest practice.",
+    "memberCount": 58,
+    "logo": { "initials": "ACM", "color": "gold" }
+  },
+  {
+    "id": "org-university-library",
+    "name": "University Library",
+    "description": "Research help, study spaces and workshops on finding and citing sources.",
+    "memberCount": 26,
+    "logo": { "initials": "UL", "color": "ink" }
+  },
+  {
+    "id": "org-society-of-women-engineers",
+    "name": "Society of Women Engineers",
+    "description": "Supports women in engineering and computing through mentoring, panels and industry visits.",
+    "memberCount": 40,
+    "logo": { "initials": "SWE", "color": "gold" }
+  },
+  {
+    "id": "org-ceramics-guild",
+    "name": "Ceramics Guild",
+    "description": "Hand-building and wheel-throwing sessions in the student center studio. Clay and glazes provided.",
+    "memberCount": 14,
+    "logo": { "initials": "CG", "color": "ink" }
+  },
+  {
+    "id": "org-drone-club",
+    "name": "Drone Club",
+    "description": "Builds, repairs and flies small drones, with safety training before the first flight.",
+    "memberCount": 21,
+    "logo": { "initials": "DC", "color": "gold" }
+  },
+  {
+    "id": "org-student-activities-board",
+    "name": "Student Activities Board",
+    "description": "Plans free weekly events on campus, from game nights to concerts.",
+    "memberCount": 30,
+    "logo": { "initials": "SAB", "color": "ink" }
+  },
+  {
+    "id": "org-art-club",
+    "name": "Art Club",
+    "description": "A relaxed studio night for painting and drawing. Beginners welcome; supplies on hand.",
+    "memberCount": 27,
+    "logo": { "initials": "AC", "color": "gold" }
+  },
+  {
+    "id": "org-math-tutoring-lab",
+    "name": "Math Tutoring Lab",
+    "description": "Walk-in help for algebra through calculus and review sessions before exams.",
+    "memberCount": 16,
+    "logo": { "initials": "MTL", "color": "ink" }
+  },
+  {
+    "id": "org-student-government-association",
+    "name": "Student Government Association",
+    "description": "Elected students who represent the student body and host community events.",
+    "memberCount": 36,
+    "logo": { "initials": "SGA", "color": "gold" }
+  },
+  {
+    "id": "org-society-of-hispanic-professional-engineers",
+    "name": "Society of Hispanic Professional Engineers",
+    "description": "Builds community for Hispanic students in STEM through career prep, mentoring and service.",
+    "memberCount": 33,
+    "logo": { "initials": "SHPE", "color": "ink" }
+  },
+  {
+    "id": "org-international-student-association",
+    "name": "International Student Association",
+    "description": "Brings students from every country together through cultural nights, food and conversation.",
+    "memberCount": 52,
+    "logo": { "initials": "ISA", "color": "gold" }
+  },
+  {
+    "id": "org-college-of-engineering",
+    "name": "College of Engineering",
+    "description": "The college office for engineering programs, advising and senior design showcases.",
+    "memberCount": 20,
+    "logo": { "initials": "CE", "color": "ink" }
+  },
+  {
+    "id": "org-film-society",
+    "name": "Film Society",
+    "description": "Screens student films and classics, followed by discussion with the filmmakers when they can come.",
+    "memberCount": 19,
+    "logo": { "initials": "FS", "color": "gold" }
+  },
+  {
+    "id": "org-green-owls",
+    "name": "Green Owls",
+    "description": "Students working on campus sustainability: recycling drives, garden days and energy projects.",
+    "memberCount": 23,
+    "logo": { "initials": "GO", "color": "ink" }
+  },
+  {
+    "id": "org-game-development-club",
+    "name": "Game Development Club",
+    "description": "Makes small games together, from first prototypes to finished jam entries. All skill levels and roles welcome.",
+    "memberCount": 24,
+    "logo": { "initials": "GD", "color": "ink" }
+  },
+  {
+    "id": "org-residence-life",
+    "name": "Residence Life",
+    "description": "Supports students living on campus with housing information and hall events.",
+    "memberCount": 11,
+    "logo": { "initials": "RL", "color": "gold" }
+  }
+]

@@ -1,7 +1,7 @@
 import { createContext, useContext, useSyncExternalStore } from 'react';
 import type { OrganizerSession } from './session';
 
-export const OrganizerContext = createContext<{ session: OrganizerSession; turnOff(): void } | null>(null);
+export const OrganizerContext = createContext<{ session: OrganizerSession } | null>(null);
 
 export function useOrganizer() {
   const context = useContext(OrganizerContext);

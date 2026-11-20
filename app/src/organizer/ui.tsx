@@ -1,19 +1,9 @@
 import { palette } from '../navigation/Brand';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import campus from '../../../shared/fixtures/campus.json';
 
 export function buildingName(id: string) {
   return campus.buildings.find((item) => item.id === id)?.name ?? id;
-}
-
-export function ModeSwitch({ enabled, onChange }: { enabled: boolean; onChange(): void }) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.label}>Organizer mode</Text>
-      <Switch accessibilityLabel="Organizer mode" value={enabled} onValueChange={onChange}
-        trackColor={{ true: palette.amber }} />
-    </View>
-  );
 }
 
 export function Action({ label, onPress, secondary = false, disabled = false }: {

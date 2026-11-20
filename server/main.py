@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 from threading import Event as StopEvent
-from typing import Annotated
+from typing import Annotated, Callable
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
@@ -18,10 +18,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from access import AccessFirstRoute, Organizer, SignedIn, bearer_token
 from errors import APIError
 from mock_pipeline import check_budget, run_pipeline
 from models import (
-    Event, EventRange, Health, Progress, Registration, RegistrationRequest, Route, StepsRequest,
+    AuthResponse, CreateEventRequest, Event, EventRange, Health, LoginRequest, Progress,
+    Registration, Route, SignupRequest, StepsRequest, User,
 )
 from store import Store
 from video import video_duration
@@ -40,7 +42,7 @@ def error_response(error: APIError) -> JSONResponse:
 
 def create_app(
     *, data_dir: Path = SERVER_DIR / "data", fixtures_dir: Path = FIXTURES_DIR,
-    timeline_client_factory=None,
+    timeline_client_factory=None, clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -52,7 +54,7 @@ def create_app(
             raise ValueError("BUDGET_CAP_USD must be a finite, nonnegative number.")
         app.state.pipeline_mode = mode
         app.state.budget_cap = cap
-        app.state.store = Store(data_dir, fixtures_dir)
+        app.state.store = Store(data_dir, fixtures_dir, clock)
         app.state.draft_template = Route.model_validate_json(
             (fixtures_dir / "route.draft-flawed.json").read_bytes()
         )
@@ -65,6 +67,8 @@ def create_app(
             app.state.workers.shutdown(wait=True, cancel_futures=True)
 
     app = FastAPI(title="KSU-GO API", lifespan=lifespan)
+    # Must be set before any route is declared: access checks run before the body is read.
+    app.router.route_class = AccessFirstRoute
     app.add_middleware(
         CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
     )
@@ -97,13 +101,39 @@ def create_app(
     def event(event_id: str) -> Event:
         return app.state.store.get_event(event_id)
 
+    @app.post("/api/events", status_code=201)
+    def create_event(body: CreateEventRequest, user: Organizer) -> Event:
+        return app.state.store.create_event(body, user)
+
     @app.post("/api/events/{event_id}/register")
-    def register(event_id: str, request: RegistrationRequest) -> Registration:
-        count = app.state.store.register(event_id, request.deviceId)
+    def register(event_id: str, user: SignedIn) -> Registration:
+        count = app.state.store.register(event_id, user.id)
         return Registration(registeredCount=count)
+
+    @app.post("/api/auth/signup", status_code=201)
+    def signup(body: SignupRequest) -> AuthResponse:
+        token, user = app.state.store.signup(body.name, body.email, body.password)
+        return AuthResponse(token=token, user=user)
+
+    @app.post("/api/auth/login")
+    def login(body: LoginRequest) -> AuthResponse:
+        token, user = app.state.store.login(body.email, body.password)
+        return AuthResponse(token=token, user=user)
+
+    @app.post("/api/auth/logout", status_code=204)
+    def logout(request: Request, _user: SignedIn) -> Response:
+        token = bearer_token(request)
+        if token is not None:
+            app.state.store.logout(token)
+        return Response(status_code=204)
+
+    @app.get("/api/me")
+    def me(user: SignedIn) -> User:
+        return user
 
     @app.post("/api/routes", status_code=202)
     def upload_route(
+        _user: Organizer,
         video: Annotated[UploadFile, File()],
         building_id: Annotated[str, Form(alias="buildingId")],
         destination: Annotated[str, Form()],
@@ -150,11 +180,11 @@ def create_app(
         return app.state.store.get_route(route_id)
 
     @app.put("/api/routes/{route_id}/steps")
-    def replace_steps(route_id: str, request: StepsRequest) -> Route:
+    def replace_steps(route_id: str, request: StepsRequest, _user: Organizer) -> Route:
         return app.state.store.replace_steps(route_id, request.steps)
 
     @app.post("/api/routes/{route_id}/confirm")
-    def confirm(route_id: str) -> Route:
+    def confirm(route_id: str, _user: Organizer) -> Route:
         return app.state.store.confirm(route_id)
 
     return app

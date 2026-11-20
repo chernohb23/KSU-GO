@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { Route } from '../../../../shared/types';
 import { useOrganizer } from '../../../src/organizer/context';
-import { Action, buildingName, ModeSwitch, styles } from '../../../src/organizer/ui';
+import { Action, buildingName, styles } from '../../../src/organizer/ui';
 
 function statusLabel(route: Route) {
   if (route.status === 'processing') return route.progress ? `${route.progress.stage} · ${route.progress.pct}%` : 'Processing';
@@ -13,14 +13,13 @@ function statusLabel(route: Route) {
 
 export default function DraftsScreen() {
   const router = useRouter();
-  const { routes, loaded, readErrors, storageNotice, transfer, session, turnOff } = useOrganizer();
+  const { routes, loaded, readErrors, storageNotice, transfer, session } = useOrganizer();
   const visibleRoutes = Object.values(routes).filter((route) => route.status !== 'confirmed')
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   const hasTransfer = transfer?.phase === 'uploading' || transfer?.phase === 'error';
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ModeSwitch enabled onChange={turnOff} />
       <Text accessibilityRole="header" style={styles.title}>Route drafts</Text>
       {hasTransfer ? (
         <Pressable accessibilityRole="button" style={styles.card} onPress={() => router.push('/organizer/new')}>

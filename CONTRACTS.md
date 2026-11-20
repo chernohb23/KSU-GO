@@ -35,6 +35,7 @@ Fixtures in `shared/fixtures/`:
 | `route.sample.json` | The hand-written sample route in section 4 |
 | `route.draft-flawed.json` | The sample route as a `draft` with planted problems and their checks. Mock mode returns it, so the confirm screen is always built against a bad draft. |
 | `routes/*.json` | Routes for the demo building: confirmed routes, and `*.draft.json` drafts waiting for the organizer |
+| `organizations.json` | The demo organizations (section 2, `Organization`). Static: the app bundles it and the server reads it at startup. |
 
 Every part must work from fixtures alone, with no server and no network.
 
@@ -47,18 +48,21 @@ type Event = {
   id: string;
   title: string;
   description: string;
-  organizer: string;            // club or office name
+  organizationId: string;               // hosting organization, from organizations.json
+  organizer: string;                    // display name; equals the hosting organization's name
+  partnerOrganizationId: string | null; // optional co-host from organizations.json; never the host
   category: "academic" | "social" | "career" | "sports" | "arts" | "other";
+  tags: string[];                       // lowercase, unique, at most 8, each 1 to 24 characters
   startsAt: string;
   endsAt: string;
   location: { buildingId: string; room: string };  // buildingId from campus.json
-  routeId: string | null;       // confirmed route to the room; several events may share one
-  capacity: number | null;
+  routeId: string | null;               // confirmed route to the room; several events may share one
+  capacity: number | null;              // display only; see Capacity
   registeredCount: number;
 };
 ```
 
-**Seed form.** `events.seed.json` holds the same objects, but with `startsInMin` (negative means already started) and `durationMin` in place of `startsAt` and `endsAt`. The server at startup, and the app when it falls back to fixtures, convert them using the current time. The demo therefore always has live and upcoming events.
+**Seed form.** `events.seed.json` holds the same objects, but with `startsInMin` (negative means already started) and `durationMin` in place of `startsAt` and `endsAt`. The server at startup, and the app when it falls back to fixtures, convert them using the current time. The demo therefore always has live and upcoming events. Events created through `POST /api/events` are stored by the server with their exact `startsAt` and `endsAt`; they never go into the seed file.
 
 **Ranges.** Both the server and the app in fixture mode use these. Ended events are always left out, and results are sorted by `startsAt`.
 
@@ -66,6 +70,8 @@ type Event = {
 |---|---|
 | `today` | start less than 24 hours from now. The map shows these. |
 | `week` | start less than 7 days from now. Includes everything in `today`. |
+
+Created events follow the same ranges as seeded ones. A created event therefore shows in `week` at once, and on the map once its start is less than 24 hours away.
 
 **Flag rule.** The map and the event card must both use this.
 
@@ -77,6 +83,25 @@ type Event = {
 | ended | `now >= endsAt` | not shown |
 
 For `soon` and `later`, `heightM = 12 + 18 * (1 - clamp(minutesUntilStart / 240, 0, 1))`. A flag stands at its building's `entrance`. Several flags at one building fan out around it.
+
+**Capacity.** Capacity is display only. The app shows `registeredCount / capacity`, for example "34 / 50", and "Full" when `registeredCount >= capacity`. With `capacity: null` it shows only the count. Capacity never blocks registering.
+
+**Times in the app.** The app shows every time in campus time (America/New_York), labeled "ET", whatever the phone's time zone.
+
+**Organizations.** `organizations.json` holds the demo organizations as `Organization[]`. Every event's `organizationId`, and its `partnerOrganizationId` when not null, names one of them. Logos are original initials badges, never real logos. Organizations are static: the app bundles the file, and there is no organizations endpoint.
+
+```ts
+type Organization = {
+  id: string;                  // e.g. "org-robotics-club"
+  name: string;
+  description: string;         // one or two sentences
+  memberCount: number;         // display only
+  logo: {
+    initials: string;          // 1 to 4 capital letters, e.g. "RC"
+    color: "gold" | "ink";     // badge background: "gold" is ink initials on gold, "ink" is paper initials on ink
+  };
+};
+```
 
 ## 3. Campus
 
@@ -207,18 +232,85 @@ A route's steps always begin and end with a `door`. The last door's label is the
 
 ## 5. API
 
-Base URL comes from `EXPO_PUBLIC_API_URL`. All paths start with `/api`. Bodies are JSON unless noted. There is no login; organizer mode is a switch in the app.
+Base URL comes from `EXPO_PUBLIC_API_URL`. All paths start with `/api`. Bodies are JSON unless noted.
+
+**Accounts.** Sign-in uses demo accounts checked by this server. It is not university sign-in and is not connected to any university system.
+
+- `POST /api/auth/signup` always creates a `student`. No endpoint creates organizers.
+- The server seeds two demo accounts at startup: Maya Chen (`student@ksu-go.example`, student) and Noah Brooks (`organizer@ksu-go.example`, organizer for `org-robotics-club`). Their demo-only passwords are in `app/README.md`.
+- Passwords are stored only as `scrypt` hashes, each with its own salt. A token is a random string from `secrets.token_urlsafe`. The server stores only its SHA-256 hash, and the token expires 7 days after it was issued.
+- Accounts, sessions, registrations and created events persist in `server/data/state.json`.
+- The server never logs a password or a token.
+
+**Auth header.** A signed-in request sends `Authorization: Bearer <token>`. Open endpoints ignore the header.
+
+- An endpoint that needs sign-in answers `401 unauthenticated` when the header is missing or the token is unknown or expired.
+- It answers `403 forbidden` when the user's role or organization doesn't allow the call.
+- Sign-in is checked before the body, so a request with no token is `401` even when its body is invalid.
+
+```ts
+type User = {
+  id: string;
+  name: string;
+  email: string;                  // stored trimmed and lowercased
+  role: "student" | "organizer";
+  organizationId: string | null;  // set exactly when role is "organizer"
+};
+
+type AuthResponse = { token: string; user: User };
+```
+
+**Who may call what.**
+
+| Access | Endpoints |
+|---|---|
+| Open | `GET /api/health`, `GET /api/events`, `GET /api/events/{id}`, `GET /api/routes/{id}`, `POST /api/auth/signup`, `POST /api/auth/login` |
+| Signed in, any role | `GET /api/me`, `POST /api/auth/logout`, `POST /api/events/{id}/register` |
+| Organizer only | `POST /api/events`, `POST /api/routes`, `PUT /api/routes/{id}/steps`, `POST /api/routes/{id}/confirm` |
+
+**Offline.** Signing in, signing up and creating events need the server. With no server, the sign-in screen offers "Browse offline": a read-only guest who can browse events, open event details and walk confirmed routes, all from fixtures. Registering and organizer actions need a sign-in. If a signed-in user's server stops answering, the app falls back to fixtures as before, and anything that needs the server says so. The "Offline data" badge rule in section 7 is unchanged.
 
 | Method and path | Request | Response |
 |---|---|---|
 | `GET /api/health` | | `{ "ok": true, "pipelineMode": "mock" \| "live" }` |
 | `GET /api/events` | optional query `range=today` (default) or `range=week` | `Event[]` in that range (section 2) |
 | `GET /api/events/{id}` | | `Event` |
-| `POST /api/events/{id}/register` | `{ "deviceId": string }` | `{ "registered": true, "registeredCount": number }`. Repeating it for the same device changes nothing. |
+| `POST /api/events` | `CreateEventRequest` | `201` with the new `Event`. See **Creating events** below. |
+| `POST /api/events/{id}/register` | no body | `{ "registered": true, "registeredCount": number }`. Recorded per signed-in user. Repeating it for the same user changes nothing. |
+| `POST /api/auth/signup` | `{ "name": string, "email": string, "password": string }` | `201` with `AuthResponse`, role `student`. `name` is 1 to 80 characters after trimming. `email` is trimmed and lowercased, at most 254 characters, has one `@` with text on both sides, and is not already in use. `password` is 8 to 128 characters. Anything else is `invalid_request`; an email already in use is `invalid_request` with the message "An account with this email already exists." |
+| `POST /api/auth/login` | `{ "email": string, "password": string }` | `AuthResponse` with a new token. The email is matched trimmed and lowercased. A wrong email or a wrong password is `401 unauthenticated`, with the same message for both. |
+| `POST /api/auth/logout` | | `204`, no body. The presented token stops working. |
+| `GET /api/me` | | `User` |
 | `POST /api/routes` | multipart: `video` (file), `buildingId`, `destination`, `startFloor`, `destinationFloor`, optional `eventId` | `202` with a `Route` in `processing` |
 | `GET /api/routes/{id}` | | `Route`. The app polls this every 3 s while `processing`. |
 | `PUT /api/routes/{id}/steps` | `{ "steps": Step[] }` | `Route` with the new steps and fresh `checks`. Only allowed in `draft`. The steps must begin and end with a `door`, or the call is an `invalid_request`. |
 | `POST /api/routes/{id}/confirm` | | `Route` in `confirmed`. The route is then set as `routeId` on the upload's `eventId`, if there was one, and on every event in the same room that has no route. An event is in the same room when its `location.buildingId` equals the route's `buildingId` and `"Room " + location.room` equals the route's `destination`, ignoring case and surrounding spaces. A route belongs to a room and serves every event there. |
+
+**Creating events.**
+
+```ts
+type CreateEventRequest = {
+  title: string;                        // 1 to 120 characters after trimming
+  description: string;                  // 1 to 2000 characters after trimming
+  organizationId: string;               // the signed-in organizer's organizationId
+  partnerOrganizationId: string | null; // null, or a different organization from organizations.json
+  category: Event["category"];          // required; no default
+  tags: string[];                       // may be empty; normalized as below
+  startsAt: string;                     // ISO 8601 with an explicit offset
+  durationMin: number;                  // whole minutes, 1 to 1440
+  location: { buildingId: string; room: string };  // buildingId from campus.json; room 1 to 40 characters after trimming
+  capacity: number | null;              // null, or a whole number of at least 1
+};
+```
+
+- Every key is required. `partnerOrganizationId` and `capacity` use `null` for none; `tags` uses `[]`.
+- An `organizationId` that isn't the signed-in organizer's is `403 forbidden`.
+- Text fields are stored trimmed. Tags are trimmed, lowercased and deduplicated, keeping the first occurrence; after that there must be at most 8, each 1 to 24 characters.
+- `startsAt` needs an explicit offset (`Z` or `±hh:mm`) and must satisfy `now < startsAt < now + 7 days`, on date and time, so a new event always falls in the `week` range.
+- The server sets the remaining fields: a new unique `id`; `organizer`, the host organization's name; `endsAt = startsAt + durationMin`; `registeredCount: 0`; and `routeId`, the most recently confirmed route that serves the room under the same-room rule of `POST /api/routes/{id}/confirm`, otherwise `null`.
+- The response's `startsAt` is the same instant that was sent; its offset may differ.
+- Any other violation is `invalid_request`.
+- The event is saved in `state.json`. `GET /api/events` and `GET /api/events/{id}` return it from then on, also after restarts. A later confirm gives it a route by the same rule as seeded events.
 
 Errors use the right HTTP status and this body:
 
@@ -230,6 +322,8 @@ Errors use the right HTTP status and this body:
 |---|---|---|
 | `not_found` | 404 | unknown event or route |
 | `invalid_request` | 422 | body does not match this file |
+| `unauthenticated` | 401 | no token, or an unknown or expired one, on an endpoint that needs sign-in; or a wrong email or password at login |
+| `forbidden` | 403 | the signed-in user's role or organization doesn't allow this call |
 | `wrong_status` | 409 | editing or confirming a route that is not a `draft` |
 | `route_has_failed_checks` | 409 | confirming while any check is `fail` |
 | `video_rejected` | 422 | video longer than 3 minutes, larger than 100 MB, or unreadable |
