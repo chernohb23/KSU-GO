@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import campusJson from '../../../shared/fixtures/campus.json';
 import type { Campus, Event, Organization } from '../../../shared/types.ts';
 import { categoryLabel } from '../account/insights';
 import { radius, space, text, tone } from '../navigation/theme';
-import { Button, Chip, ChipRow, Field, Group, Notice, Row, Section } from '../ui/controls';
+import { Button, Chip, ChipRow, Field, Group, Notice, Row, Section, screenStyles } from '../ui/controls';
 import { et } from './format';
 import {
   addTag, dayChipLabel, DURATIONS, eventRequestFields, formProblem, nextDays, timeSlots,
@@ -33,6 +33,7 @@ export function EventForm({ initial, host, organizations, now, submitLabel, onSu
   const [dayIndex, setDayIndex] = useState<number | null>(initial ? null : 0);
   const [tagDraft, setTagDraft] = useState('');
   const [choosing, setChoosing] = useState<'building' | 'partner' | null>(null);
+  const [showTimes, setShowTimes] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (change: Partial<EventFormValues>) => { setError(null); setValues((v) => ({ ...v, ...change })); };
@@ -40,7 +41,7 @@ export function EventForm({ initial, host, organizations, now, submitLabel, onSu
   const customDuration = !(DURATIONS as readonly number[]).includes(values.durationMin);
 
   async function submit() {
-    const problem = formProblem(values, initial !== null);
+    const problem = formProblem(values, initial !== null && dayIndex === null);
     if (problem) return setError(problem);
     setBusy(true);
     try {
@@ -98,18 +99,27 @@ export function EventForm({ initial, host, organizations, now, submitLabel, onSu
             );
           })}
         </ScrollView>
-        {dayIndex !== null ? (
-          slots.length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days}>
-              {slots.map((slot) => (
-                <Chip key={slot.iso} label={slot.label} selected={values.startsAt === slot.iso} onPress={() => set({ startsAt: slot.iso })} />
-              ))}
+        {dayIndex !== null ? <Group>
+          <Row label="Start time (ET)" value={values.startsAt ? et.time(values.startsAt) : 'Choose'}
+            last onPress={!busy && slots.length ? () => setShowTimes(true) : undefined} />
+        </Group> : null}
+        {dayIndex !== null && !slots.length ? <Text style={[text.footnote, styles.pad]}>No start times left on this day.</Text> : null}
+        <Modal visible={showTimes} presentationStyle="pageSheet" onRequestClose={() => setShowTimes(false)}>
+          <SafeAreaView style={screenStyles.screen}>
+            <View style={styles.timeHeader}>
+              <Text style={text.title}>Start time (ET)</Text>
+              <Button label="Done" kind="secondary" onPress={() => setShowTimes(false)} />
+            </View>
+            <ScrollView contentContainerStyle={screenStyles.content}>
+              <Group>{slots.map((slot, index) => <Row key={slot.iso} label={slot.label} last={index === slots.length - 1}
+                accessory={values.startsAt === slot.iso ? <Text style={styles.check}>✓</Text> : undefined}
+                onPress={() => { set({ startsAt: slot.iso }); setShowTimes(false); }} />)}</Group>
             </ScrollView>
-          ) : <Text style={[text.footnote, styles.pad]}>No start times left on this day.</Text>
-        ) : null}
+          </SafeAreaView>
+        </Modal>
         <ChipRow>
           {DURATIONS.map((minutes) => (
-            <Chip key={minutes} label={minutes < 60 ? `${minutes} min` : `${minutes / 60}${minutes % 60 ? '.5' : ''} h`}
+            <Chip key={minutes} label={minutes < 60 ? `${minutes} min` : `${minutes / 60} h`}
               selected={values.durationMin === minutes} onPress={() => set({ durationMin: minutes })} />
           ))}
           <Chip label={customDuration ? `${values.durationMin} min` : 'Custom'} selected={customDuration}
@@ -167,4 +177,5 @@ const styles = StyleSheet.create({
   onInk: { color: tone.paper },
   check: { color: tone.amber, fontSize: 17, fontWeight: '600' },
   pad: { paddingHorizontal: space.l },
+  timeHeader: { padding: space.gutter, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.l },
 });

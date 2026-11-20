@@ -19,8 +19,8 @@ KSU-GO is a 3D campus events app. The campus is a stylized 3D map, every event t
 |---|---|---|
 | 0:00 | The problem, with our numbers: how many events KSU lists a week, and what share of surveyed students have skipped or been late to one because they could not find the room. | Campus impact |
 | 0:40 | A student, signed in as Maya Chen, opens the app. The 3D campus has a flag per event; tall flags start soonest and the pulsing ones are live. They tap one, read the card, and register. | Creativity |
-| 1:30 | They tap "Take me there". A low-poly 3D route walks them from the entrance, up the stairs, around the turn, to the door of Room 204. | Creativity, use of AI |
-| 2:20 | Where the route came from: an organizer filmed one plain phone video. We sign in as the organizer, Noah Brooks of the Robotics Club, and open the Organizer tab. We point out where a new video is uploaded but don't run an upload. We open the organizer's prepared draft, made earlier from that same video. The AI drafted the route, code checked it and flagged a doubtful turn, the organizer fixes that turn and confirms. A second event in the same room gets its route at once. | Use of AI |
+| 1:30 | They tap "Take me there". A low-poly 3D route walks them from the Math D entrance to the door of Room 215, using ROUTE-5's confirmed hand route. | Creativity, use of AI |
+| 2:20 | Where the route came from: an organizer filmed one plain phone video. Sign in as Noah Brooks, who owns Robotics Club → Organization tab → Robotics Build Night (Math D, Room 113) → Directions → review the prepared draft from the real route2 run → "Looks right" → confirm. The Game Development Club event in Room 113 now has directions too. This draft needed no turn correction; code flagged uncertainty and the organizer checked it. We mention Add directions without uploading on stage. Rooms that already have confirmed directions are view only. | Use of AI |
 | 3:40 | What it costs KSU: the measured cost and time per route, no beacons or floor plans, one route per room reused by every event there, and a rollout that starts with one building. | Feasibility |
 | 4:30 | Close: the survey number again, and the ask. | Pitch |
 
@@ -29,7 +29,9 @@ KSU-GO is a 3D campus events app. The campus is a stylized 3D map, every event t
 - **The route.** It is "drafted by AI from the video and drawn from the step list". We never call it a 3D reconstruction or a scan of the building.
 - **The verifier.** Say only what shipped. If the motion cross-check in AI-7 passes its test: "code compares each AI turn with the camera's motion in the video and flags the ones that disagree". If it is removed: "low-confidence turns are flagged".
 
-**The prepared draft.** A real run does not fit inside the pitch: the video has to upload over a hotspot before any processing starts. So on stage nobody uploads. The upload flow stays in the app, and we mention it while showing the Organizer tab. Then we open a draft that the same pipeline made from the same video earlier (AI-6), fix it and confirm it. The pitch says so plainly. The draft is the AI's real output, uncorrected; nobody plants an error in it.
+**The prepared draft.** No upload runs on stage. Noah opens Organization → Robotics Build Night (Room 113) → Directions → Review draft. The real route2 output is bundled as `shared/fixtures/routes/room-113.draft.json`, attached to that event by the server. Review the flagged step, tap "Looks right" and confirm; do not claim a wrong turn was corrected. Both events in Room 113 get directions immediately. Restarting the server restores this fixture draft for rehearsal. Nobody plants an error in a real draft.
+
+**Student-route dependency.** ROUTE-5 adds the confirmed hand route for Math D Room 215 before rehearsal. Until it lands, this checkout's Room 215 events have no directions. Room 113 starts without confirmed directions so the prepared draft can be reviewed.
 
 **Timing claims.** The earlier reference of about 10 minutes per route was mostly MapAnything (about 8 of the 10). Slides and script quote the time and cost measured in AI-6 for the pipeline that actually shipped.
 
@@ -53,7 +55,7 @@ Whichever path wins, `campus.json` stays the logical layout (building ids, names
 2. **Event card and register.** Card with title, time, place and organizer; a register button that sticks.
 3. **Route viewer.** Corridor-style 3D route with stairs, turns, doors and a destination marker, plus a step-by-step walk-through with text instructions.
 4. **Video-to-route pipeline.** Video in, draft route out: Gemini timeline, lengths from walking time, stair heights from the floors the organizer enters, verifier checks. The timeline is stored per video file, so the same video never costs twice. Every draft can be finished by the organizer: no check blocks confirming unless the app's edits can clear it.
-5. **Organizer flow.** Enter the two floors, pick a video, watch progress, open the draft on its first flagged step, change, delete or insert a turn, split a walk, flip stairs, confirm. Fixing a typical draft takes under a minute.
+5. **Organization and directions flow.** An owner opens Organization → event → Directions. A room with confirmed directions is view only. Otherwise Add directions lets them enter the two floors, pick a video, watch progress and review its draft. Review opens at the first flagged step, with change, delete or insert turn, split walk, flip stairs and "Looks right" controls, then confirm for every event in the room. The stage draft opens from Robotics Build Night's Directions row, with no drafts tab or list. Finishing a typical draft takes under a minute.
 6. **Real routes.** At least two confirmed routes in one real KSU building, bundled in the app.
 7. **Offline demo.** With no server, a guest can browse today's and this week's events and walk any confirmed route from bundled data; registering and organizer actions need a sign-in.
 8. **Impact data.** Survey results and OwlLife event counts, collected by us.
@@ -78,7 +80,7 @@ Whichever path wins, `campus.json` stays the logical layout (building ids, names
 - Android, and any native build.
 - Outdoor navigation and live GPS position on the map.
 - The whole campus, and matching the real campus exactly. One stylized section only.
-- Editing, cancelling or repeating events, and creating events more than seven days ahead. Organizers create one-off events within the next seven days.
+- Repeating events, un-cancelling, replacing a room's confirmed directions, approving new organizations, and creating events more than seven days ahead. Owners can create, edit and cancel one-off events; anyone signed in can create and own organizations.
 - Multi-building routes and room interiors.
 - AR, and anything captured in-app. The organizer picks a video from the camera roll.
 - Stitching the raw 3D reconstruction. The route is drawn from the step list.

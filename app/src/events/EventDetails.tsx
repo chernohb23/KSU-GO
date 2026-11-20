@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
-import organizationsJson from '../../../shared/fixtures/organizations.json';
-import type { Event, Organization } from '../../../shared/types.ts';
+import { roomLabel } from '../../../shared/rooms';
+import type { Event } from '../../../shared/types.ts';
 import { useAccount } from '../account/AccountProvider';
 import { useAuth } from '../auth/AuthProvider';
 import { useAppData } from '../data/AppDataContext';
@@ -10,13 +11,10 @@ import { getEventFlagState } from '../data/events';
 import { registerAvailability } from '../navigation/access';
 import { radius, space, text, tone } from '../navigation/theme';
 import { buildingName } from '../organizer/ui';
+import { useOrganizations } from '../orgs/OrganizationsProvider';
 import { capacityLabel, et } from './format';
 
-const organizations = organizationsJson as Organization[];
-const organizationName = (id: string | null) => organizations.find((org) => org.id === id)?.name ?? null;
-
-/** "Room 204" for numbered rooms, the name itself for "Atrium" or "Gym B". */
-export const roomLabel = (room: string) => /^\d/.test(room) ? `Room ${room}` : room;
+export { roomLabel } from '../../../shared/rooms';
 
 function statusLine(event: Event, now: Date): string | null {
   const state = getEventFlagState(event, now);
@@ -27,15 +25,18 @@ function statusLine(event: Event, now: Date): string | null {
 }
 
 /** The one event card: the map's sheet and the event screen both render it. */
-export function EventDetails({ event, onTakeMeThere }: { event: Event; onTakeMeThere(routeId: string): void }) {
+export function EventDetails({ event, onTakeMeThere, showActions = true }: { event: Event; onTakeMeThere(routeId: string): void; showActions?: boolean }) {
+  const router = useRouter();
+  const { organization } = useOrganizations();
   const { state, controller } = useAuth();
   const { offline, now } = useAppData();
   const { registeredEventIds, registrationsReady, register } = useAccount();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const availability = registerAvailability({ state, offline, registered: registeredEventIds.includes(event.id) });
-  const partner = organizationName(event.partnerOrganizationId);
-  const status = statusLine(event, now);
+  const partner = organization(event.partnerOrganizationId)?.name;
+  const cancelled = event.status === 'cancelled';
+  const status = cancelled ? null : statusLine(event, now);
   const full = event.capacity !== null && event.registeredCount >= event.capacity;
 
   async function onRegister() {
@@ -62,10 +63,13 @@ export function EventDetails({ event, onTakeMeThere }: { event: Event; onTakeMeT
 
   return (
     <View style={styles.root}>
+      {cancelled ? <Text accessibilityRole="alert" style={styles.cancelled}>Cancelled</Text> : null}
       <View style={styles.heading}>
         {status ? <Text style={styles.status}>{status}</Text> : null}
         <Text accessibilityRole="header" style={text.title}>{event.title}</Text>
-        <Text style={text.subhead}>{partner ? `${event.organizer} with ${partner}` : event.organizer}</Text>
+        <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/org/[orgId]', params: { orgId: event.organizationId } })}>
+          <Text style={styles.organizer}>{partner ? `${event.organizer} with ${partner}` : event.organizer} ›</Text>
+        </Pressable>
       </View>
 
       <View style={styles.facts}>
@@ -76,7 +80,7 @@ export function EventDetails({ event, onTakeMeThere }: { event: Event; onTakeMeT
 
       {event.description ? <Text style={styles.description}>{event.description}</Text> : null}
 
-      <View style={styles.actions}>
+      {showActions && !cancelled ? <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ disabled, busy }}
@@ -102,7 +106,7 @@ export function EventDetails({ event, onTakeMeThere }: { event: Event; onTakeMeT
         ) : (
           <Text style={styles.note}>Directions to this room aren’t ready yet.</Text>
         )}
-      </View>
+      </View> : null}
     </View>
   );
 }
@@ -122,6 +126,8 @@ const styles = StyleSheet.create({
   root: { gap: space.l },
   heading: { gap: space.xs },
   status: { ...text.footnote, color: tone.amber, fontWeight: '600' },
+  organizer: { ...text.subhead, color: tone.amber, paddingVertical: space.xs },
+  cancelled: { ...text.headline, color: tone.danger, padding: space.l, borderRadius: radius.group, backgroundColor: tone.surface },
   facts: { borderRadius: radius.group, backgroundColor: tone.surface, paddingHorizontal: space.l },
   fact: { flexDirection: 'row', alignItems: 'baseline', gap: space.m, paddingVertical: space.m,
     borderBottomWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },

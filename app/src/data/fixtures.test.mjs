@@ -24,6 +24,7 @@ function seedEvent(id, startsInMin, durationMin) {
     routeId: null,
     capacity: null,
     registeredCount: 0,
+    status: 'active',
   };
 }
 
@@ -91,6 +92,14 @@ test('today on the map excludes ended and week-only cards', () => {
   const week = loadFixtureEvents([seedEvent('live', -5, 60), seedEvent('edge', 24 * 60, 60)], now, 'week');
   const ended = { ...week[0], id: 'ended', endsAt: now.toISOString() };
   assert.deepEqual(eventsInRange([...week, ended], now, 'today').map(e => e.id), ['live']);
+});
+
+test('cancelled events leave every browsing range and never have a flag', () => {
+  const [event] = loadFixtureEvents([seedEvent('active', 20, 60)], now, 'week');
+  const cancelled = { ...event, status: 'cancelled' };
+  for (const range of ['today', 'week']) assert.deepEqual(eventsInRange([cancelled], now, range), []);
+  assert.equal(getEventFlagState(cancelled, now), 'ended');
+  assert.deepEqual(loadFixtureEvents([{ ...seedEvent('cancelled', 20, 60), status: 'cancelled' }], now, 'week'), []);
 });
 
 test('half swipes and canceled swipes leave the card in the deck', () => {

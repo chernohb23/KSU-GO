@@ -46,6 +46,14 @@ test('time slots are 15 minutes apart and stay inside now < start < now + 7 days
   assert.equal(timeSlots(days[3], now).length, 96);
 });
 
+test('the spring-forward time list skips times that do not exist in ET', () => {
+  const now = at('2026-03-07T17:00:00Z');
+  const slots = timeSlots(nextDays(now, computedEasternClock)[1], now);
+  assert.equal(slots.length, 92);
+  assert.equal(slots.some((slot) => slot.hour === 2), false);
+  assert.equal(new Set(slots.map((slot) => Date.parse(slot.iso))).size, slots.length);
+});
+
 test('the form names its first problem and builds the request body', () => {
   const values = {
     title: 'Build Night', description: 'Wire the drive base.', category: 'academic', buildingId: 'b-mathematics',

@@ -52,6 +52,9 @@ export function timeSlots(day: CampusDay, now: Date): TimeSlot[] {
     const minute = minutes % 60;
     const iso = etToIso(day, hour, minute);
     const t = Date.parse(iso);
+    const actual = computedEasternClock(new Date(t));
+    // The spring-forward hour has no instant in ET. Never offer a nonexistent time.
+    if (actual.hour !== hour || actual.minute !== minute || actual.day !== day.day) continue;
     if (t > now.getTime() && t < now.getTime() + WEEK_MS) {
       const twelve = hour % 12 === 0 ? 12 : hour % 12;
       slots.push({ hour, minute, iso, label: `${twelve}:${pad(minute)} ${hour < 12 ? 'AM' : 'PM'}` });
@@ -82,6 +85,7 @@ export function formProblem(values: EventFormValues, editing: boolean): string |
   if (!values.buildingId) return 'Choose a building.';
   if (!values.room.trim()) return 'Add the room.';
   if (!editing && !values.startsAt) return 'Choose a day and a start time.';
+  if (!Number.isInteger(values.durationMin) || values.durationMin < 1 || values.durationMin > 1440) return 'Duration is 1 to 1440 whole minutes.';
   if (values.capacity.trim() && !/^[1-9]\d*$/.test(values.capacity.trim())) return 'Capacity is a whole number, or leave it empty.';
   return null;
 }

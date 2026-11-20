@@ -24,9 +24,11 @@ export default function OrganizationLayout() {
   const owned = state.status === 'signedIn' ? state.user.ownedOrganizationIds : [];
 
   const [selected, setSelected] = useState<string | null>(null);
-  useEffect(() => {
-    void storage.getItem(SELECTED_ORGANIZATION_KEY).then(setSelected).catch(() => {});
-  }, [storage]);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    void storage.getItem(SELECTED_ORGANIZATION_KEY).then((id) => { if (active) setSelected(id); }).catch(() => {});
+    return () => { active = false; };
+  }, [storage]));
   const organizationId = selected && owned.includes(selected) ? selected : owned[0] ?? null;
   const select = useCallback((id: string) => {
     setSelected(id);

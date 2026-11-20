@@ -22,10 +22,10 @@ The app opens on **Sign in**. Accounts are demo accounts checked by our own serv
 | Account | Email | Password | Tabs |
 |---|---|---|---|
 | Maya Chen, student | `student@ksu-go.example` | `StudentDemo!26` | Map, Events, Profile |
-| Noah Brooks, organizer (Robotics Club) | `organizer@ksu-go.example` | `OrganizerDemo!26` | Map, Events, Organizer, Profile |
+| Noah Brooks, owner of Robotics Club | `organizer@ksu-go.example` | `OrganizerDemo!26` | Map, Events, Organization, Profile |
 
-- **Create an account** always makes a student. Organizer accounts are set up by the university.
-- Signing in, signing up and registering need the server. Saved events, swipes, the "Registered" list in Profile and organizer upload history are kept on the phone per account, so each account starts fresh and keeps its own.
+- **Create an account** starts without organization ownership. Any signed-in user can create an organization from Profile, own several and switch between them in the Organization tab. Only an owner manages the organization and its events; seeded clubs have no owner except Noah's Robotics Club. Real-world approval is outside the demo's scope.
+- Signing in, registering, profiles, organizations and follows need the server. Registrations (including cancellation status and registration time) come from the account on the server. Saved events, swipes, editable Interests, selected organization and upload history stay on this phone per account. Phase C sessions retain their token but are read-only until `/api/me` refreshes the user; legacy phone registration ids are discarded.
 - **Sign out** is in Profile. It ends the session only: the server address and every account’s data on the phone stay. A session lasts 7 days; if the server ends it, the app returns to Sign in with “Your session ended. Sign in again.”
 - **Demo mode.** With `EXPO_PUBLIC_DEMO_MODE=1`, Sign in shows **Use demo student** and **Use demo organizer**, which fill the form. Without the variable they are hidden. Start Expo with it like this:
 
@@ -44,13 +44,13 @@ Start the server in mock mode (`server/README.md`), then point the app at it: lo
 
 ### Offline demo on iPhone (guest)
 
-With no server, choose **Browse offline** on Sign in. The guest sees Map, Events and Profile from the bundled data, with **Offline data** in the header. Tap the Robotics Club Meeting flag or choose it in **Today’s events**, then **Take me there**, and follow **Next** or **Play** to the Room 204 door. Back returns to the same event on the map. **Register** asks you to sign in, because registering needs the server. The guest can still swipe and save in Events, on this phone only.
+With no server, choose **Browse offline** on Sign in. The guest sees Map, Events and Profile from bundled data, with **Offline data** in the header. In this checkout, choose Drone Club Build Session (Room 204) in **Today's events**, then **Take me there**, and follow **Next** or **Play** to the door. Back returns to the same event. **Register** asks you to sign in. The guest can swipe and save in Events, on this phone only. The planned student stage demo uses Robotics Club Meeting in Math D Room 215; ROUTE-5 must add its confirmed hand route first (Room 215 currently has no bundled directions).
 
 A signed-in user whose server stops answering keeps the session, read-only, with **Offline data** showing; registering says it needs the server until the badge disappears.
 
-To rehearse again, long-press **KSU-GO**, choose **Reset demo**, and confirm. This signs you out and clears every account’s registrations record, saved events, swipes and upload history on this phone, plus the server address override. Server records stay on the server. The same screen has **Dev: event with route**, which opens the details of an event that has directions.
+To rehearse again, long-press **KSU-GO**, choose **Reset demo**, and confirm. This signs you out and clears every account's local saved events, swipes, Interests and upload history, plus the server address override. Account registrations, profiles, follows and organizations stay on the server. The same screen has **Dev: event with route**, which opens an event with directions.
 
-The student route follows the ID on the seed event. Confirmed JSON routes under `shared/fixtures/routes/` are bundled by Metro alongside the existing sample. Only drafts appear in the organizer review list.
+The student route follows the room's confirmed route. Confirmed JSON routes under `shared/fixtures/routes/` are bundled by Metro alongside the existing sample. There is no route-drafts tab or list: a draft opens only from its event's Directions row.
 
 ## Try the WSL tunnel
 
@@ -82,14 +82,20 @@ Follow the APP-1 fallback in `SCOPE.md` risk 1 in order: first load the viewer f
 
 ## App shell
 
-The app starts in Expo Router on **Sign in**. Students and guests get **Map**, **Events** and **Profile**; the organizer also gets **Organizer**. Protected routes enforce this, so a link to an organizer screen from another account lands on the map.
+The app starts in Expo Router on **Sign in**. Everyone browsing gets **Map**, **Events** and **Profile**; accounts owning at least one organization also get **Organization**. The tab appears after the first organization is created, without restarting. Protected routes hide the tab for nonowners; the server enforces ownership for management calls.
 
 - **Map** shows today’s flags. Tapping one opens the event card over the map.
 - **Events** has **All** (this week, by day), **Discover** (the swipe deck) and **Saved**. Saving is separate from registering.
-- **Profile** shows the account, the events registered for on this phone, and **Sign out**.
-- **Organizer** holds the route drafts flow: new route, drafts, review.
+- **Profile** has an editable avatar, major, class year and short bio; real registration/follow insights; Upcoming registrations with countdowns and directions; Saved; editable Interests; followed organizations; Create organization; and Sign out. The Saved count is this phone only. Monthly registration counts use the ET calendar month. Cancelled registrations stay labeled, with no Take me there.
+- **Organization** shows the club card, owner-entered members and actual followers, Edit organization, Create event and Upcoming/Past events (including cancellations). When you own several organizations, use the switcher. Manage event has details, named registrations, Edit, a destructive Cancel confirmation sheet, and Directions.
+- **Public organization pages** open from the organizer name on event cards and from Profile's following list. They show the club card, Follow/Unfollow and upcoming active events.
+- **Event forms** use seven campus-day chips, a 15-minute time list and duration chips. Times are always labeled ET; room labels use `shared/rooms.ts`.
 
-Every event card is the same component, wherever it opens. Times are always campus time, labeled **ET**, whatever the phone’s time zone. Capacity shows as “34 / 50”, or “Full” once reached; it never blocks registering. **Take me there** opens the directions screen on top of the tabs, and Back returns to the same event.
+Directions has five states: **Directions ready** (view only), **Add directions** (upload), **Directions in progress**, **Review draft**, and **Try again**. Upload fixes the event and sends `eventId` in the query string; the server checks ownership and existing room directions before reading the video. A room with confirmed directions refuses new uploads. Editing an event's room rechecks directions; confirming gives the route to every event in that room. Review reuses the existing draft editor without changes.
+
+**Stage rehearsal:** restart the mock server, sign in as Noah → Organization → Robotics Build Night (Math D Room 113) → Directions → Review draft → inspect the flagged step → **Looks right** → **Confirm route**. The real route2 draft is `shared/fixtures/routes/room-113.draft.json`; it needs no turn correction. The Game Development Club event in Room 113 immediately gets directions too. No video is uploaded on stage. Restarting the server restores this fixture draft.
+
+Every event card is the same component, wherever it opens. Times are always campus time, labeled **ET**, whatever the phone's time zone. Capacity shows as “34 / 50”, or “Full” once reached; it never blocks registering. **Take me there** opens directions above the tabs. Cancelled events leave Map, Events and Discover; event details can still fetch them directly and show a Cancelled banner with no registration or directions action.
 
 If the app has no configured server URL, it starts in fixture mode. The title can be long-pressed on any screen, including Sign in, to open hidden **Settings**. Enter the server base URL without `/api`; the app saves it on the device and checks it immediately. Leaving the field blank clears the override and returns to `EXPO_PUBLIC_API_URL`, if configured. Health is rechecked every 10 seconds, with a 2-second timeout.
 
@@ -107,6 +113,20 @@ Run the local checks with Node 22.13 or later:
 ```powershell
 npm.cmd run typecheck
 npm.cmd test
+npm.cmd run check:routes
 ```
 
-The Expo bundle and TypeScript checks were verified in this worktree. The updated screens have not yet been opened on a physical phone.
+For a Metro iOS export without reading local dotenv files:
+
+```bash
+EXPO_NO_DOTENV=1 CI=1 npx expo export --platform ios --output-dir /tmp/ksugo-ios
+```
+
+`check:routes` discovers the full tree using the installed Expo Router. It checks that seeded and declared tabs match (`index, events, organization, profile/index`) and root screens stay outside tabs, preserving the phase C ROUTE_NAMES_CHANGED fix.
+
+Phase D still needs a real iPhone check in Expo Go:
+
+- As Maya, edit the profile and Interests, follow/unfollow a public club, create an organization, and check the new tab appears while mounted without LogBox. Create a second and try the switcher.
+- As Noah, create/edit an event with ET day/time/duration inputs. Check confirmed Room 204 directions are view only; Room 113 offers the prepared draft. Confirm it and check both Room 113 events gain directions. Test an actual camera-roll selection, upload progress, a failed upload and retry.
+- Register Maya for a Noah event, cancel as Noah, and verify it leaves Map/Events/Discover but remains Cancelled in Maya's Profile. Check named registrations and real counts.
+- Check navigation back from review and directions, keyboard/sheets, layout, touch targets, WebView rendering and offline fallback on the device. Add ROUTE-5's Room 215 fixture before trying the student stage path.

@@ -7,8 +7,9 @@
     "start": "expo start",
     "start:tunnel": "expo start --tunnel",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/data/fixtures.test.mjs src/api/client.test.mjs src/data/provider.test.mjs src/viewer/bridge.test.mjs src/route/stepper.test.mjs src/organizer/organizer.test.mjs src/organizer/picker.test.mjs src/organizer/review.test.mjs src/auth/controller.test.mjs src/account/register.test.mjs src/navigation/access.test.mjs src/settings/scopedStorage.test.mjs src/events/format.test.mjs",
-    "postinstall": "node scripts/embed-three.mjs"
+    "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/data/fixtures.test.mjs src/api/client.test.mjs src/data/provider.test.mjs src/viewer/bridge.test.mjs src/route/stepper.test.mjs src/organizer/organizer.test.mjs src/organizer/picker.test.mjs src/organizer/review.test.mjs src/auth/controller.test.mjs src/account/register.test.mjs src/navigation/access.test.mjs src/settings/scopedStorage.test.mjs src/events/format.test.mjs src/events/form.test.mjs src/orgs/organizations.test.mjs src/account/preferences.test.mjs",
+    "postinstall": "node scripts/embed-three.mjs",
+    "check:routes": "node scripts/check-route-order.cjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

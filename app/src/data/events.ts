@@ -18,11 +18,12 @@ export function loadFixtureEvents(seed: EventSeed[], now: Date, range: EventRang
 export function eventsInRange(events: Event[], now: Date, range: EventRange): Event[] {
   const startLimit = now.getTime() + (range === 'today' ? 24 : 7 * 24) * 60 * MINUTE_MS;
   return events
-    .filter((event) => Date.parse(event.endsAt) > now.getTime() && Date.parse(event.startsAt) < startLimit)
+    .filter((event) => event.status !== 'cancelled' && Date.parse(event.endsAt) > now.getTime() && Date.parse(event.startsAt) < startLimit)
     .sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt));
 }
 
 export function getEventFlagState(event: Event, now: Date): EventFlagState {
+  if (event.status === 'cancelled') return 'ended';
   const start = Date.parse(event.startsAt);
   const end = Date.parse(event.endsAt);
   const current = now.getTime();

@@ -25,8 +25,11 @@ Run `pytest` from this directory to check the API. The tests use temporary
 storage and require no external services.
 
 The server loads all fixture routes and resets edits to those routes when it
-starts. It saves uploaded routes, their confirmed event links, registrations,
-created events, signed-up accounts and sessions in `data/state.json`. Run one server process for this data directory. An upload
+starts, including confirmation of the prepared stage draft. It saves uploaded
+routes, timestamped account registrations, device registrations, created events,
+edits and cancellations of seeded events, organizations, profiles, follows,
+signed-up accounts and sessions in `data/state.json`. Old account registrations
+receive the migration time as `registeredAt`. Run one server process for this data directory. An upload
 interrupted by a restart is marked failed and can be uploaded again. If
 `data/spend.jsonl` is present, each line's `costUsd` counts toward
 `BUDGET_CAP_USD`, which defaults to 14.
@@ -36,20 +39,23 @@ interrupted by a restart is marked failed and can be uploaded again. If
 Sign-in uses demo accounts checked by this server. It is not university sign-in
 (SSO) and is not connected to any university system.
 
-- Two accounts exist at every start: Maya Chen (`student@ksu-go.example`,
-  student) and Noah Brooks (`organizer@ksu-go.example`, organizer for the
+- Two accounts exist at every start: Maya Chen (`student@ksu-go.example`)
+  and Noah Brooks (`organizer@ksu-go.example`, owner of the
   Robotics Club). Their demo-only passwords are listed in `../app/README.md`
   and defined in `demo_accounts.py`. They are rebuilt in memory at startup and
   never written to `data/state.json`.
-- `POST /api/auth/signup` always creates a student. No endpoint creates
-  organizers.
+- `POST /api/auth/signup` creates an account with no organizations. Any signed-in
+  user can create an organization and own several. There is no role field:
+  an organizer is someone who owns at least one organization. Seed organizations
+  have no owner except Robotics Club, owned by Noah.
 - Passwords are stored as salted scrypt hashes (N=2^17, r=8, p=1). Tokens are
   stored only as SHA-256 hashes and expire 7 days after sign-in. The server
   never logs passwords, tokens or `Authorization` headers.
 
-Sign in, then send the token as a Bearer header. Reading events and routes needs
-no token. Registering needs any account. Creating events and uploading, editing
-or confirming routes need the organizer.
+Sign in, then send the token as a Bearer header. Browsing events, routes and
+organizations needs no token. Registering, following, editing your profile and
+creating an organization need an account. Editing an organization and managing
+its events or directions require ownership of that organization.
 
 ```sh
 curl -s -X POST http://localhost:8000/api/auth/login \
@@ -62,9 +68,36 @@ curl -s -X POST http://localhost:8000/api/events/ev-04/register -H 'Authorizatio
 curl -s -X POST http://localhost:8000/api/auth/logout -H 'Authorization: Bearer <token>'
 ```
 
-A missing, unknown or expired token gets `401 unauthenticated`. A student
-calling an organizer endpoint gets `403 forbidden`. `CONTRACTS.md` section 5 has
-the full access table and the rules for `POST /api/events`.
+A missing, unknown or expired token gets `401 unauthenticated`. An account
+that does not own the required organization gets `403 forbidden`.
+`CONTRACTS.md` section 5 has the full access table.
+
+## Organizations, events and room directions
+
+- Organizations are stored on the server. `memberCount` is the owner's entered
+  number of members; `followerCount` counts actual account follows.
+- Owners can create, edit and cancel active, unended events, including seeds.
+  Cancelled events leave the map and public ranges; registering or editing them
+  returns `409 event_cancelled`. Registered users still see them in
+  `GET /api/me/registrations`, and the owner sees them in the organization's list.
+- Every event derives its `routeId` from its room's confirmed route, using the
+  room-label rule ("Room 204", or a name such as "Atrium"). Changing the room
+  rechecks it. Confirmation gives the route to every event in that room.
+- `GET /api/events/{id}/directions` returns confirmed, processing, draft, failed
+  or none. An unconfirmed draft belongs only to the event it was uploaded for.
+- Upload through `POST /api/routes?eventId={id}`, with multipart `video`,
+  `startFloor` and `destinationFloor`. The server takes the building and room
+  from the event. Ownership and the room's existing-directions check run before
+  reading the video. A confirmed room refuses uploads and another confirmation
+  with `409 room_has_route`.
+
+Rehearse in mock mode: Noah → Organization → Robotics Build Night (Math D
+Room 113) → Directions → Review draft. The prepared
+`shared/fixtures/routes/room-113.draft.json` is the real route2 output, tied to
+ev-25. Tap "Looks right", then confirm; ev-23, the Game Development Club event
+in Room 113, gains directions too. Restart the server to restore the fixture
+draft for another rehearsal. Do not upload on stage. The student demo uses
+Room 215 after ROUTE-5 adds its confirmed hand route; it is absent in this checkout.
 
 ## Test from a phone on a different network
 

@@ -7,7 +7,7 @@ import { useAppData } from '../data/AppDataContext';
 import { accountIdFor } from '../navigation/access.ts';
 import { useDemoSession } from '../settings/DemoSession';
 import { scopedStorage, type ScopableStorage } from '../settings/scopedStorage.ts';
-import { loadRegisteredEventIds, saveRegisteredEventIds } from '../settings/storage.ts';
+import { discardLegacyRegistrations } from '../settings/storage.ts';
 import { WeekChoices } from '../week/choices.ts';
 import { registerForEvent } from './register.ts';
 
@@ -46,17 +46,14 @@ export function AccountProvider({ children }: PropsWithChildren) {
   );
 
   const [registered, setRegistered] = useState<{ scope: string; ids: string[] } | null>(null);
+  // Phase C's phone record is no longer authoritative. Account registrations come from /me.
   useEffect(() => {
-    let active = true;
-    void loadRegisteredEventIds(storage).catch(() => [] as string[]).then((ids) => {
-      if (active) setRegistered({ scope, ids });
-    });
-    return () => { active = false; };
-  }, [scope, storage]);
+    void discardLegacyRegistrations(storage).catch(() => {});
+  }, [storage]);
   const ready = registered?.scope === scope;
   const registeredEventIds = useMemo(() => ready ? registered.ids : [], [ready, registered]);
 
-  // The server's record replaces the phone's; the phone keeps the ids for offline use.
+  // Keep the last server response in memory while offline; never count phone records as activity.
   const [registrations, setRegistrations] = useState<{ scope: string; list: MyRegistration[] } | null>(null);
   const verified = state.status === 'signedIn' && state.verified;
   const refreshRegistrations = useCallback(async () => {
@@ -66,7 +63,6 @@ export function AccountProvider({ children }: PropsWithChildren) {
       setRegistrations({ scope, list });
       const ids = list.map((registration) => registration.event.id);
       setRegistered({ scope, ids });
-      await saveRegisteredEventIds(storage, ids).catch(() => {});
     } catch {
       // Keep what we have; a 401 is handled by the client and signs out.
     }
@@ -79,7 +75,7 @@ export function AccountProvider({ children }: PropsWithChildren) {
       registeredIds: ready ? registeredEventIds : null,
       onCount: setRegisteredCount,
       markOffline,
-      save: (next) => saveRegisteredEventIds(storage, next),
+      save: async () => {},
     });
     setRegistered({ scope, ids });
     void refreshRegistrations();

@@ -66,9 +66,9 @@ export default function OrganizationHome() {
       {org ? <OrgHeader organization={org} /> : <Text style={text.subhead}>Loading your organization…</Text>}
 
       <View style={styles.actions}>
-        <View style={styles.action}><Button label="Edit" kind="secondary" disabled={!org || offline}
+        <View style={styles.action}><Button label="Edit organization" kind="secondary" disabled={!org || offline || state.status !== 'signedIn' || !state.verified}
           onPress={() => router.push('/organization/edit')} /></View>
-        <View style={styles.action}><Button label="Create event" disabled={!org || offline}
+        <View style={styles.action}><Button label="Create event" disabled={!org || offline || state.status !== 'signedIn' || !state.verified}
           onPress={() => router.push('/organization/create-event')} /></View>
       </View>
       {offline ? <Notice kind="info" message="Managing an organization needs the server. Showing bundled data." /> : null}

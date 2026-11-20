@@ -9,6 +9,7 @@ import { AppTitle, DataSourceBadge, headerStyles } from '../src/navigation/AppHe
 import { LaunchScreen } from '../src/navigation/Brand';
 import { showsSignIn } from '../src/navigation/access';
 import { tone } from '../src/navigation/theme';
+import { OrganizationsProvider } from '../src/orgs/OrganizationsProvider';
 import { DemoSessionProvider } from '../src/settings/DemoSession';
 
 function AppStack() {
@@ -40,6 +41,9 @@ function AppStack() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="event/[eventId]" options={{ headerTitle: 'Event' }} />
           <Stack.Screen name="route/[routeId]" options={{ headerTitle: 'Directions' }} />
+          <Stack.Screen name="org/[orgId]" options={{ headerTitle: 'Organization' }} />
+          <Stack.Screen name="new-organization" options={{ headerTitle: 'Create organization' }} />
+          <Stack.Screen name="edit-profile" options={{ headerTitle: 'Edit profile' }} />
         </Stack.Protected>
         <Stack.Screen name="settings" options={{ headerTitle: 'Settings', headerRight: () => null }} />
       </Stack>
@@ -57,7 +61,7 @@ export default function RootLayout() {
         <AppDataProvider>
           <AuthProvider>
             <AccountProvider>
-              <AppStack />
+              <OrganizationsProvider><AppStack /></OrganizationsProvider>
             </AccountProvider>
           </AuthProvider>
         </AppDataProvider>

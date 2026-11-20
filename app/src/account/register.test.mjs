@@ -4,7 +4,7 @@ import test from 'node:test';
 import { ApiRequestError, createApiClient } from '../api/client.ts';
 import { NEEDS_SERVER, NEEDS_SIGN_IN, registerForEvent } from './register.ts';
 
-const maya = { id: 'user-demo-student', name: 'Maya Chen', email: 'student@ksu-go.example', role: 'student', organizationId: null };
+const maya = { id: 'user-demo-student', name: 'Maya Chen', email: 'student@ksu-go.example', profile: { major: null, classYear: null, bio: null, avatarColor: 'gold' }, ownedOrganizationIds: [], followingOrganizationIds: [] };
 const signedIn = (verified = true) => ({ status: 'signedIn', token: 'tok-maya', user: maya, verified });
 
 function run(overrides = {}) {

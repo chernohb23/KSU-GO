@@ -61,7 +61,7 @@ const event: Event = {
   partnerOrganizationId: null, category: "other", tags: [],
   startsAt: "2026-11-17T13:00:00Z", endsAt: "2026-11-17T14:00:00Z",
   location: { buildingId: campus.buildings[0].id, room: "101" },
-  routeId: null, capacity: null, registeredCount: 0,
+  routeId: null, capacity: null, registeredCount: 0, status: "active",
 };
 
 describe("campus scene tap and selection", () => {
