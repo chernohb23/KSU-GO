@@ -28,8 +28,11 @@ class EventDetails(ContractModel):
     id: str
     title: str
     description: str
+    organizationId: str
     organizer: str
+    partnerOrganizationId: str | None
     category: Literal["academic", "social", "career", "sports", "arts", "other"]
+    tags: list[str]
     location: Location
     routeId: str | None
     capacity: int | None
@@ -44,6 +47,19 @@ class Event(EventDetails):
 class EventSeed(EventDetails):
     startsInMin: float
     durationMin: float
+
+
+class OrganizationLogo(ContractModel):
+    initials: str
+    color: Literal["gold", "ink"]
+
+
+class Organization(ContractModel):
+    id: str
+    name: str
+    description: str
+    memberCount: int
+    logo: OrganizationLogo
 
 
 class RegistrationRequest(ContractModel):

@@ -18,9 +18,9 @@ KSU-GO is a 3D campus events app. The campus is a stylized 3D map, every event t
 | Time | What the judges see | Criterion it serves |
 |---|---|---|
 | 0:00 | The problem, with our numbers: how many events KSU lists a week, and what share of surveyed students have skipped or been late to one because they could not find the room. | Campus impact |
-| 0:40 | A student opens the app. The 3D campus has a flag per event; tall flags start soonest and the pulsing ones are live. They tap one, read the card, and register. | Creativity |
+| 0:40 | A student, signed in as Maya Chen, opens the app. The 3D campus has a flag per event; tall flags start soonest and the pulsing ones are live. They tap one, read the card, and register. | Creativity |
 | 1:30 | They tap "Take me there". A low-poly 3D route walks them from the entrance, up the stairs, around the turn, to the door of Room 204. | Creativity, use of AI |
-| 2:20 | Where the route came from: an organizer filmed one plain phone video. In organizer mode we start the upload, then open the draft made from that same video this morning. The AI drafted the route, code checked it and flagged a doubtful turn, the organizer fixes that turn and confirms. A second event in the same room gets its route at once. | Use of AI |
+| 2:20 | Where the route came from: an organizer filmed one plain phone video. We sign in as the organizer, Noah Brooks of the Robotics Club, and open the Organizer tab. We point out where a new video is uploaded but don't run an upload. We open the organizer's prepared draft, made earlier from that same video. The AI drafted the route, code checked it and flagged a doubtful turn, the organizer fixes that turn and confirms. A second event in the same room gets its route at once. | Use of AI |
 | 3:40 | What it costs KSU: the measured cost and time per route, no beacons or floor plans, one route per room reused by every event there, and a rollout that starts with one building. | Feasibility |
 | 4:30 | Close: the survey number again, and the ask. | Pitch |
 
@@ -29,7 +29,7 @@ KSU-GO is a 3D campus events app. The campus is a stylized 3D map, every event t
 - **The route.** It is "drafted by AI from the video and drawn from the step list". We never call it a 3D reconstruction or a scan of the building.
 - **The verifier.** Say only what shipped. If the motion cross-check in AI-7 passes its test: "code compares each AI turn with the camera's motion in the video and flags the ones that disagree". If it is removed: "low-confidence turns are flagged".
 
-**The stage upload.** A real run does not fit inside the pitch: the video has to upload over a hotspot before any processing starts. So on stage we start an upload to show the flow, then open a draft that the same pipeline made from the same video earlier (AI-6). The pitch says so plainly. The draft is the AI's real output, uncorrected; nobody plants an error in it.
+**The prepared draft.** A real run does not fit inside the pitch: the video has to upload over a hotspot before any processing starts. So on stage nobody uploads. The upload flow stays in the app, and we mention it while showing the Organizer tab. Then we open a draft that the same pipeline made from the same video earlier (AI-6), fix it and confirm it. The pitch says so plainly. The draft is the AI's real output, uncorrected; nobody plants an error in it.
 
 **Timing claims.** The earlier reference of about 10 minutes per route was mostly MapAnything (about 8 of the 10). Slides and script quote the time and cost measured in AI-6 for the pipeline that actually shipped.
 
@@ -55,7 +55,7 @@ Whichever path wins, `campus.json` stays the logical layout (building ids, names
 4. **Video-to-route pipeline.** Video in, draft route out: Gemini timeline, lengths from walking time, stair heights from the floors the organizer enters, verifier checks. The timeline is stored per video file, so the same video never costs twice. Every draft can be finished by the organizer: no check blocks confirming unless the app's edits can clear it.
 5. **Organizer flow.** Enter the two floors, pick a video, watch progress, open the draft on its first flagged step, change, delete or insert a turn, split a walk, flip stairs, confirm. Fixing a typical draft takes under a minute.
 6. **Real routes.** At least two confirmed routes in one real KSU building, bundled in the app.
-7. **Offline demo.** The app runs the whole student flow from bundled fixtures with no server.
+7. **Offline demo.** With no server, a guest can browse today's and this week's events and walk any confirmed route from bundled data; registering and organizer actions need a sign-in.
 8. **Impact data.** Survey results and OwlLife event counts, collected by us.
 9. **Feasibility slide and a rehearsed 5-minute pitch,** with a backup screen recording.
 
@@ -74,11 +74,11 @@ Whichever path wins, `campus.json` stays the logical layout (building ids, names
 
 ## Cut
 
-- Real OwlLife data, logins and accounts. The feasibility slide covers how they would plug in.
+- Real OwlLife data and university sign-in (SSO). The app has server-checked demo accounts only. The feasibility slide covers how SSO and OwlLife data would plug in.
 - Android, and any native build.
 - Outdoor navigation and live GPS position on the map.
 - The whole campus, and matching the real campus exactly. One stylized section only.
-- Organizers creating events. They attach routes to existing fake events.
+- Editing, cancelling or repeating events, and creating events more than seven days ahead. Organizers create one-off events within the next seven days.
 - Multi-building routes and room interiors.
 - AR, and anything captured in-app. The organizer picks a video from the camera roll.
 - Stitching the raw 3D reconstruction. The route is drawn from the step list.

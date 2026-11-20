@@ -3,8 +3,10 @@ from datetime import datetime
 from shutil import copytree
 
 import pytest
+from pydantic import TypeAdapter
 
 from conftest import FIXTURES_DIR
+from models import EventSeed, Organization
 
 
 def test_health_defaults_to_mock(make_client):
@@ -64,6 +66,24 @@ def test_event_detail_serves_seeded_event(client):
     assert response.status_code == 200
     assert response.json()["title"] == "Robotics Club Meeting"
     assert response.json()["routeId"] == "route-sample"
+    assert response.json()["organizationId"] == "org-robotics-club"
+    assert response.json()["partnerOrganizationId"] is None
+    assert response.json()["tags"] == ["robotics", "engineering", "club-meeting"]
+
+
+def test_organizations_fixture_covers_every_seed_event():
+    organizations = TypeAdapter(list[Organization]).validate_json(
+        (FIXTURES_DIR / "organizations.json").read_bytes()
+    )
+    seeds = TypeAdapter(list[EventSeed]).validate_json(
+        (FIXTURES_DIR / "events.seed.json").read_bytes()
+    )
+    names = {organization.id: organization.name for organization in organizations}
+    assert len(names) == len(organizations)
+    for seed in seeds:
+        assert names[seed.organizationId] == seed.organizer
+        assert seed.partnerOrganizationId in names.keys() | {None}
+        assert seed.partnerOrganizationId != seed.organizationId
 
 
 @pytest.mark.parametrize(("route_id", "expected_status"), [

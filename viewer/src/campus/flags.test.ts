@@ -12,7 +12,8 @@ const [building] = campus.buildings;
 
 function event(id: string, start: number, end: number, buildingId = building.id): Event {
   return {
-    id, title: "Sample event", description: "", organizer: "", category: "academic",
+    id, title: "Sample event", description: "", organizationId: "org-test", organizer: "",
+    partnerOrganizationId: null, category: "academic", tags: [],
     startsAt: minutes(start), endsAt: minutes(end),
     location: { buildingId, room: "101" },
     routeId: null, capacity: null, registeredCount: 0,

@@ -9,7 +9,7 @@ KSU-GO is a mobile app that helps Kennesaw State University students find and re
 - **Indoor route.** A low-poly 3D route from the building entrance to the room door, with stairs, elevators, turns and floors.
 - **Video-to-route.** An organizer films one phone video from the entrance to the room, and AI turns it into the route. This is the core of the product.
 
-**AI drafts, code verifies, the organizer confirms.** Students never see AI output directly. Event data is seeded sample data, with no login and no connection to real university systems.
+**AI drafts, code verifies, the organizer confirms.** Students never see AI output directly. Event data is seeded sample data or created on the demo server. Demo accounts are checked by the server and choose the student or organizer experience; there is no university sign-in (SSO) and no connection to real university systems.
 
 ## Where things are
 
