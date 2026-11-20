@@ -49,7 +49,7 @@ export function createCampusScene(
   Object.assign(credit.style, {
     position: "absolute",
     right: "6px",
-    top: "8px",
+    top: "52px",
     padding: "1px 6px",
     borderRadius: "4px",
     background: css(palette.ui.surface, 0.75),
@@ -360,7 +360,7 @@ function createFlagLegend(): HTMLElement {
   legend.hidden = true;
   Object.assign(legend.style, {
     position: "absolute",
-    top: "8px",
+    top: "52px",
     left: "8px",
     zIndex: "1",
     padding: "5px 8px",
@@ -392,7 +392,9 @@ function createFlagLegend(): HTMLElement {
   }
   const height = document.createElement("div");
   height.textContent = "Taller flags start sooner";
-  legend.append(key, height);
+  const saved = document.createElement("div");
+  saved.textContent = "★ Saved event";
+  legend.append(key, height, saved);
   return legend;
 }
 

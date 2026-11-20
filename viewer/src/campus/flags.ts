@@ -1,5 +1,5 @@
 import {
-  BufferAttribute, BufferGeometry, CylinderGeometry, DoubleSide, Group,
+  BufferAttribute, BufferGeometry, CircleGeometry, CylinderGeometry, DoubleSide, Group,
   Mesh, MeshBasicMaterial, PlaneGeometry, RingGeometry, Shape, ShapeGeometry,
 } from "three";
 import type { Event } from "../../../shared/types";
@@ -39,10 +39,15 @@ function savedStar() {
   const star = new Mesh(new ShapeGeometry(shape), new MeshBasicMaterial({
     color: palette.ui.text, side: DoubleSide, depthTest: false, depthWrite: false,
   }));
-  star.name = "flag-saved";
-  star.position.y = 5;
-  star.renderOrder = 3;
-  return star;
+  star.renderOrder = 4;
+  const badge = new Mesh(new CircleGeometry(5.8, 20), new MeshBasicMaterial({
+    color: palette.demo.trim, side: DoubleSide, depthTest: false, depthWrite: false,
+  }));
+  badge.name = "flag-saved";
+  badge.position.y = 6;
+  badge.renderOrder = 3;
+  badge.add(star);
+  return badge;
 }
 
 export const createFlags: CreateFlags = (flagsLayer, campus, events, now, savedEventIds) => {
