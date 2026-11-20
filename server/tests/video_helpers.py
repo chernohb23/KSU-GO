@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 import struct
 from time import monotonic, sleep
 
@@ -116,16 +117,34 @@ def movie_bytes(seconds=1, handler=b"vide", chunk_offset=None, fragments=0, unkn
     return stream
 
 
-def upload(client, *, video=None, **fields):
-    form = {
-        "buildingId": "b-mathematics",
-        "destination": "Room 204",
-        "startFloor": "1",
-        "destinationFloor": "2",
-    }
+def owned_event(client, *, building="b-library", room="310", starts_at=None, title="Directions test"):
+    """Create an event that Noah's Robotics Club hosts, and return its id."""
+    starts_at = starts_at or datetime.now(UTC) + timedelta(hours=2)
+    response = client.post("/api/events", json={
+        "title": title, "description": "An event to record directions for.",
+        "organizationId": "org-robotics-club", "partnerOrganizationId": None, "category": "academic",
+        "tags": [], "startsAt": starts_at.isoformat(), "durationMin": 60,
+        "location": {"buildingId": building, "room": room}, "capacity": None,
+    })
+    assert response.status_code == 201, response.text
+    return response.json()["id"]
+
+
+def upload(client, *, video=None, eventId=None, buildingId="b-library", destination="Room 310", **fields):
+    """POST /api/routes?eventId=... (CONTRACTS.md section 5).
+
+    Without an eventId, first creates an owned event in the room that `buildingId`
+    and `destination` name, so older tests keep their room. The room must have no
+    confirmed route.
+    """
+    if eventId is None:
+        room = destination.strip()
+        room = room[5:].strip() if room.casefold().startswith("room ") else room
+        eventId = owned_event(client, building=buildingId, room=room)
+    form = {"startFloor": "1", "destinationFloor": "2"} | fields
     return client.post(
-        "/api/routes",
-        data=form | fields,
+        f"/api/routes?eventId={eventId}",
+        data=form,
         files={"video": ("hallway.mov", movie_bytes() if video is None else video, "video/quicktime")},
     )
 

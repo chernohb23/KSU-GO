@@ -41,24 +41,51 @@ export class AuthFormError extends Error {}
 
 type SavedSession = { token: string; user: User };
 
+const AVATAR_COLORS = new Set(['gold', 'ink', 'amber']);
+const stringList = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+const optionalText = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+
+/** A saved user, including one saved by phase C (role and organizationId, no profile). /me replaces it. */
+function parseUser(value: unknown): User | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const user = value as Record<string, unknown>;
+  if (typeof user.id !== 'string' || typeof user.name !== 'string' || typeof user.email !== 'string') return null;
+  const profile = (typeof user.profile === 'object' && user.profile !== null ? user.profile : {}) as Record<string, unknown>;
+  return {
+    id: user.id, name: user.name, email: user.email,
+    profile: {
+      major: optionalText(profile.major),
+      classYear: typeof profile.classYear === 'number' ? profile.classYear : null,
+      bio: optionalText(profile.bio),
+      avatarColor: AVATAR_COLORS.has(profile.avatarColor as string) ? (profile.avatarColor as User['profile']['avatarColor']) : 'gold',
+    },
+    ownedOrganizationIds: stringList(user.ownedOrganizationIds),
+    followingOrganizationIds: stringList(user.followingOrganizationIds),
+  };
+}
+
 function parseSession(raw: string | null): SavedSession | null {
   if (!raw) return null;
   try {
     const value: unknown = JSON.parse(raw);
     if (typeof value !== 'object' || value === null) return null;
-    const { token, user } = value as Partial<SavedSession>;
-    if (typeof token !== 'string' || typeof user !== 'object' || user === null) return null;
-    if (typeof user.id !== 'string' || typeof user.name !== 'string' || typeof user.email !== 'string') return null;
-    if (user.role !== 'student' && user.role !== 'organizer') return null;
-    return { token, user: { ...user, organizationId: user.organizationId ?? null } };
+    const { token, user } = value as { token?: unknown; user?: unknown };
+    const parsed = parseUser(user);
+    return typeof token === 'string' && parsed ? { token, user: parsed } : null;
   } catch {
     return null;
   }
 }
 
+const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((item, i) => item === b[i]);
+
 function sameUser(a: User, b: User): boolean {
-  return a.id === b.id && a.name === b.name && a.email === b.email && a.role === b.role
-    && a.organizationId === b.organizationId;
+  return a.id === b.id && a.name === b.name && a.email === b.email
+    && a.profile.major === b.profile.major && a.profile.classYear === b.profile.classYear
+    && a.profile.bio === b.profile.bio && a.profile.avatarColor === b.profile.avatarColor
+    && sameList(a.ownedOrganizationIds, b.ownedOrganizationIds)
+    && sameList(a.followingOrganizationIds, b.followingOrganizationIds);
 }
 
 async function withTimeout<T>(request: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
@@ -169,6 +196,14 @@ export class AuthController {
     }
     await this.save(response);
     this.set({ status: 'signedIn', token: response.token, user: response.user, verified: true });
+  }
+
+  /** A fresh user from the server (after creating an organization, editing the profile, following). */
+  async setUser(user: User): Promise<void> {
+    const state = this.current;
+    if (state.status !== 'signedIn' || state.user.id !== user.id || sameUser(state.user, user)) return;
+    this.set({ ...state, user });
+    await this.save({ token: state.token, user });
   }
 
   browseOffline() {

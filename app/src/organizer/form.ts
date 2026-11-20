@@ -1,6 +1,7 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
 import type { Event } from '../../../shared/types.ts';
 import type { UploadRouteInput } from '../api/client.ts';
+import { roomLabel } from '../../../shared/rooms.ts';
 
 type VideoAsset = Pick<ImagePickerAsset, 'uri' | 'fileName' | 'mimeType' | 'fileSize' | 'duration'>;
 type VideoFile = UploadRouteInput['video'];
@@ -62,7 +63,7 @@ export function uploadInput(
     throw new Error('Enter a whole number for each floor.');
   }
   return {
-    eventId: event.id, buildingId: event.location.buildingId, destination: `Room ${event.location.room}`,
+    eventId: event.id, buildingId: event.location.buildingId, destination: roomLabel(event.location.room),
     startFloor, destinationFloor, video,
   };
 }

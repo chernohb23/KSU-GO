@@ -8,33 +8,26 @@ server hashes them at startup like any other password and never writes them to
 
 from typing import TypedDict
 
-from models import Role
-
 
 class DemoAccount(TypedDict):
     id: str
     name: str
     email: str
     password: str
-    role: Role
-    organizationId: str | None
 
 
+# Noah owns org-robotics-club through its ownerId in organizations.json.
 DEMO_ACCOUNTS: tuple[DemoAccount, ...] = (
     {
         "id": "user-demo-student",
         "name": "Maya Chen",
         "email": "student@ksu-go.example",
         "password": "StudentDemo!26",
-        "role": "student",
-        "organizationId": None,
     },
     {
         "id": "user-demo-organizer",
         "name": "Noah Brooks",
         "email": "organizer@ksu-go.example",
         "password": "OrganizerDemo!26",
-        "role": "organizer",
-        "organizationId": "org-robotics-club",
     },
 )

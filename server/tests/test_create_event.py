@@ -1,11 +1,12 @@
 """POST /api/events (CONTRACTS.md section 5, "Creating events")."""
 
 import json
+from shutil import copytree
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from conftest import Clock, sign_in
+from conftest import FIXTURES_DIR, Clock, sign_in
 from video_helpers import upload, wait_for_draft
 
 
@@ -13,7 +14,7 @@ NOW = datetime(2026, 11, 19, 17, 0, tzinfo=UTC)
 EASTERN = timezone(timedelta(hours=-5))
 EVENT_KEYS = {
     "id", "title", "description", "organizationId", "organizer", "partnerOrganizationId",
-    "category", "tags", "startsAt", "endsAt", "location", "routeId", "capacity", "registeredCount",
+    "category", "tags", "startsAt", "endsAt", "location", "routeId", "capacity", "registeredCount", "status",
 }
 
 
@@ -204,25 +205,47 @@ def test_every_key_is_required(organizer, missing):
     assert organizer.post("/api/events", json=fields).status_code == 422
 
 
-def test_room_reuses_its_most_recently_confirmed_route(make_client, clock):
+def test_every_event_uses_its_rooms_confirmed_route(make_client, clock):
     math_204 = {"buildingId": "b-mathematics", "room": "204"}
+    math_113 = {"buildingId": "b-mathematics", "room": "113"}
     with make_client(clock=clock) as client:
-        first = create(client, location=math_204).json()
-        assert first["routeId"] == "route-sample"  # the only confirmed route for that room
-        draft = client.get("/api/routes/route-placeholder-draft").json()
-        steps = [step for step in draft["steps"] if step["id"] != "s12"]
-        assert client.put("/api/routes/route-placeholder-draft/steps", json={"steps": steps}).status_code == 200
+        in_204 = create(client, location=math_204).json()
+        assert in_204["routeId"] == "route-sample"  # Room 204 has a confirmed route
+        in_113 = create(client, location=math_113).json()
+        assert in_113["routeId"] is None  # Room 113 starts without directions
+        # Recording directions for a room that has them is refused, before the video is read.
+        refused = upload(client, eventId=in_204["id"])
+        assert refused.status_code == 409
+        assert refused.json()["error"] == {
+            "code": "room_has_route", "message": "This room already has directions. Events here use them.",
+        }
         clock.advance(minutes=5)
-        assert client.post("/api/routes/route-placeholder-draft/confirm").status_code == 200
-        clock.advance(minutes=5)
-        second = create(client, location={"buildingId": "b-mathematics", "room": " 204 "}).json()
-        assert second["routeId"] == "route-placeholder-draft"
-        assert client.get(f"/api/events/{first['id']}").json()["routeId"] == "route-sample"
-    # Fixture confirmations reset on restart, so that link would point at a draft again.
+        assert client.post("/api/routes/route-math-113-draft/confirm").status_code == 200
+        later = create(client, location={"buildingId": "b-mathematics", "room": " 113 "}).json()
+        assert later["routeId"] == "route-math-113-draft"
+        assert client.get(f"/api/events/{in_113['id']}").json()["routeId"] == "route-math-113-draft"
+        assert client.get(f"/api/events/{in_204['id']}").json()["routeId"] == "route-sample"
+        # Moving an event re-checks its room.
+        moved = client.put(f"/api/events/{in_113['id']}", json={
+            k: v for k, v in body(location=math_204).items() if k != "organizationId"
+        } | {"startsAt": in_113["startsAt"]})
+        assert moved.status_code == 200
+        assert moved.json()["routeId"] == "route-sample"
+    # Bundled routes reset on restart: Room 113 is without directions again.
     with make_client(clock=clock, as_user=None) as client:
-        assert client.get("/api/routes/route-placeholder-draft").json()["status"] == "draft"
-        assert client.get(f"/api/events/{second['id']}").json()["routeId"] == "route-sample"
-        assert client.get(f"/api/events/{first['id']}").json()["routeId"] == "route-sample"
+        assert client.get("/api/routes/route-math-113-draft").json()["status"] == "draft"
+        assert client.get(f"/api/events/{later['id']}").json()["routeId"] is None
+        assert client.get(f"/api/events/{in_204['id']}").json()["routeId"] == "route-sample"
+
+
+def test_the_most_recently_confirmed_route_wins_in_a_room(make_client, clock, tmp_path):
+    fixtures_dir = copytree(FIXTURES_DIR, tmp_path / "fixtures")
+    newer = json.loads((fixtures_dir / "route.sample.json").read_text()) | {
+        "id": "route-204-newer", "confirmedAt": "2026-11-18T09:00:00-05:00",
+    }
+    (fixtures_dir / "routes" / "route-204-newer.json").write_text(json.dumps(newer))
+    with make_client(fixtures_dir, clock=clock, as_user=None) as client:
+        assert client.get("/api/events/ev-10").json()["routeId"] == "route-204-newer"
 
 
 def test_a_later_confirm_gives_a_created_event_its_route(make_client, clock, monkeypatch):
@@ -232,7 +255,7 @@ def test_a_later_confirm_gives_a_created_event_its_route(make_client, clock, mon
     with make_client(clock=clock) as client:
         event = create(client, location={"buildingId": "b-library", "room": "310"}).json()
         assert event["routeId"] is None
-        route_id = upload(client, buildingId="b-library", destination="Room 310").json()["id"]
+        route_id = upload(client, eventId=event["id"]).json()["id"]
         draft, _ = wait_for_draft(client, route_id)
         steps = [step for step in draft["steps"] if step["id"] != "s12"]
         assert client.put(f"/api/routes/{route_id}/steps", json={"steps": steps}).status_code == 200

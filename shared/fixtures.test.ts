@@ -3,13 +3,14 @@
 // compiler checks the parser against the type and the test checks the JSON.
 
 import { describe, expect, it } from "vitest";
-import type { Campus, Check, Event, EventSeed, Organization, Route, Step, StepBase } from "./types";
+import type { Campus, Check, Event, EventSeed, OrganizationSeed, Route, Step, StepBase } from "./types";
+import { roomLabel, servesRoom } from "./rooms";
 import seedJson from "./fixtures/events.seed.json";
 import organizationsJson from "./fixtures/organizations.json";
 import campusJson from "./fixtures/campus.json";
 import sampleJson from "./fixtures/route.sample.json";
 import flawedJson from "./fixtures/route.draft-flawed.json";
-import placeholderJson from "./fixtures/routes/placeholder.draft.json";
+import stageDraftJson from "./fixtures/routes/room-113.draft.json";
 
 // ---- Generic helpers ----
 
@@ -85,14 +86,15 @@ const TURN_DIRECTIONS: Record<Extract<Step, { type: "turn" }>["direction"], true
 };
 const STAIR_DIRECTIONS: Record<Extract<Step, { type: "stairs" }>["direction"], true> = { up: true, down: true };
 const LEVELS: Record<Check["level"], true> = { pass: true, warn: true, fail: true };
-const LOGO_COLORS: Record<Organization["logo"]["color"], true> = { gold: true, ink: true };
+const LOGO_COLORS: Record<OrganizationSeed["logo"]["color"], true> = { gold: true, ink: true };
+const EVENT_STATUSES: Record<Event["status"], true> = { active: true, cancelled: true };
 
 // ---- Parsers, one per contract type ----
 
 function parseEventSeed(v: unknown, path: string): EventSeed {
   const o = obj(v, path);
   keys(o, ["id", "title", "description", "organizationId", "organizer", "partnerOrganizationId", "category",
-    "tags", "startsInMin", "durationMin", "location", "routeId", "capacity", "registeredCount"], path);
+    "tags", "startsInMin", "durationMin", "location", "routeId", "capacity", "registeredCount", "status"], path);
   const loc = obj(get(o, "location"), `${path}.location`);
   keys(loc, ["buildingId", "room"], `${path}.location`);
   return {
@@ -113,12 +115,13 @@ function parseEventSeed(v: unknown, path: string): EventSeed {
     routeId: nullable(get(o, "routeId"), `${path}.routeId`, str),
     capacity: nullable(get(o, "capacity"), `${path}.capacity`, num),
     registeredCount: num(get(o, "registeredCount"), `${path}.registeredCount`),
+    status: oneOf(EVENT_STATUSES, get(o, "status"), `${path}.status`),
   };
 }
 
-function parseOrganization(v: unknown, path: string): Organization {
+function parseOrganization(v: unknown, path: string): OrganizationSeed {
   const o = obj(v, path);
-  keys(o, ["id", "name", "description", "memberCount", "logo"], path);
+  keys(o, ["id", "name", "description", "memberCount", "logo", "meets", "contactEmail", "website", "ownerId"], path);
   const logo = obj(get(o, "logo"), `${path}.logo`);
   keys(logo, ["initials", "color"], `${path}.logo`);
   return {
@@ -130,6 +133,10 @@ function parseOrganization(v: unknown, path: string): Organization {
       initials: str(get(logo, "initials"), `${path}.logo.initials`),
       color: oneOf(LOGO_COLORS, get(logo, "color"), `${path}.logo.color`),
     },
+    meets: nullable(get(o, "meets"), `${path}.meets`, str),
+    contactEmail: nullable(get(o, "contactEmail"), `${path}.contactEmail`, str),
+    website: nullable(get(o, "website"), `${path}.website`, str),
+    ownerId: nullable(get(o, "ownerId"), `${path}.ownerId`, str),
   };
 }
 
@@ -275,7 +282,7 @@ const organizations = lazy(() => arr(organizationsJson, "organizations.json", pa
 const campus = lazy(() => parseCampus(campusJson, "campus.json"));
 const sample = lazy(() => parseRoute(sampleJson, "route.sample.json"));
 const flawed = lazy(() => parseRoute(flawedJson, "route.draft-flawed.json"));
-const placeholder = lazy(() => parseRoute(placeholderJson, "routes/placeholder.draft.json"));
+const stageDraft = lazy(() => parseRoute(stageDraftJson, "routes/room-113.draft.json"));
 
 const ISO_WITH_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}:\d{2}|Z)$/;
 const SOON_MIN = 60;
@@ -312,8 +319,8 @@ describe("fixture shapes", () => {
   it("route.draft-flawed.json matches Route", () => {
     expect(flawed().id).toBe("route-draft-flawed");
   });
-  it("routes/placeholder.draft.json matches Route", () => {
-    expect(placeholder().id).toBe("route-placeholder-draft");
+  it("routes/room-113.draft.json matches Route", () => {
+    expect(stageDraft().id).toBe("route-math-113-draft");
   });
 });
 
@@ -360,33 +367,51 @@ describe("events.seed.json", () => {
       + week.length).toBe(all.length);
   });
 
-  it("has exactly two today-events on route-sample at b-mathematics/204, one of them soon", () => {
-    const onSample = seeds().filter((e) => e.routeId === "route-sample");
-    expect(onSample).toHaveLength(2);
-    for (const e of onSample) {
-      expect(isToday(e), e.id).toBe(true);
-      expect(inMath204(e), e.id).toBe(true);
+  // Every event uses its room's most recently confirmed route (CONTRACTS.md section 2), so a seed's
+  // routeId must equal what the server derives from the bundled confirmed routes.
+  it("gives every seed its room's confirmed bundled route, or null", () => {
+    const confirmed = [sample(), stageDraft()].filter((r) => r.status === "confirmed");
+    for (const e of seeds()) {
+      const serving = confirmed.filter((r) => servesRoom(r, e.location));
+      expect(e.routeId, e.id).toBe(serving.length ? serving[serving.length - 1].id : null);
     }
-    expect(onSample.some(isSoon)).toBe(true);
   });
 
-  it("has exactly one other event at b-mathematics/204, with no route", () => {
-    const others = seeds().filter((e) => inMath204(e) && e.routeId !== "route-sample");
-    expect(others).toHaveLength(1);
-    expect(others[0]?.routeId).toBeNull();
+  it("puts the student demo in Mathematics Room 215, with one event starting soon", () => {
+    const demo = seeds().filter((e) => e.location.buildingId === "b-mathematics" && e.location.room === "215");
+    expect(demo.map((e) => e.id).sort()).toEqual(["ev-04", "ev-08"]);
+    expect(demo.every(isToday)).toBe(true);
+    expect(demo.some(isSoon)).toBe(true);
   });
 
-  it("matches the route-sample destination room", () => {
+  it("keeps Room 113 without directions, with Robotics Build Night and a Game Development Club event", () => {
+    const room = (e: EventSeed) => e.location.buildingId === "b-mathematics" && e.location.room === "113";
+    const inRoom = seeds().filter(room);
+    expect(inRoom.map((e) => [e.id, e.organizationId]).sort()).toEqual([
+      ["ev-23", "org-game-development-club"], ["ev-25", "org-robotics-club"],
+    ]);
+    expect(inRoom.every((e) => e.routeId === null)).toBe(true);
+    expect(inRoom.find((e) => e.id === "ev-25")?.title).toBe("Robotics Build Night");
+    expect(inRoom.every((e) => e.startsInMin < WEEK_MIN)).toBe(true);
+  });
+
+  it("matches the route-sample destination room through the room label", () => {
     const route = sample();
-    for (const e of seeds().filter((s) => s.routeId === "route-sample")) {
+    const onSample = seeds().filter((s) => s.routeId === "route-sample");
+    expect(onSample.length).toBeGreaterThan(0);
+    for (const e of onSample) {
       expect(e.location.buildingId).toBe(route.buildingId);
-      expect(`Room ${e.location.room}`).toBe(route.destination);
+      expect(roomLabel(e.location.room)).toBe(route.destination);
     }
+  });
+
+  it("has every seed event active", () => {
+    for (const e of seeds()) expect(e.status, e.id).toBe("active");
   });
 });
 
 describe("organizations.json", () => {
-  function org(id: string): Organization {
+  function org(id: string): OrganizationSeed {
     const found = organizations().find((o) => o.id === id);
     if (found === undefined) throw new Error(`no organization ${id}`);
     return found;
@@ -401,6 +426,16 @@ describe("organizations.json", () => {
       expect(Number.isInteger(o.memberCount) && o.memberCount > 0, o.id).toBe(true);
       expect(o.name.length, o.id).toBeGreaterThan(0);
       expect(o.description.length, o.id).toBeGreaterThan(0);
+    }
+  });
+
+  it("has only Noah owning an organization, and valid contact fields", () => {
+    const owned = organizations().filter((o) => o.ownerId !== null);
+    expect(owned.map((o) => [o.id, o.ownerId])).toEqual([["org-robotics-club", "user-demo-organizer"]]);
+    for (const o of organizations()) {
+      if (o.website !== null) expect(o.website, o.id).toMatch(/^https:\/\/[^\s]+$/);
+      if (o.contactEmail !== null) expect(o.contactEmail, o.id).toMatch(/^[^@\s]+@[^@\s]+$/);
+      if (o.meets !== null) expect(o.meets.length, o.id).toBeLessThanOrEqual(80);
     }
   });
 
@@ -502,7 +537,7 @@ describe("campus.json", () => {
 describe.each([
   ["route.sample.json", sample],
   ["route.draft-flawed.json", flawed],
-  ["routes/placeholder.draft.json", placeholder],
+  ["routes/room-113.draft.json", stageDraft],
 ])("%s structure", (_name, load) => {
   it("has unique step ids", () => {
     const ids = load().steps.map((s) => s.id);
@@ -518,6 +553,25 @@ describe.each([
     if (last?.type === "door") expect(last.label).toBe(route.destination);
   });
 
+  it("uses ISO 8601 times with offset and a buildingId from campus.json", () => {
+    const route = load();
+    expect(route.createdAt).toMatch(ISO_WITH_OFFSET);
+    if (route.confirmedAt !== null) expect(route.confirmedAt).toMatch(ISO_WITH_OFFSET);
+    expect(campus().buildings.map((b) => b.id)).toContain(route.buildingId);
+  });
+
+  it("points every check's stepId at a real step", () => {
+    const route = load();
+    const ids = new Set(route.steps.map((s) => s.id));
+    for (const c of route.checks) if (c.stepId !== null) expect(ids.has(c.stepId), c.id).toBe(true);
+  });
+});
+
+// Hand-written fixtures fill every field. Real AI output may leave a note or a confidence empty.
+describe.each([
+  ["route.sample.json", sample],
+  ["route.draft-flawed.json", flawed],
+])("%s hand-written fields", (_name, load) => {
   it("fills every StepBase field, with tSec increasing", () => {
     let prev = -Infinity;
     for (const s of load().steps) {
@@ -531,18 +585,6 @@ describe.each([
     }
   });
 
-  it("uses ISO 8601 times with offset and a buildingId from campus.json", () => {
-    const route = load();
-    expect(route.createdAt).toMatch(ISO_WITH_OFFSET);
-    if (route.confirmedAt !== null) expect(route.confirmedAt).toMatch(ISO_WITH_OFFSET);
-    expect(campus().buildings.map((b) => b.id)).toContain(route.buildingId);
-  });
-
-  it("points every check's stepId at a real step", () => {
-    const route = load();
-    const ids = new Set(route.steps.map((s) => s.id));
-    for (const c of route.checks) if (c.stepId !== null) expect(ids.has(c.stepId), c.id).toBe(true);
-  });
 });
 
 describe("route.sample.json", () => {
@@ -607,10 +649,17 @@ describe("route.draft-flawed.json", () => {
   });
 });
 
-describe("routes/placeholder.draft.json", () => {
-  it("deep-equals the flawed draft except for its id", () => {
-    const p = placeholder();
-    expect(p.id).toBe("route-placeholder-draft");
-    expect({ ...p, id: flawed().id }).toEqual(flawed());
+describe("routes/room-113.draft.json (the prepared stage draft)", () => {
+  it("is the AI's draft for Mathematics Room 113, uncorrected and unconfirmed", () => {
+    const d = stageDraft();
+    expect(d).toMatchObject({ id: "route-math-113-draft", status: "draft", buildingId: "b-mathematics",
+      destination: "Room 113", startFloor: "1", destinationFloor: "1", confirmedAt: null, progress: null });
+    for (const step of d.steps) expect(step.source, step.id).toBe("ai");
+    const times = d.steps.map((step) => step.tSec ?? -1);
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+  });
+
+  it("is for a room that has no confirmed route", () => {
+    expect(servesRoom(sample(), { buildingId: "b-mathematics", room: "113" })).toBe(false);
   });
 });

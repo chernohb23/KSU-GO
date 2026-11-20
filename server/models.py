@@ -9,7 +9,9 @@ PipelineMode = Literal["mock", "live"]
 EventRange = Literal["today", "week"]
 Stage = Literal["ingest", "timeline", "geometry", "assemble", "verify"]
 Category = Literal["academic", "social", "career", "sports", "arts", "other"]
-Role = Literal["student", "organizer"]
+EventStatus = Literal["active", "cancelled"]
+AvatarColor = Literal["gold", "ink", "amber"]
+LogoColor = Literal["gold", "ink"]
 
 
 class ContractModel(BaseModel):
@@ -39,6 +41,7 @@ class EventDetails(ContractModel):
     routeId: str | None
     capacity: int | None
     registeredCount: int
+    status: EventStatus
 
 
 class Event(EventDetails):
@@ -67,20 +70,58 @@ class Campus(ContractModel):
 
 class OrganizationLogo(ContractModel):
     initials: str
-    color: Literal["gold", "ink"]
+    color: LogoColor
 
 
-class Organization(ContractModel):
+class OrganizationSeed(ContractModel):
+    """An organization as stored: the seed file and state.json. Followers are counted on read."""
     id: str
     name: str
     description: str
     memberCount: int
     logo: OrganizationLogo
+    meets: str | None
+    contactEmail: str | None
+    website: str | None
+    ownerId: str | None
+
+
+class Organization(OrganizationSeed):
+    followerCount: int
+
+
+class OrganizationRequest(ContractModel):
+    """Shape only; org_rules.py applies the contract's value rules."""
+    name: str
+    description: str
+    logo: OrganizationLogo
+    memberCount: int
+    meets: str | None
+    contactEmail: str | None
+    website: str | None
+
+
+class FollowResponse(ContractModel):
+    following: bool
+    followerCount: int
 
 
 class Registration(ContractModel):
     registered: Literal[True] = True
     registeredCount: int
+
+
+class EditEventRequest(ContractModel):
+    """Body of PUT /api/events/{id}: CreateEventRequest without organizationId."""
+    title: str
+    description: str
+    partnerOrganizationId: str | None
+    category: Category
+    tags: list[str]
+    startsAt: str
+    durationMin: int
+    location: Location
+    capacity: int | None
 
 
 class CreateEventRequest(ContractModel):
@@ -98,12 +139,45 @@ class CreateEventRequest(ContractModel):
     capacity: int | None
 
 
+class Profile(ContractModel):
+    major: str | None = None
+    classYear: int | None = None
+    bio: str | None = None
+    avatarColor: AvatarColor = "gold"
+
+
 class User(ContractModel):
     id: str
     name: str
     email: str
-    role: Role
-    organizationId: str | None
+    profile: Profile
+    ownedOrganizationIds: list[str]
+    followingOrganizationIds: list[str]
+
+
+class ProfileRequest(ContractModel):
+    """Shape only; profile_rules.py applies the contract's value rules."""
+    name: str
+    major: str | None
+    classYear: int | None
+    bio: str | None
+    avatarColor: AvatarColor
+
+
+class MyRegistration(ContractModel):
+    event: "Event"
+    registeredAt: AwareDatetime
+
+
+class RegisteredPerson(ContractModel):
+    userId: str
+    name: str
+    registeredAt: AwareDatetime
+
+
+class EventRegistrations(ContractModel):
+    registeredCount: int
+    people: list[RegisteredPerson]
 
 
 class AuthResponse(ContractModel):
@@ -200,3 +274,8 @@ class Route(ContractModel):
     stats: Stats | None
     createdAt: AwareDatetime
     confirmedAt: AwareDatetime | None
+
+
+class EventDirections(ContractModel):
+    state: Literal["confirmed", "processing", "draft", "failed", "none"]
+    route: Route | None

@@ -5,8 +5,8 @@ from shutil import copytree
 import pytest
 from pydantic import TypeAdapter
 
-from conftest import FIXTURES_DIR, sign_in
-from models import EventSeed, Organization
+from conftest import FIXTURES_DIR, Clock, sign_in
+from models import EventSeed, OrganizationSeed
 
 
 def test_health_defaults_to_mock(make_client):
@@ -29,12 +29,13 @@ def test_events_default_to_today_and_week_includes_later_events(client):
     today = client.get("/api/events").json()
     week = client.get("/api/events?range=week").json()
     assert len(today) == 12
-    assert len(week) == 24
+    assert len(week) == 25
     assert [event["id"] for event in today] == [
         f"ev-{index:02}" for index in range(1, 13)
     ]
     assert week[:12] == today
     assert week[12]["id"] == "ev-13"
+    assert week[13]["id"] == "ev-25"  # Robotics Build Night, tomorrow
     starts_at = datetime.fromisoformat(today[0]["startsAt"])
     ends_at = datetime.fromisoformat(today[0]["endsAt"])
     assert starts_at.utcoffset() is not None
@@ -65,14 +66,18 @@ def test_event_detail_serves_seeded_event(client):
     response = client.get("/api/events/ev-04")
     assert response.status_code == 200
     assert response.json()["title"] == "Robotics Club Meeting"
-    assert response.json()["routeId"] == "route-sample"
+    # The student demo is in Room 215, which gets ROUTE-5's hand route; until then it has none.
+    assert response.json()["location"] == {"buildingId": "b-mathematics", "room": "215"}
+    assert response.json()["routeId"] is None
+    assert response.json()["status"] == "active"
+    assert client.get("/api/events/ev-10").json()["routeId"] == "route-sample"
     assert response.json()["organizationId"] == "org-robotics-club"
     assert response.json()["partnerOrganizationId"] is None
     assert response.json()["tags"] == ["robotics", "engineering", "club-meeting"]
 
 
 def test_organizations_fixture_covers_every_seed_event():
-    organizations = TypeAdapter(list[Organization]).validate_json(
+    organizations = TypeAdapter(list[OrganizationSeed]).validate_json(
         (FIXTURES_DIR / "organizations.json").read_bytes()
     )
     seeds = TypeAdapter(list[EventSeed]).validate_json(
@@ -86,15 +91,15 @@ def test_organizations_fixture_covers_every_seed_event():
         assert seed.partnerOrganizationId != seed.organizationId
 
 
-@pytest.mark.parametrize(("route_id", "expected_status"), [
-    ("route-sample", "confirmed"),
-    ("route-placeholder-draft", "draft"),
+@pytest.mark.parametrize(("route_id", "expected_status", "room"), [
+    ("route-sample", "confirmed", "Room 204"),
+    ("route-math-113-draft", "draft", "Room 113"),
 ])
-def test_routes_are_loaded_from_both_fixture_locations(client, route_id, expected_status):
+def test_routes_are_loaded_from_both_fixture_locations(client, route_id, expected_status, room):
     response = client.get(f"/api/routes/{route_id}")
     assert response.status_code == 200
     assert response.json()["status"] == expected_status
-    assert response.json()["steps"][-1]["label"] == "Room 204"
+    assert response.json()["steps"][-1]["label"] == room
 
 
 def test_registration_is_per_user_and_idempotent_across_restart(make_client):
@@ -158,7 +163,8 @@ def test_pre_account_state_file_loads_and_keeps_device_registrations(data_dir, m
 
     saved = json.loads((data_dir / "state.json").read_text())
     assert {k: set(v) for k, v in saved["registrations"].items()} == {"ev-04": {"device-a", "device-b"}}
-    assert saved["user_registrations"] == {"ev-04": ["user-demo-student"]}
+    assert saved["user_registrations"] == {}
+    assert list(saved["registrations_v2"]["ev-04"]) == ["user-demo-student"]
     with make_client(as_user=None) as client:
         assert client.get("/api/events/ev-04").json()["registeredCount"] == 15
 
@@ -167,3 +173,26 @@ def test_unknown_range_uses_contract_error(client):
     response = client.get("/api/events?range=month")
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_request"
+
+
+def test_phase_b_state_file_migrates(data_dir, make_client):
+    # Phase B/C wrote timeless user registrations, users with a role, and events without status.
+    created = json.loads((FIXTURES_DIR / "events.seed.json").read_text())[0]
+    created = {k: v for k, v in created.items() if k not in ("startsInMin", "durationMin", "status")} | {
+        "id": "ev-created-b", "startsAt": "2099-01-01T15:00:00Z", "endsAt": "2099-01-01T16:00:00Z",
+    }
+    data_dir.mkdir()
+    (data_dir / "state.json").write_text(json.dumps({
+        "user_registrations": {"ev-04": ["user-demo-student"]},
+        "users": {"user-old": {"id": "user-old", "name": "Old Student", "email": "old@example.com",
+                               "role": "student", "organizationId": None, "password": "scrypt$1$1$1$00$00"}},
+        "created_events": {"ev-created-b": created},
+    }))
+    clock = Clock()
+    with make_client(as_user="student", clock=clock) as client:
+        mine = client.get("/api/me/registrations").json()
+        assert [r["event"]["id"] for r in mine] == ["ev-04"]
+        assert datetime.fromisoformat(mine[0]["registeredAt"]) == clock.now  # the migration time
+        assert client.get("/api/events/ev-created-b").json()["status"] == "active"
+    saved = json.loads((data_dir / "state.json").read_text())
+    assert saved["user_registrations"] == {}

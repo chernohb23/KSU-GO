@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 
+import type { MyRegistration } from '../../../shared/types.ts';
 import { createApiClient, type ApiClient } from '../api/client.ts';
 import { useAuth } from '../auth/AuthProvider';
 import { useAppData } from '../data/AppDataContext';
@@ -17,6 +18,9 @@ type AccountValue = {
   weekChoices: WeekChoices;
   registeredEventIds: string[];
   registrationsReady: boolean;
+  /** This account's registrations from the server, cancelled and ended included; null until loaded. */
+  registrations: MyRegistration[] | null;
+  refreshRegistrations(): Promise<void>;
   /** Registers the signed-in user; throws an Error worded for the event card. */
   register(eventId: string): Promise<void>;
   /** A client that sends this account's token, or null without a server address. */
@@ -52,6 +56,23 @@ export function AccountProvider({ children }: PropsWithChildren) {
   const ready = registered?.scope === scope;
   const registeredEventIds = useMemo(() => ready ? registered.ids : [], [ready, registered]);
 
+  // The server's record replaces the phone's; the phone keeps the ids for offline use.
+  const [registrations, setRegistrations] = useState<{ scope: string; list: MyRegistration[] } | null>(null);
+  const verified = state.status === 'signedIn' && state.verified;
+  const refreshRegistrations = useCallback(async () => {
+    if (!api || !verified || offline) return;
+    try {
+      const list = await api.myRegistrations();
+      setRegistrations({ scope, list });
+      const ids = list.map((registration) => registration.event.id);
+      setRegistered({ scope, ids });
+      await saveRegisteredEventIds(storage, ids).catch(() => {});
+    } catch {
+      // Keep what we have; a 401 is handled by the client and signs out.
+    }
+  }, [api, offline, scope, storage, verified]);
+  useEffect(() => { void refreshRegistrations(); }, [refreshRegistrations]);
+
   const register = useCallback(async (eventId: string) => {
     const ids = await registerForEvent({
       eventId, state, offline, api,
@@ -61,11 +82,13 @@ export function AccountProvider({ children }: PropsWithChildren) {
       save: (next) => saveRegisteredEventIds(storage, next),
     });
     setRegistered({ scope, ids });
-  }, [api, markOffline, offline, ready, registeredEventIds, scope, setRegisteredCount, state, storage]);
+    void refreshRegistrations();
+  }, [api, markOffline, offline, ready, refreshRegistrations, registeredEventIds, scope, setRegisteredCount, state, storage]);
 
   const value = useMemo(() => ({
     accountId, storage, weekChoices, registeredEventIds, registrationsReady: ready, register, api,
-  }), [accountId, api, ready, register, registeredEventIds, storage, weekChoices]);
+    registrations: registrations?.scope === scope ? registrations.list : null, refreshRegistrations,
+  }), [accountId, api, ready, refreshRegistrations, register, registeredEventIds, registrations, scope, storage, weekChoices]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

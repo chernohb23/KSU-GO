@@ -7,23 +7,39 @@ from video_helpers import movie_bytes
 
 
 # (method, route template, concrete path, access) for every /api endpoint in the contract.
+# "owner" means the organization, event or route belongs to an organization the caller owns:
+# Noah owns the Robotics Club (ev-04, ev-25 and the Room 113 stage draft); Maya owns nothing.
 ENDPOINTS = [
     ("GET", "/api/health", "/api/health", "open"),
     ("GET", "/api/events", "/api/events", "open"),
     ("GET", "/api/events/{event_id}", "/api/events/ev-04", "open"),
     ("GET", "/api/routes/{route_id}", "/api/routes/route-sample", "open"),
+    ("GET", "/api/organizations", "/api/organizations", "open"),
+    ("GET", "/api/organizations/{organization_id}", "/api/organizations/org-robotics-club", "open"),
+    ("GET", "/api/organizations/{organization_id}/events", "/api/organizations/org-robotics-club/events", "open"),
     ("POST", "/api/auth/signup", "/api/auth/signup", "open"),
     ("POST", "/api/auth/login", "/api/auth/login", "open"),
     ("GET", "/api/me", "/api/me", "signed_in"),
+    ("PUT", "/api/me/profile", "/api/me/profile", "signed_in"),
+    ("GET", "/api/me/registrations", "/api/me/registrations", "signed_in"),
     ("POST", "/api/auth/logout", "/api/auth/logout", "signed_in"),
     ("POST", "/api/events/{event_id}/register", "/api/events/ev-04/register", "signed_in"),
-    ("POST", "/api/events", "/api/events", "organizer"),
-    ("POST", "/api/routes", "/api/routes", "organizer"),
-    ("PUT", "/api/routes/{route_id}/steps", "/api/routes/route-placeholder-draft/steps", "organizer"),
-    ("POST", "/api/routes/{route_id}/confirm", "/api/routes/route-placeholder-draft/confirm", "organizer"),
+    ("POST", "/api/organizations", "/api/organizations", "signed_in"),
+    ("POST", "/api/organizations/{organization_id}/follow", "/api/organizations/org-robotics-club/follow", "signed_in"),
+    ("DELETE", "/api/organizations/{organization_id}/follow", "/api/organizations/org-robotics-club/follow", "signed_in"),
+    # Signed in first; ownership of its organizationId is checked after the body.
+    ("POST", "/api/events", "/api/events", "signed_in"),
+    ("PUT", "/api/organizations/{organization_id}", "/api/organizations/org-robotics-club", "owner"),
+    ("PUT", "/api/events/{event_id}", "/api/events/ev-04", "owner"),
+    ("POST", "/api/events/{event_id}/cancel", "/api/events/ev-04/cancel", "owner"),
+    ("GET", "/api/events/{event_id}/registrations", "/api/events/ev-04/registrations", "owner"),
+    ("GET", "/api/events/{event_id}/directions", "/api/events/ev-04/directions", "owner"),
+    ("POST", "/api/routes", "/api/routes?eventId=ev-25", "owner"),
+    ("PUT", "/api/routes/{route_id}/steps", "/api/routes/route-math-113-draft/steps", "owner"),
+    ("POST", "/api/routes/{route_id}/confirm", "/api/routes/route-math-113-draft/confirm", "owner"),
 ]
 PROTECTED = [endpoint for endpoint in ENDPOINTS if endpoint[3] != "open"]
-ORGANIZER_ONLY = [endpoint for endpoint in ENDPOINTS if endpoint[3] == "organizer"]
+OWNER_ONLY = [endpoint for endpoint in ENDPOINTS if endpoint[3] == "owner"]
 
 
 def login_token(client, role):
@@ -69,14 +85,14 @@ def test_access_matrix(make_client, method, path, access):
         }
         for who, headers in identities.items():
             # An empty JSON body: a granted call fails validation (or succeeds), never 401/403.
-            kwargs = {"json": {}} if method in ("POST", "PUT") and path != "/api/routes" else {}
+            kwargs = {"json": {}} if method in ("POST", "PUT") and not path.startswith("/api/routes?") else {}
             status = client.request(method, path, headers=headers, **kwargs).status_code
             signed_in = who in ("student", "organizer")
             if access == "open":
                 expected_denial = None
             elif not signed_in:
                 expected_denial = 401
-            elif access == "organizer" and who == "student":
+            elif access == "owner" and who == "student":
                 expected_denial = 403
             else:
                 expected_denial = None
@@ -102,10 +118,10 @@ def test_no_token_is_401_before_the_body_is_read(make_client, method, path, body
 
 
 @pytest.mark.parametrize(
-    ("method", "path"), [(m, p) for m, _, p, _ in ORGANIZER_ONLY],
-    ids=[f"{m} {p}" for m, _, p, _ in ORGANIZER_ONLY],
+    ("method", "path"), [(m, p) for m, _, p, _ in OWNER_ONLY],
+    ids=[f"{m} {p}" for m, _, p, _ in OWNER_ONLY],
 )
-def test_student_is_403_before_the_body_is_read(make_client, method, path):
+def test_non_owner_is_403_before_the_body_is_read(make_client, method, path):
     with make_client(as_user="student") as client:
         response = client.request(
             method, path, content=b"{", headers={"Content-Type": "application/json"},
@@ -124,7 +140,7 @@ def test_upload_without_organizer_never_parses_or_stores_the_video(make_client, 
     monkeypatch.setattr(starlette.requests.Request, "form", no_parse)
     with make_client(as_user=who) as client:
         response = client.post(
-            "/api/routes",
+            "/api/routes?eventId=ev-25",
             files={"video": ("walk.mov", movie_bytes(), "video/quicktime")},
             data={"buildingId": "b-library", "destination": "Room 310",
                   "startFloor": "1", "destinationFloor": "3"},
@@ -153,3 +169,28 @@ def test_open_auth_endpoints_ignore_a_bad_token(make_client):
             json={"name": "Ana", "email": "ana@example.com", "password": "long enough"},
         )
         assert response.status_code == 201
+
+
+def test_creating_an_event_for_an_organization_you_do_not_own_is_403_after_the_body(make_client):
+    # The documented exception: organizationId is in the body, so a malformed body is 422 first.
+    with make_client(as_user="student") as client:
+        malformed = client.post("/api/events", content=b"{", headers={"Content-Type": "application/json"})
+        assert malformed.status_code == 422
+        response = client.post("/api/events", json={
+            "title": "Not mine", "description": "d", "organizationId": "org-robotics-club",
+            "partnerOrganizationId": None, "category": "other", "tags": [],
+            "startsAt": "2099-01-01T00:00:00Z", "durationMin": 30,
+            "location": {"buildingId": "b-library", "room": "310"}, "capacity": None,
+        })
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "forbidden"
+
+
+def test_upload_without_an_event_is_refused_before_the_video_is_read(make_client, data_dir, monkeypatch):
+    import starlette.requests
+
+    monkeypatch.setattr(starlette.requests.Request, "form", lambda *a, **k: (_ for _ in ()).throw(AssertionError("parsed")))
+    with make_client() as client:
+        response = client.post("/api/routes", files={"video": ("a.mov", b"x", "video/quicktime")})
+    assert response.status_code == 422
+    assert not (data_dir / "uploads").exists()

@@ -21,11 +21,13 @@ export type Event = {
   endsAt: string;
   /** `buildingId` comes from campus.json. */
   location: { buildingId: string; room: string };
-  /** Confirmed route to the room; several events may share one. */
+  /** Derived by the server: the room's most recently confirmed route, else null. */
   routeId: string | null;
   /** Display only: shown as "registeredCount / capacity", "Full" when reached. Never blocks registering. */
   capacity: number | null;
   registeredCount: number;
+  /** Cancelled events leave the map and every list except the owner's and a registered user's. */
+  status: "active" | "cancelled";
 };
 
 /**
@@ -38,15 +40,14 @@ export type EventSeed = Omit<Event, "startsAt" | "endsAt"> & {
   durationMin: number;
 };
 
-/** A demo organization from `organizations.json`. Static: there is no organizations endpoint. */
+/** An organization stored by the server. Only its owner edits it and manages its events. */
 export type Organization = {
-  /** e.g. "org-robotics-club" */
+  /** "org-" + slug of the name at creation, plus a suffix if taken; never changes. */
   id: string;
+  /** 2 to 60 characters after trimming; unique, ignoring case. */
   name: string;
-  /** One or two sentences. */
+  /** 1 to 280 characters after trimming. */
   description: string;
-  /** Display only. */
-  memberCount: number;
   /** Original initials badge, never a real logo. */
   logo: {
     /** 1 to 4 capital letters, e.g. "RC". */
@@ -54,7 +55,22 @@ export type Organization = {
     /** Badge background: "gold" is ink initials on gold, "ink" is paper initials on ink. */
     color: "gold" | "ink";
   };
+  /** "Members": entered by the organization, 0 to 100000. */
+  memberCount: number;
+  /** e.g. "Tuesdays 6 PM, Mathematics 215"; 1 to 80 characters. */
+  meets: string | null;
+  /** Trimmed and lowercased email. */
+  contactEmail: string | null;
+  /** An https:// URL, at most 200 characters. */
+  website: string | null;
+  /** The owning user's id; null for unowned seed organizations. */
+  ownerId: string | null;
+  /** "Followers": set by the server from real follows. */
+  followerCount: number;
 };
+
+/** Seed form used in `organizations.json`: an Organization without `followerCount`. */
+export type OrganizationSeed = Omit<Organization, "followerCount">;
 
 // ---- Section 3: Campus ----
 
@@ -137,15 +153,18 @@ export type Check = {
 
 // ---- Section 5: API bodies ----
 
+/** Body of `PUT /api/events/{id}`. The host organization can't change. */
+export type EditEventRequest = Omit<CreateEventRequest, "organizationId">;
+
 /** Body of `POST /api/events`. Every key is required; `null` and `[]` mean none. */
 export type CreateEventRequest = {
   /** 1 to 120 characters after trimming. */
   title: string;
   /** 1 to 2000 characters after trimming. */
   description: string;
-  /** The signed-in organizer's organizationId; anything else is 403 forbidden. */
+  /** An organization the caller owns; anything else is 403 forbidden. */
   organizationId: string;
-  /** Null, or a different organization from organizations.json. */
+  /** Null, or another existing organization. */
   partnerOrganizationId: string | null;
   /** Required; no default. */
   category: Event["category"];
@@ -161,15 +180,66 @@ export type CreateEventRequest = {
   capacity: number | null;
 };
 
-/** A demo account checked by the server. Not university sign-in. */
+export type AvatarColor = "gold" | "ink" | "amber";
+
+/** A demo account checked by the server. Not university sign-in. An organizer owns at least one organization. */
 export type User = {
   id: string;
+  /** 1 to 80 characters after trimming. */
   name: string;
   /** Stored trimmed and lowercased. */
   email: string;
-  role: "student" | "organizer";
-  /** Set exactly when role is "organizer". */
-  organizationId: string | null;
+  profile: {
+    /** 1 to 60 characters. */
+    major: string | null;
+    /** Graduation year, from the current year - 1 to the current year + 7. */
+    classYear: number | null;
+    /** 1 to 160 characters. */
+    bio: string | null;
+    avatarColor: AvatarColor;
+  };
+  /** Organizations whose ownerId is this user. */
+  ownedOrganizationIds: string[];
+  /** In follow order. */
+  followingOrganizationIds: string[];
+};
+
+/** A registration of the signed-in user, for Profile. */
+export type MyRegistration = { event: Event; registeredAt: string };
+
+/** Body of PUT /api/me/profile. Every key is required; null clears an optional field. */
+export type ProfileRequest = {
+  name: string;
+  major: string | null;
+  classYear: number | null;
+  bio: string | null;
+  avatarColor: AvatarColor;
+};
+
+/** Body of POST and PUT /api/organizations. */
+export type OrganizationRequest = {
+  name: string;
+  description: string;
+  logo: Organization["logo"];
+  memberCount: number;
+  meets: string | null;
+  contactEmail: string | null;
+  website: string | null;
+};
+
+/** Response of POST and DELETE /api/organizations/{id}/follow. */
+export type FollowResponse = { following: boolean; followerCount: number };
+
+/** Response of GET /api/events/{id}/registrations. Seeded and device registrations count but have no name. */
+export type EventRegistrations = {
+  registeredCount: number;
+  people: { userId: string; name: string; registeredAt: string }[];
+};
+
+/** Response of GET /api/events/{id}/directions. */
+export type EventDirections = {
+  state: "confirmed" | "processing" | "draft" | "failed" | "none";
+  route: Route | null;
 };
 
 /** Body of `POST /api/auth/signup`. Always creates a student. */
