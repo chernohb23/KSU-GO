@@ -44,7 +44,7 @@ Start the server in mock mode (`server/README.md`), then point the app at it: lo
 
 ### Offline demo on iPhone (guest)
 
-With no server, choose **Browse offline** on Sign in. The guest sees Map, Events and Profile from bundled data, with **Offline data** in the header. In this checkout, choose Drone Club Build Session (Room 204) in **Today's events**, then **Take me there**, and follow **Next** or **Play** to the door. Back returns to the same event. **Register** asks you to sign in. The guest can swipe and save in Events, on this phone only. The planned student stage demo uses Robotics Club Meeting in Math D Room 215; ROUTE-5 must add its confirmed hand route first (Room 215 currently has no bundled directions).
+With no server, choose **Browse offline** on Sign in. The guest sees Map, Events and Profile from bundled data, with **Offline data** in the header. In this checkout, choose Drone Club Build Session (Room 204) in **Today's events**, then **Take me there**, and follow **Next** or **Play** to the door. Back returns to the same event. **Register** asks you to sign in. The guest can swipe and save in Events, on this phone only. The student stage demo uses Robotics Club Meeting in Math D Room 215, with ROUTE-5's confirmed hand route already bundled.
 
 A signed-in user whose server stops answering keeps the session, read-only, with **Offline data** showing; registering says it needs the server until the badge disappears.
 
@@ -137,4 +137,4 @@ Phase D still needs a real iPhone check in Expo Go:
 - As Maya, edit the profile and Interests, follow/unfollow a public club, create an organization, and check the new tab appears while mounted without LogBox. Create a second and try the switcher.
 - As Noah, create/edit an event with ET day/time/duration inputs. Check confirmed Room 204 directions are view only; Room 113 offers the prepared draft. Confirm it and check both Room 113 events gain directions. Test an actual camera-roll selection, upload progress, a failed upload and retry.
 - Register Maya for a Noah event, cancel as Noah, and verify it leaves Map/Events/Discover but remains Cancelled in Maya's Profile. Check named registrations and real counts.
-- Check navigation back from review and directions, keyboard/sheets, layout, touch targets, WebView rendering and offline fallback on the device. Add ROUTE-5's Room 215 fixture before trying the student stage path.
+- Check navigation back from review and directions, keyboard/sheets, layout, touch targets, WebView rendering and offline fallback on the device. Follow the Room 215 student stage path using its bundled hand route.

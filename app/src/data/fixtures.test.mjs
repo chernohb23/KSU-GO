@@ -151,3 +151,23 @@ test('every linked seed event opens a confirmed offline route to its room', asyn
     assert.equal(route.steps.at(-1)?.label, route.destination, event.title);
   }
 });
+
+test('offline startup loads Room 215 directions and only a draft for Room 113', async () => {
+  const fixtures = new URL('../../../shared/fixtures/', import.meta.url);
+  const readFixture = async name => JSON.parse(await readFile(new URL(name, fixtures), 'utf8'));
+  // The app's require.context is nonrecursive and includes only routes/*.json.
+  const files = await readdir(new URL('routes/', fixtures));
+  const routes = await Promise.all(files.filter(file => file.endsWith('.json')).map(file => readFixture('routes/' + file)));
+  const seeds = await readFixture('events.seed.json');
+  const events = loadFixtureEvents(seeds, now, 'week');
+  const inRoom = room => events.filter(event => event.location.buildingId === 'b-mathematics' && event.location.room === room);
+  assert.deepEqual(inRoom('215').map(event => event.id).sort(), ['ev-04', 'ev-08']);
+  assert.ok(inRoom('215').every(event => findFixtureRoute(routes, event.routeId)?.status === 'confirmed'));
+  assert.ok(inRoom('215').every(event => event.routeId === 'route-room-215-hand'));
+  assert.deepEqual(inRoom('113').map(event => event.id).sort(), ['ev-23', 'ev-25']);
+  assert.ok(inRoom('113').every(event => event.routeId === null));
+  assert.equal(routes.some(route => route.status === 'confirmed' && route.buildingId === 'b-mathematics' && route.destination === 'Room 113'), false);
+  assert.equal(findFixtureRoute(routes, 'route-math-113-draft')?.status, 'draft');
+  const fallback = await readFixture('fallbacks/room-113.hand.json');
+  assert.equal(findFixtureRoute(routes, fallback.id), null);
+});

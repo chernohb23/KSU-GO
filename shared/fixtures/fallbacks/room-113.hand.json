@@ -1,0 +1,26 @@
+{
+  "id": "route-room-113-hand",
+  "version": 1,
+  "status": "confirmed",
+  "progress": null,
+  "error": null,
+  "buildingId": "b-mathematics",
+  "destination": "Room 113",
+  "startFloor": "1",
+  "destinationFloor": "1",
+  "corridorWidthM": 2.0,
+  "ceilingHeightM": 2.7,
+  "steps": [
+    { "id": "s1", "type": "door", "label": "Main entrance", "source": "organizer", "confidence": null, "tSec": null, "note": null },
+    { "id": "s2", "type": "walk", "lengthM": 18, "source": "organizer", "confidence": null, "tSec": null, "note": null },
+    { "id": "s3", "type": "turn", "direction": "right", "source": "organizer", "confidence": null, "tSec": null, "note": null },
+    { "id": "s4", "type": "walk", "lengthM": 3, "source": "organizer", "confidence": null, "tSec": null, "note": null },
+    { "id": "s5", "type": "door", "label": "Room 113", "source": "organizer", "confidence": null, "tSec": null, "note": null }
+  ],
+  "checks": [
+    { "id": "leg_length_range", "level": "pass", "message": "No walk is shorter than 0.5 m.", "stepId": null }
+  ],
+  "stats": null,
+  "createdAt": "2026-11-19T12:00:00-05:00",
+  "confirmedAt": "2026-11-19T12:00:00-05:00"
+}

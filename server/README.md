@@ -97,7 +97,11 @@ Room 113) → Directions → Review draft. The prepared
 ev-25. Tap "Looks right", then confirm; ev-23, the Game Development Club event
 in Room 113, gains directions too. Restart the server to restore the fixture
 draft for another rehearsal. Do not upload on stage. The student demo uses
-Room 215 after ROUTE-5 adds its confirmed hand route; it is absent in this checkout.
+Room 215, whose confirmed `route-room-215-hand` route is already bundled.
+The Room 113 hand route is retained only in
+`shared/fixtures/fallbacks/room-113.hand.json`. The server's nonrecursive
+`routes/*.json` loader and the app's route bundle exclude that fallback, so
+Room 113 starts without confirmed directions.
 
 ## Test from a phone on a different network
 

@@ -62,7 +62,7 @@
     "startsInMin": 25,
     "durationMin": 75,
     "location": { "buildingId": "b-mathematics", "room": "215" },
-    "routeId": null,
+    "routeId": "route-room-215-hand",
     "capacity": 30,
     "registeredCount": 12,
     "status": "active"
@@ -130,7 +130,7 @@
     "startsInMin": 240,
     "durationMin": 90,
     "location": { "buildingId": "b-mathematics", "room": "215" },
-    "routeId": null,
+    "routeId": "route-room-215-hand",
     "capacity": 50,
     "registeredCount": 34,
     "status": "active"

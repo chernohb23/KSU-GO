@@ -1,5 +1,5 @@
 import {
-  AmbientLight, Color, DirectionalLight, Fog, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
+  Color, DirectionalLight, Fog, HemisphereLight, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { RouteCommand, RouteLoad } from "../bridge";
@@ -20,11 +20,11 @@ export function createRouteScene(container: HTMLElement): ViewerScene<RouteLoad,
   scene.background = new Color(palette.sky.horizon);
   scene.fog = new Fog(palette.sky.fog, 35, 110);
   const camera = new PerspectiveCamera(44, 1, 0.05, 250);
-  const sun = new DirectionalLight(palette.light.sun, 2.6);
-  sun.position.set(-12, 24, 10);
+  const sun = new DirectionalLight(palette.light.sun, 1.75);
+  sun.position.set(24, 24, 4);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
-  scene.add(new AmbientLight(palette.light.sky, 1.65), sun, new DirectionalLight(palette.light.ground, 0.75));
+  scene.add(new HemisphereLight(palette.light.sky, palette.light.ground, 1.75), sun);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = false;

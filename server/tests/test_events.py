@@ -67,14 +67,29 @@ def test_event_detail_serves_seeded_event(client):
     response = client.get("/api/events/ev-04")
     assert response.status_code == 200
     assert response.json()["title"] == "Robotics Club Meeting"
-    # The student demo is in Room 215, which gets ROUTE-5's hand route; until then it has none.
+    # Every event in the student demo's room uses ROUTE-5's confirmed hand route.
     assert response.json()["location"] == {"buildingId": "b-mathematics", "room": "215"}
-    assert response.json()["routeId"] is None
+    assert response.json()["routeId"] == "route-room-215-hand"
     assert response.json()["status"] == "active"
     assert client.get("/api/events/ev-10").json()["routeId"] == "route-sample"
     assert response.json()["organizationId"] == "org-robotics-club"
     assert response.json()["partnerOrganizationId"] is None
     assert response.json()["tags"] == ["robotics", "engineering", "club-meeting"]
+
+
+def test_startup_room_directions_exclude_the_unlinked_room_113_hand_fallback(client):
+    events = client.get("/api/events?range=week").json()
+    room_215 = [event for event in events if event["location"] == {"buildingId": "b-mathematics", "room": "215"}]
+    assert sorted(event["id"] for event in room_215) == ["ev-04", "ev-08"]
+    assert all(event["routeId"] == "route-room-215-hand" for event in room_215)
+    room_113 = [event for event in events if event["location"] == {"buildingId": "b-mathematics", "room": "113"}]
+    assert sorted(event["id"] for event in room_113) == ["ev-23", "ev-25"]
+    assert all(event["routeId"] is None for event in room_113)
+    assert client.get("/api/routes/route-room-113-hand").status_code == 404
+    draft = client.get("/api/events/ev-25/directions").json()
+    assert draft["state"] == "draft"
+    assert draft["route"]["id"] == "route-math-113-draft"
+    assert draft["route"]["confirmedAt"] is None
 
 
 def test_organizations_fixture_covers_every_seed_event():
@@ -95,6 +110,7 @@ def test_organizations_fixture_covers_every_seed_event():
 @pytest.mark.parametrize(("route_id", "expected_status", "room"), [
     ("route-sample", "confirmed", "Room 204"),
     ("route-math-113-draft", "draft", "Room 113"),
+    ("route-room-215-hand", "confirmed", "Room 215"),
 ])
 def test_routes_are_loaded_from_both_fixture_locations(client, route_id, expected_status, room):
     response = client.get(f"/api/routes/{route_id}")

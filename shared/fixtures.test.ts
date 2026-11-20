@@ -11,6 +11,8 @@ import campusJson from "./fixtures/campus.json";
 import sampleJson from "./fixtures/route.sample.json";
 import flawedJson from "./fixtures/route.draft-flawed.json";
 import stageDraftJson from "./fixtures/routes/room-113.draft.json";
+import room215HandJson from "./fixtures/routes/room-215.hand.json";
+import room113HandJson from "./fixtures/fallbacks/room-113.hand.json";
 
 // ---- Generic helpers ----
 
@@ -283,6 +285,10 @@ const campus = lazy(() => parseCampus(campusJson, "campus.json"));
 const sample = lazy(() => parseRoute(sampleJson, "route.sample.json"));
 const flawed = lazy(() => parseRoute(flawedJson, "route.draft-flawed.json"));
 const stageDraft = lazy(() => parseRoute(stageDraftJson, "routes/room-113.draft.json"));
+const room215Hand = lazy(() => parseRoute(room215HandJson, "routes/room-215.hand.json"));
+const room113Hand = lazy(() => parseRoute(room113HandJson, "fallbacks/room-113.hand.json"));
+// Active bundled fixtures; the Room 113 hand route is retained separately as a fallback.
+const loadedRoutes = lazy(() => [sample(), stageDraft(), room215Hand()]);
 
 const ISO_WITH_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}:\d{2}|Z)$/;
 const SOON_MIN = 60;
@@ -293,7 +299,7 @@ const isLive = (e: EventSeed) => e.startsInMin <= 0 && e.startsInMin + e.duratio
 const isSoon = (e: EventSeed) => e.startsInMin > 0 && e.startsInMin <= SOON_MIN;
 const isLaterToday = (e: EventSeed) => e.startsInMin > SOON_MIN && e.startsInMin < DAY_MIN;
 const isToday = (e: EventSeed) => e.startsInMin < DAY_MIN && e.startsInMin + e.durationMin > 0;
-const inMath204 = (e: EventSeed) => e.location.buildingId === "b-mathematics" && e.location.room === "204";
+const inDemoRoom = (e: EventSeed, room: string) => e.location.buildingId === "b-mathematics" && e.location.room === room;
 
 function findStep(route: Route, id: string): Step {
   const step = route.steps.find((s) => s.id === id);
@@ -321,6 +327,10 @@ describe("fixture shapes", () => {
   });
   it("routes/room-113.draft.json matches Route", () => {
     expect(stageDraft().id).toBe("route-math-113-draft");
+  });
+  it("both hand route fixtures match Route", () => {
+    expect(room215Hand().id).toBe("route-room-215-hand");
+    expect(room113Hand().id).toBe("route-room-113-hand");
   });
 });
 
@@ -370,7 +380,8 @@ describe("events.seed.json", () => {
   // Every event uses its room's most recently confirmed route (CONTRACTS.md section 2), so a seed's
   // routeId must equal what the server derives from the bundled confirmed routes.
   it("gives every seed its room's confirmed bundled route, or null", () => {
-    const confirmed = [sample(), stageDraft()].filter((r) => r.status === "confirmed");
+    const confirmed = loadedRoutes().filter((r) => r.status === "confirmed")
+      .sort((a, b) => Date.parse(a.confirmedAt!) - Date.parse(b.confirmedAt!));
     for (const e of seeds()) {
       const serving = confirmed.filter((r) => servesRoom(r, e.location));
       expect(e.routeId, e.id).toBe(serving.length ? serving[serving.length - 1].id : null);
@@ -382,6 +393,7 @@ describe("events.seed.json", () => {
     expect(demo.map((e) => e.id).sort()).toEqual(["ev-04", "ev-08"]);
     expect(demo.every(isToday)).toBe(true);
     expect(demo.some(isSoon)).toBe(true);
+    expect(demo.every((e) => e.routeId === room215Hand().id)).toBe(true);
   });
 
   it("keeps Room 113 without directions, with Robotics Build Night and a Game Development Club event", () => {
@@ -407,6 +419,50 @@ describe("events.seed.json", () => {
 
   it("has every seed event active", () => {
     for (const e of seeds()) expect(e.status, e.id).toBe("active");
+  });
+});
+
+describe("hand routes", () => {
+  it("confirms the Room 215 stair sequence on floors 1 to 2", () => {
+    const route = room215Hand();
+    expect(route.status).toBe("confirmed");
+    expect(route.startFloor).toBe("1");
+    expect(route.destinationFloor).toBe("2");
+    expect(route.steps.map((step) => step.type === "turn" ? step.direction : step.type)).toEqual([
+      "door", "walk", "right", "walk", "stairs", "u_left", "stairs", "walk", "right", "walk", "left", "walk", "door",
+    ]);
+    expect(route.steps.filter((step) => step.type === "walk").map((step) => step.type === "walk" ? step.lengthM : null))
+      .toEqual([8, 2, 2, 7, 1]);
+    expect(route.steps.every((step) => step.source === "organizer")).toBe(true);
+    expect(route.steps.filter((step) => step.type === "stairs").every((step) => step.direction === "up")).toBe(true);
+  });
+
+  it("preserves the unlinked Room 113 fallback's right turn without changing floors", () => {
+    const route = room113Hand();
+    expect(route.status).toBe("confirmed");
+    expect(route.startFloor).toBe("1");
+    expect(route.destinationFloor).toBe("1");
+    expect(route.steps.map((step) => step.type === "turn" ? step.direction : step.type)).toEqual([
+      "door", "walk", "right", "walk", "door",
+    ]);
+    expect(route.steps.filter((step) => step.type === "walk").map((step) => step.type === "walk" ? step.lengthM : null))
+      .toEqual([18, 3]);
+    expect(route.steps.every((step) => step.source === "organizer")).toBe(true);
+  });
+
+  it("keeps the Room 113 hand fallback outside the routes loaded by the app and server", () => {
+    expect(loadedRoutes().some(route => route.id === room113Hand().id)).toBe(false);
+    expect(seeds().some(event => event.routeId === room113Hand().id)).toBe(false);
+  });
+
+  it("keeps student landmarks and removes hand-route estimation notes", () => {
+    expect(findStep(room215Hand(), "s6").note).toBe("U-turn on the stair landing.");
+    expect(findStep(room215Hand(), "s13").note).toBe("Door sign reads D215.");
+    for (const route of [room215Hand(), room113Hand()]) {
+      for (const step of route.steps) {
+        expect(step.note ?? "").not.toMatch(/estimate|approximate|verify with a building contact/i);
+      }
+    }
   });
 });
 
@@ -538,6 +594,8 @@ describe.each([
   ["route.sample.json", sample],
   ["route.draft-flawed.json", flawed],
   ["routes/room-113.draft.json", stageDraft],
+  ["routes/room-215.hand.json", room215Hand],
+  ["fallbacks/room-113.hand.json", room113Hand],
 ])("%s structure", (_name, load) => {
   it("has unique step ids", () => {
     const ids = load().steps.map((s) => s.id);
@@ -660,6 +718,7 @@ describe("routes/room-113.draft.json (the prepared stage draft)", () => {
   });
 
   it("is for a room that has no confirmed route", () => {
-    expect(servesRoom(sample(), { buildingId: "b-mathematics", room: "113" })).toBe(false);
+    expect(loadedRoutes().filter(route => route.status === "confirmed" &&
+      servesRoom(route, { buildingId: "b-mathematics", room: "113" }))).toHaveLength(0);
   });
 });

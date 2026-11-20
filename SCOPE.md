@@ -31,7 +31,7 @@ KSU-GO is a 3D campus events app. The campus is a stylized 3D map, every event t
 
 **The prepared draft.** No upload runs on stage. Noah opens Organization → Robotics Build Night (Room 113) → Directions → Review draft. The real route2 output is bundled as `shared/fixtures/routes/room-113.draft.json`, attached to that event by the server. Review the flagged step, tap "Looks right" and confirm; do not claim a wrong turn was corrected. Both events in Room 113 get directions immediately. Restarting the server restores this fixture draft for rehearsal. Nobody plants an error in a real draft.
 
-**Student-route dependency.** ROUTE-5 adds the confirmed hand route for Math D Room 215 before rehearsal. Until it lands, this checkout's Room 215 events have no directions. Room 113 starts without confirmed directions so the prepared draft can be reviewed.
+**Student route.** ROUTE-5's confirmed hand route for Math D Room 215 is bundled, and every event in that room uses it. Room 113 starts without confirmed directions so the prepared draft can be reviewed; its hand route is retained only as an unlinked fallback outside the loaded routes.
 
 **Timing claims.** The earlier reference of about 10 minutes per route was mostly MapAnything (about 8 of the 10). Slides and script quote the time and cost measured in AI-6 for the pipeline that actually shipped.
 

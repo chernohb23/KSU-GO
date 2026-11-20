@@ -99,7 +99,9 @@ def test_directions_states_belong_to_the_event(make_client, monkeypatch):
     monkeypatch.setattr(mock_pipeline, "STAGE_SECONDS", 0.02)
     with make_client() as client:
         assert client.get("/api/events/ev-10/directions").status_code == 403  # Drone Club's event
-        assert client.get("/api/events/ev-04/directions").json() == {"state": "none", "route": None}
+        student_route = client.get("/api/events/ev-04/directions").json()
+        assert student_route["state"] == "confirmed"
+        assert student_route["route"]["id"] == "route-room-215-hand"
         stage = client.get("/api/events/ev-25/directions").json()
         assert stage["state"] == "draft" and stage["route"]["id"] == "route-math-113-draft"
 
@@ -119,6 +121,17 @@ def test_directions_states_belong_to_the_event(make_client, monkeypatch):
         for eid in (event_id, other):
             directions = client.get(f"/api/events/{eid}/directions").json()
             assert directions["state"] == "confirmed" and directions["route"]["id"] == route_id
+
+
+def test_new_room_215_events_use_the_hand_route_and_recheck_when_moved(client):
+    event_id = owned_event(client, building="b-mathematics", room="215")
+    event = client.get(f"/api/events/{event_id}").json()
+    assert event["routeId"] == "route-room-215-hand"
+    assert client.get(f"/api/events/{event_id}/directions").json()["state"] == "confirmed"
+    moved = client.put(f"/api/events/{event_id}", json=edit_body(event, location={"buildingId": "b-mathematics", "room": "113"}))
+    assert moved.status_code == 200
+    assert moved.json()["routeId"] is None
+    assert client.get(f"/api/events/{event_id}/directions").json() == {"state": "none", "route": None}
 
 
 def test_moving_an_event_away_hides_its_old_draft(make_client):
