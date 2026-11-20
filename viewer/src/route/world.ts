@@ -48,7 +48,7 @@ export function createRouteWorld(route: Route): RouteWorld {
       ? { y: floor.y, polygon: floor.footprint[0] }
       : floor.landings[0] ? { y: floor.landings[0].y, polygon: floor.landings[0].footprint[0] } : undefined;
     const centroid = polygonCentroid(labelLayer?.polygon);
-    floorGroup.add(createLabel(`Floor ${floor.name}`, [centroid[0], (labelLayer?.y ?? floor.y) + 0.08, centroid[1]], 1.15));
+    floorGroup.add(createLabel(`Floor ${floor.name}`, [centroid[0], (labelLayer?.y ?? floor.y) + 0.08, centroid[1]], 1.65));
   }
 
   route.steps.forEach((step, index) => {
@@ -162,7 +162,7 @@ function addDoor(parent: Group, position: Vec3, heading: number, label: string |
   lintel.position.y = 2.15;
   frame.add(lintel);
   parent.add(frame);
-  if (label) parent.add(createLabel(label, [position[0], position[1] + 2.35, position[2]], 1.3));
+  if (label) parent.add(createLabel(label, [position[0], position[1] + 2.35, position[2]], 1.8));
 }
 
 function addElevator(parent: Group, start: Vec3, end: Vec3, width: number, toFloor: string) {
@@ -222,7 +222,7 @@ function addMarker(parent: Group, name: string, point: Vec3, color: number, labe
   marker.name = name;
   marker.position.set(point[0], point[1] + 0.22, point[2]);
   parent.add(marker);
-  parent.add(createLabel(label, [point[0], point[1] + 0.75, point[2]], 1.4));
+  parent.add(createLabel(label, [point[0], point[1] + 0.75, point[2]], 1.7));
 }
 
 function createLabel(text: string, position: Vec3, size: number) {
@@ -232,23 +232,23 @@ function createLabel(text: string, position: Vec3, size: number) {
   if (typeof document === "undefined") return label;
   const canvas = document.createElement("canvas");
   canvas.width = 512;
-  canvas.height = 128;
+  canvas.height = 160;
   const context = canvas.getContext("2d");
   if (!context) return label;
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "rgba(255,250,240,0.94)";
   context.strokeStyle = "#34514a";
   context.lineWidth = 5;
-  roundRect(context, 8, 10, 496, 108, 20);
+  roundRect(context, 8, 10, 496, 140, 22);
   context.fill();
   context.stroke();
   context.fillStyle = "#34514a";
-  context.font = "bold 46px system-ui, sans-serif";
+  context.font = "bold 48px system-ui, sans-serif";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillText(text, 256, 64, 460);
+  context.fillText(text, 256, 80, 460);
   const sprite = new Sprite(new SpriteMaterial({ map: new CanvasTexture(canvas), transparent: true, depthTest: false }));
-  sprite.scale.set(size, size * 0.25, 1);
+  sprite.scale.set(size, size * 0.36, 1);
   sprite.renderOrder = 3;
   label.add(sprite);
   return label;
