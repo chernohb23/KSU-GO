@@ -20,6 +20,8 @@ import {
 
 /** The demo building: warmer colors and an outline. */
 export const DEMO_BUILDING_ID = "b-mathematics";
+/** Radius around the Globe, in meters, that the opening view frames: the plaza and the buildings facing it. */
+const FRAME_RADIUS = 70;
 /** Buildings at the edge of the section, tinted toward the haze so they read as scenery. */
 const BACKGROUND_IDS = new Set(["b-crawford", "b-norton"]);
 const BACKGROUND_MIX = 0.3;
@@ -63,7 +65,7 @@ export type CampusInfo = {
   bounds: Bounds;
   center: XZ;
   plaza: { x: number; z: number; r: number };
-  /** Points the default camera view must keep on screen: the demo building and the plaza. */
+  /** Points the default camera view must keep on screen: the plaza, the Globe and the buildings around them. */
   focusPoints: V3[];
   attribution: string | null;
   stats: { trees: number; triangles: number };
@@ -325,12 +327,12 @@ export function buildCampus(campus: Campus, seed = 20261117): CampusBuild {
   group.add(hemi, sun, sun.target);
 
   // ---- what the default camera view must frame -------------------------------
-  const demo = campus.buildings.find((b) => b.id === DEMO_BUILDING_ID) ?? campus.buildings[0];
+  // A ground circle around the Globe: the plaza and the buildings facing it.
+  // Farther buildings and the forest at the edge are a pan or a pinch away.
   const focusPoints: V3[] = [];
-  if (demo) for (const [x, z] of demo.footprint) focusPoints.push([x, 0, z], [x, demo.heightM, z]);
-  for (let k = 0; k < 16; k++) {
-    const a = (k / 16) * Math.PI * 2;
-    focusPoints.push([plaza.x + Math.cos(a) * plaza.r, 0, plaza.z + Math.sin(a) * plaza.r]);
+  for (let k = 0; k < 24; k++) {
+    const a = (k / 24) * Math.PI * 2;
+    focusPoints.push([plaza.x + Math.cos(a) * FRAME_RADIUS, 0, plaza.z + Math.sin(a) * FRAME_RADIUS]);
   }
   focusPoints.push([0, globeY + 2.8, 0]);
 

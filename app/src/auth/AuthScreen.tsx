@@ -8,7 +8,7 @@ import {
 import { radius, space, text, tone } from '../navigation/theme';
 
 /** Ink panel under the ink header, then a paper sheet holding the form. */
-export function AuthScreen({ headline, lede, children }: PropsWithChildren<{ headline: string; lede: string }>) {
+export function AuthScreen({ headline, lede, children }: PropsWithChildren<{ headline: string; lede?: string }>) {
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'android' ? 'height' : undefined}>
       <StatusBar style="light" />
@@ -18,7 +18,7 @@ export function AuthScreen({ headline, lede, children }: PropsWithChildren<{ hea
         <View pointerEvents="none" style={styles.overscroll} />
         <View style={styles.panel}>
           <Text accessibilityRole="header" style={styles.headline}>{headline}</Text>
-          <Text style={styles.lede}>{lede}</Text>
+          {lede ? <Text style={styles.lede}>{lede}</Text> : null}
         </View>
         <View style={styles.sheet}>{children}</View>
       </ScrollView>

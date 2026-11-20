@@ -56,6 +56,11 @@ function parseSession(raw: string | null): SavedSession | null {
   }
 }
 
+function sameUser(a: User, b: User): boolean {
+  return a.id === b.id && a.name === b.name && a.email === b.email && a.role === b.role
+    && a.organizationId === b.organizationId;
+}
+
 async function withTimeout<T>(request: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -128,6 +133,9 @@ export class AuthController {
     try {
       const user = await withTimeout((signal) => client.me(signal), this.options.meTimeoutMs ?? ME_TIMEOUT_MS);
       if (epoch !== this.epoch) return;
+      // Nothing new: no state change, so navigation isn't re-rendered mid-transition
+      // (right after sign-in, the guarded sign-in screen is still redirecting).
+      if (state.verified && sameUser(state.user, user)) return;
       this.set({ status: 'signedIn', token: state.token, user, verified: true });
       await this.save({ token: state.token, user });
     } catch (error) {

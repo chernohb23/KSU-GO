@@ -64,6 +64,11 @@ export const ViewerWebView = forwardRef<ViewerWebViewHandle, ViewerWebViewProps>
       domStorageEnabled={false}
       scrollEnabled={false}
       bounces={false}
+      // The viewer is a touch surface: no text selection loupe, link previews or
+      // detected links on long press. The page CSS also turns off selection.
+      textInteractionEnabled={false}
+      allowsLinkPreview={false}
+      dataDetectorTypes="none"
       onMessage={handleMessage}
       onError={(event) => onError?.(event.nativeEvent.description)}
       onLoadStart={() => {

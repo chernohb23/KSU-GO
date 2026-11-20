@@ -40,13 +40,13 @@ The app opens on **Sign in**. Accounts are demo accounts checked by our own serv
 
 ### Run against the server
 
-Start the server in mock mode (`server/README.md`), then point the app at it: long-press **KSU-GO** in the header, also on the Sign in screen, and enter the server address without `/api`, for example `http://192.168.1.20:8000` or the tunnel URL. `EXPO_PUBLIC_API_URL` sets the default. The header badge shows **Server data** when the server answers.
+Start the server in mock mode (`server/README.md`), then point the app at it: long-press **KSU-GO** in the header, also on the Sign in screen, and enter the server address without `/api`, for example `http://192.168.1.20:8000` or the tunnel URL. `EXPO_PUBLIC_API_URL` sets the default. While the server answers, the header shows no badge; **Offline data** appears when the app falls back to bundled data.
 
 ### Offline demo on iPhone (guest)
 
 With no server, choose **Browse offline** on Sign in. The guest sees Map, Events and Profile from the bundled data, with **Offline data** in the header. Tap the Robotics Club Meeting flag or choose it in **Today’s events**, then **Take me there**, and follow **Next** or **Play** to the Room 204 door. Back returns to the same event on the map. **Register** asks you to sign in, because registering needs the server. The guest can still swipe and save in Events, on this phone only.
 
-A signed-in user whose server stops answering keeps the session, read-only, with **Offline data** showing; registering says it needs the server until the badge shows **Server data** again.
+A signed-in user whose server stops answering keeps the session, read-only, with **Offline data** showing; registering says it needs the server until the badge disappears.
 
 To rehearse again, long-press **KSU-GO**, choose **Reset demo**, and confirm. This signs you out and clears every account’s registrations record, saved events, swipes and upload history on this phone, plus the server address override. Server records stay on the server. The same screen has **Dev: event with route**, which opens the details of an event that has directions.
 
