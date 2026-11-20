@@ -2,7 +2,7 @@ import { Box3, CylinderGeometry, Group, Mesh, MeshBasicMaterial, Vector3 } from 
 import { describe, expect, it, vi } from "vitest";
 import fixture from "../../../shared/fixtures/campus.json";
 import type { Campus, Event } from "../../../shared/types";
-import { createFlags } from "./flags";
+import { createFlags, faceFlagsToCamera } from "./flags";
 import { palette } from "../palette";
 import { pointInRing, distToRing } from "./geometry";
 import { ROOF_DECK_OFFSET_M, roofCenter } from "./roof";
@@ -31,6 +31,31 @@ function pole(group: Group, id: string) {
 }
 
 describe("campus event flags", () => {
+  it.each([[160, 90, -120], [-150, 200, 60], [0, 50, 200], [0, 300, -200]])(
+    "faces cloth and saved stars toward camera offset %s,%s,%s within two degrees", (x, y, z) => {
+      const group = new Group();
+      group.rotation.y = 0.3;
+      const flags = createFlags(group, campus, [event("saved", -10, 30)], minutes(0), ["saved"]);
+      const flag = group.getObjectByName("saved")!;
+      const cloth = flag.getObjectByName("flag-cloth")!;
+      const star = flag.getObjectByName("flag-saved")!;
+      const pivot = cloth.getWorldPosition(new Vector3());
+      const camera = pivot.clone().add(new Vector3(x, y, z));
+      faceFlagsToCamera(group, camera);
+      flags.update(0.2);
+      const towardCamera = camera.clone().sub(pivot).setY(0).normalize();
+      for (const object of [cloth, star]) {
+        const normal = object.getWorldDirection(new Vector3()).setY(0).normalize();
+        expect(normal.angleTo(towardCamera) * 180 / Math.PI).toBeLessThan(2);
+      }
+      expect(cloth.rotation.x).toBe(0);
+      expect(cloth.rotation.z).toBe(0);
+      expect(cloth.getWorldPosition(new Vector3()).distanceTo(pivot)).toBeLessThan(1e-8);
+      expect(pole(group, "saved").rotation.toArray().slice(0, 3)).toEqual([0, 0, 0]);
+      expect(star.parent).toBe(cloth);
+      flags.dispose();
+    },
+  );
   it.each([
     [-15, 15, palette.flags.live, 30],
     [0, 30, palette.flags.live, 30],
@@ -96,6 +121,11 @@ describe("campus event flags", () => {
     const ringScale = ring.scale.x;
     expect(flags.update(0.24)).toBe(true);
     expect(Array.from(marker.geometry.getAttribute("position").array)).not.toEqual(before);
+    const positions = marker.geometry.getAttribute("position");
+    for (let i = 0; i < positions.count; i++) {
+      expect(positions.getZ(i)).toBeGreaterThanOrEqual(marker.geometry.boundingBox!.min.z);
+      expect(positions.getZ(i)).toBeLessThanOrEqual(marker.geometry.boundingBox!.max.z);
+    }
     expect(ring.scale.x).not.toBe(ringScale);
 
     const geometryDisposed = vi.fn();

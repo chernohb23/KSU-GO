@@ -1,14 +1,17 @@
-import { Group, PerspectiveCamera, Scene, Vector3 } from "three";
+import { Box3, Group, PerspectiveCamera, Scene, Vector3 } from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import campusJson from "../../../shared/fixtures/campus.json";
 import type { Campus, Event } from "../../../shared/types";
 import { installBridge, type OutgoingMessage } from "../bridge";
 import { createCampusScene } from "./index";
+import { browserLoad } from "../browser";
+import { nativeLabelLayout, overlaps, type Rect } from "./labelPlacement";
 
 const rendered = vi.hoisted(() => ({
   scene: undefined as Scene | undefined,
   camera: undefined as PerspectiveCamera | undefined,
   target: undefined as Vector3 | undefined,
+  facingErrors: [] as number[],
 }));
 
 // Keep the real scene, flags and camera math; only replace WebGL and DOM controls.
@@ -29,6 +32,12 @@ vi.mock("three", async (importOriginal) => {
         camera.updateMatrixWorld(true);
         rendered.scene = scene;
         rendered.camera = camera;
+        rendered.facingErrors = (scene.getObjectByName("flags")?.children ?? []).map(flag => {
+          const cloth = flag.getObjectByName("flag-cloth")!;
+          const normal = cloth.getWorldDirection(new actual.Vector3()).setY(0).normalize();
+          const towardCamera = camera.position.clone().sub(cloth.getWorldPosition(new actual.Vector3())).setY(0).normalize();
+          return normal.angleTo(towardCamera) * 180 / Math.PI;
+        });
       }
     },
   };
@@ -40,13 +49,16 @@ vi.mock("three/addons/controls/MapControls.js", async () => {
     MapControls: class {
       target = new Vector3();
       cursor = new Vector3();
+      lastPosition = new Vector3();
       constructor(private camera: PerspectiveCamera) {
         rendered.target = this.target;
       }
       update() {
         this.camera.lookAt(this.target);
         this.camera.updateMatrixWorld(true);
-        return false;
+        const moved = !this.lastPosition.equals(this.camera.position);
+        this.lastPosition.copy(this.camera.position);
+        return moved;
       }
       addEventListener() {}
       dispose() {}
@@ -180,6 +192,65 @@ describe("campus scene tap and selection", () => {
     expect(labels.every(label => label.style.pointerEvents === "none")).toBe(true);
     expect(labels.every(label => label.style.whiteSpace === "nowrap")).toBe(true);
     expect(labels.every(label => label.style.textOverflow === "ellipsis")).toBe(true);
+  });
+
+  it.each([[390, 844], [430, 932]])("places every label in the native default view at %sx%s", (width, height) => {
+    scene.dispose();
+    window.ReactNativeWebView = { postMessage() {} };
+    overlays = [];
+    const container = {
+      clientWidth: width, clientHeight: height,
+      replaceChildren(child: EventTarget) { canvas = child; },
+      append(...elements: HTMLElement[]) { overlays.push(...elements); },
+    } as unknown as HTMLElement;
+    scene = createCampusScene(container, () => {});
+    const load = browserLoad("?scene=campus", new Date(now))!;
+    if (load.type !== "campus:load") throw new Error("Expected campus fixture");
+    scene.load({ ...load, savedEventIds: load.events.map(event => event.id) });
+    frame(20);
+    const labels = overlays.filter(element => campus.buildings.some(building => building.name === element.textContent));
+    const projectRect = (object: Group) => {
+      const box = new Box3().setFromObject(object);
+      const points = [];
+      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+        const p = new Vector3(x, y, z).project(rendered.camera!);
+        points.push([(p.x + 1) * width / 2, (1 - p.y) * height / 2]);
+      }
+      return { left: Math.min(...points.map(p => p[0])), top: Math.min(...points.map(p => p[1])),
+        right: Math.max(...points.map(p => p[0])), bottom: Math.max(...points.map(p => p[1])) };
+    };
+    expect(labels.filter(label => !label.hidden).map(label => label.textContent)).toEqual(campus.buildings.map(building => building.name));
+    const { viewport, obstacles } = nativeLabelLayout(width, height);
+    obstacles.push(...rendered.scene!.getObjectByName("flags")!.children.map(flag => projectRect(flag as Group)));
+    const rects: Rect[] = labels.map(label => ({ left: Number.parseFloat(label.style.left), top: Number.parseFloat(label.style.top),
+      right: Number.parseFloat(label.style.left) + Number.parseFloat(label.style.width), bottom: Number.parseFloat(label.style.top) + 20 }));
+    rects.forEach((rect, index) => {
+      expect(rect.left).toBeGreaterThanOrEqual(viewport.left);
+      expect(rect.right).toBeLessThanOrEqual(viewport.right);
+      expect(rect.top).toBeGreaterThanOrEqual(viewport.top);
+      expect(rect.bottom).toBeLessThanOrEqual(viewport.bottom);
+      for (const obstacle of [...obstacles, ...rects.slice(index + 1)]) expect(overlaps(rect, obstacle)).toBe(false);
+    });
+    const library = rects[campus.buildings.findIndex(b => b.id === "b-library")];
+    const norton = rects[campus.buildings.findIndex(b => b.id === "b-norton")];
+    expect(norton.top - library.bottom).toBe(6);
+    expect(library.left + library.right).toBeCloseTo(norton.left + norton.right);
+  });
+
+  it("updates flag facing before drawing during orbit and focus animation", () => {
+    const expectFacing = () => {
+      expect(rendered.facingErrors.length).toBe(2);
+      for (const angle of rendered.facingErrors) expect(angle).toBeLessThan(2);
+    };
+    expectFacing();
+    rendered.camera!.position.set(-250, 200, 80);
+    frame(16);
+    expectFacing();
+    receive({ type: "campus:select", eventId: event.id });
+    frame(225);
+    expectFacing();
+    frame(466);
+    expectFacing();
   });
 
   it("campus:select highlights its flag and eases the camera to its ground position", () => {

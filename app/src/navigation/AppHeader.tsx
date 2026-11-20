@@ -13,12 +13,12 @@ export function AppTitle({ variant = 'paper', settingsShortcut = false, compact 
   const content = <>
     <BrandMark size={compact ? 22 : 29} />
     <Text style={[styles.title, compact && styles.compactTitle, variant === 'ink' && styles.inkTitle]}
-      numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.2}>KSU-GO</Text>
+      numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.2}>KSU GO</Text>
   </>;
   if (!settingsShortcut) return <View style={styles.brand}>{content}</View>;
   return (
     <PressScale style={styles.brand} onLongPress={() => router.push('/settings')} accessibilityRole="button"
-      accessibilityLabel="KSU-GO" accessibilityHint="Long-press to open settings">
+      accessibilityLabel="KSU GO" accessibilityHint="Long-press to open settings">
       {content}
     </PressScale>
   );
