@@ -68,7 +68,7 @@ export const ViewerWebView = forwardRef<ViewerWebViewHandle, ViewerWebViewProps>
       // detected links on long press. The page CSS also turns off selection.
       textInteractionEnabled={false}
       allowsLinkPreview={false}
-      dataDetectorTypes="none"
+      dataDetectorTypes={['none']}
       onMessage={handleMessage}
       onError={(event) => onError?.(event.nativeEvent.description)}
       onLoadStart={() => {
