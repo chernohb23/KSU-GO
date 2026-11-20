@@ -8,3 +8,4 @@ imageio-ffmpeg>=0.8.1
 google-genai>=3.3.0
 numpy
 opencv-python-headless<5
+tzdata; sys_platform == "win32"
