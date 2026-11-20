@@ -40,7 +40,7 @@ The app opens on **Sign in**. Accounts are demo accounts checked by our own serv
 
 ### Run against the server
 
-Start the server in mock mode (`server/README.md`), then point the app at it: long-press **KSU-GO** in the header, also on the Sign in screen, and enter the server address without `/api`, for example `http://192.168.1.20:8000` or the tunnel URL. `EXPO_PUBLIC_API_URL` sets the default. While the server answers, the header shows no badge; **Offline data** appears when the app falls back to bundled data.
+Start the server in mock mode (`server/README.md`), then point the app at it: long-press the **KSU-GO** logo bubble on Map or the logo in the Sign in header, and enter the server address without `/api`, for example `http://192.168.1.20:8000` or the tunnel URL. `EXPO_PUBLIC_API_URL` sets the default. While the server answers, no offline badge appears. Map shows an **Offline** glass pill when the app falls back to bundled data; other headers show **Offline data**.
 
 ### Offline demo on iPhone (guest)
 
@@ -48,7 +48,7 @@ With no server, choose **Browse offline** on Sign in. The guest sees Map, Events
 
 A signed-in user whose server stops answering keeps the session, read-only, with **Offline data** showing; registering says it needs the server until the badge disappears.
 
-To rehearse again, long-press **KSU-GO**, choose **Reset app**, and confirm. This signs you out and clears every account's local saved events, swipes, Interests and upload history, plus the server address override. Account registrations, profiles, follows and organizations stay on the server. The same screen has **Preview directions**, which opens an event with directions.
+To rehearse again, long-press the **KSU-GO** logo on Map or Sign in, choose **Reset app**, and confirm. This signs you out and clears every account's local saved events, swipes, Interests and upload history, plus the server address override. Account registrations, profiles, follows and organizations stay on the server. The same screen has **Preview directions**, which opens an event with directions.
 
 The student route follows the room's confirmed route. Confirmed JSON routes under `shared/fixtures/routes/` are bundled by Metro alongside the existing sample. There is no route-drafts tab or list: a draft opens only from its event's Directions row.
 
@@ -84,8 +84,8 @@ Follow the APP-1 fallback in `SCOPE.md` risk 1 in order: first load the viewer f
 
 The app starts in Expo Router on **Sign in**. Everyone browsing gets **Map**, **Events** and **Profile**; accounts owning at least one organization also get **Organization**. The tab appears after the first organization is created, without restarting. Protected routes hide the tab for nonowners; the server enforces ownership for management calls.
 
-- **Map** shows today’s flags. Tapping one opens the event card over the map.
-- **Events** has **All** (this week, by day), **Discover** (the swipe deck) and **Saved**. Saving is separate from registering.
+- **Map** fills the screen under the status bar. The logo, refresh, information, Offline indicator and Today’s events use the same glass material and Reduce Transparency fallback as the dock. Settings is a long-press on the Map or Sign in logo only. The map credit is minimal, with full attribution in the information sheet. Tapping a flag opens the event card over the map.
+- **Events** has **All** (this week, by day), **Discover** (the swipe deck) and **Saved**. Saving is separate from registering. Events and Profile use small centered navigation titles; Organization uses its selected name. Discover artwork fills the space between organization and description, with a minimum height and scrolling for compact screens.
 - **Profile** has an editable avatar, major, class year and short bio; real registration/follow insights; Upcoming registrations with countdowns and directions; Saved; editable Interests; followed organizations; Create organization; and Sign out. The Saved count is this phone only. Monthly registration counts use the ET calendar month. Cancelled registrations stay labeled, with no Take me there.
 - **Organization** shows the club card, owner-entered members and actual followers, Edit organization, Create event and Upcoming/Past events (including cancellations). When you own several organizations, use the switcher. Manage event has details, named registrations, Edit, a destructive Cancel confirmation sheet, and Directions.
 - **Public organization pages** open from the organizer name on event cards and from Profile's following list. They show the club card, Follow/Unfollow and upcoming active events.
@@ -97,7 +97,7 @@ Directions has five states: **Directions ready** (view only), **Add directions**
 
 Every event card is the same component, wherever it opens. Times are always campus time, labeled **ET**, whatever the phone's time zone. Capacity shows as “34 / 50”, or “Full” once reached; it never blocks registering. **Take me there** opens directions above the tabs. Cancelled events leave Map, Events and Discover; event details can still fetch them directly and show a Cancelled banner with no registration or directions action.
 
-If the app has no configured server URL, it starts in fixture mode. The title can be long-pressed on any screen, including Sign in, to open hidden **Settings**. Enter the server base URL without `/api`; the app saves it on the device and checks it immediately. Leaving the field blank clears the override and returns to `EXPO_PUBLIC_API_URL`, if configured. Health is rechecked every 10 seconds, with a 2-second timeout.
+If the app has no configured server URL, it starts in fixture mode. Hidden **Settings** opens only by long-pressing the **KSU-GO** logo bubble on Map or the logo in the Sign in header. The sign-up and Settings brands are static. Enter the server base URL without `/api`; the app saves it on the device and checks it immediately. Leaving the field blank clears the override and returns to `EXPO_PUBLIC_API_URL`, if configured. Health is rechecked every 10 seconds, with a 2-second timeout.
 
 The typed API client lives in `src/api/client.ts`. Fixture conversion and fallback live in `src/data/`. `ViewerWebView` and the typed section 6 bridge live in `src/viewer/` and load HTML strings as required by the contract.
 

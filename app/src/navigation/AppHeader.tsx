@@ -5,14 +5,21 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useAppData } from '../data/AppDataContext';
 import { BrandMark, palette } from './Brand';
 
-/** The brand title. A long-press opens the hidden settings, also before signing in. */
-export function AppTitle({ variant = 'paper' }: { variant?: 'paper' | 'ink' }) {
+/** Static brand by default; only sign-in opts into the team shortcut. */
+export function AppTitle({ variant = 'paper', settingsShortcut = false, compact = false }: {
+  variant?: 'paper' | 'ink'; settingsShortcut?: boolean; compact?: boolean;
+}) {
   const router = useRouter();
+  const content = <>
+    <BrandMark size={compact ? 22 : 29} />
+    <Text style={[styles.title, compact && styles.compactTitle, variant === 'ink' && styles.inkTitle]}
+      numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.2}>KSU-GO</Text>
+  </>;
+  if (!settingsShortcut) return <View style={styles.brand}>{content}</View>;
   return (
     <PressScale style={styles.brand} onLongPress={() => router.push('/settings')} accessibilityRole="button"
       accessibilityLabel="KSU-GO" accessibilityHint="Long-press to open settings">
-      <BrandMark size={29} />
-      <Text style={[styles.title, variant === 'ink' && styles.inkTitle]}>KSU-GO</Text>
+      {content}
     </PressScale>
   );
 }
@@ -48,8 +55,9 @@ export const headerStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   title: { color: palette.ink, fontSize: 17, fontWeight: '700', letterSpacing: 0.5 },
+  compactTitle: { fontSize: 15, flexShrink: 1 },
   inkTitle: { color: palette.paper },
   // Same height as the 29 pt brand mark, centered, so the badge sits on the title's center line.
   badge: { height: 29, justifyContent: 'center', borderRadius: 14.5, paddingHorizontal: 10, backgroundColor: '#ece3c8' },

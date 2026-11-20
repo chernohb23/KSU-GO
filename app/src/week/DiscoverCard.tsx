@@ -89,8 +89,7 @@ export function DiscoverCard({ event, onOpen, onError }: { event: Event; onOpen(
             <Text style={text.largeTitle} numberOfLines={3} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.7}>{event.title}</Text>
             <Text style={text.subhead} numberOfLines={1} ellipsizeMode="tail">{event.organizer}</Text>
           </View>
-          <DiscoverArtwork category={event.category} />
-          <View style={styles.spacer} />
+          <DiscoverArtwork category={event.category} fill />
           <View style={styles.bottom}>
             <Text style={styles.description} numberOfLines={3} ellipsizeMode="tail">{event.description}</Text>
             <View style={styles.facts}>
@@ -114,8 +113,7 @@ const styles = StyleSheet.create({
   contentScroll: { flex: 1, minHeight: 0 },
   content: { flexGrow: 1 },
   top: { gap: space.s, marginBottom: space.l },
-  spacer: { flexGrow: 1, minHeight: space.l },
-  bottom: { gap: space.l },
+  bottom: { gap: space.l, marginTop: space.l },
   category: { ...text.footnote, color: tone.amber, fontWeight: '600' },
   description: { ...text.body },
   facts: { gap: space.s, paddingTop: space.l, borderTopWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },

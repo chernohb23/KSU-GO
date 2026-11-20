@@ -64,7 +64,7 @@ export default function ProfileScreen() {
     <ScrollView style={screenStyles.screen} contentContainerStyle={screenStyles.content}>
       <View style={styles.identity}>
         <Badge label={initials(user.name)} color={user.profile.avatarColor} size={88} />
-        <Text accessibilityRole="header" style={text.largeTitle}>{user.name}</Text>
+        <Text accessibilityRole="header" style={[text.title, styles.center]}>{user.name}</Text>
         {user.profile.major || user.profile.classYear ? <Text style={[text.subhead, styles.center]}>
           {[user.profile.major, user.profile.classYear ? `Class of ${user.profile.classYear}` : null].filter(Boolean).join(', ')}
         </Text> : <Text style={text.subhead}>{user.email}</Text>}

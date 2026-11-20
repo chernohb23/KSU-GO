@@ -61,7 +61,9 @@ export default function OrganizationLayout() {
           headerShadowVisible: false,
           headerTintColor: tone.amber,
           headerBackButtonDisplayMode: 'minimal',
-          headerTitleStyle: { color: tone.ink },
+          headerTitleAlign: 'center',
+          headerLargeTitle: false,
+          headerTitleStyle: { color: tone.ink, fontSize: 17, fontWeight: '600' },
         }} />
       </OrganizationTabContext.Provider>
     </OrganizerContext.Provider>

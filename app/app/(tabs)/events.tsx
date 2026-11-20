@@ -92,7 +92,6 @@ export default function EventsScreen() {
 
   const header = (
     <View style={styles.header}>
-      <Text accessibilityRole="header" style={text.largeTitle}>Events</Text>
       <Segmented value={view} onChange={(next) => { setError(''); setView(next); }} savedCount={saved.length} />
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     </View>

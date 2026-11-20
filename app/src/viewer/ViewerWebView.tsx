@@ -64,6 +64,8 @@ export const ViewerWebView = forwardRef<ViewerWebViewHandle, ViewerWebViewProps>
       domStorageEnabled={false}
       scrollEnabled={false}
       bounces={false}
+      automaticallyAdjustContentInsets={false}
+      contentInsetAdjustmentBehavior="never"
       // The viewer is a touch surface: no text selection loupe, link previews or
       // detected links on long press. The page CSS also turns off selection.
       textInteractionEnabled={false}

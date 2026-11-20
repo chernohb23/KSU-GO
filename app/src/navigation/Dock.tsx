@@ -1,28 +1,15 @@
-import { BlurView } from 'expo-blur';
-import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useEffect, useState } from 'react';
-import { Keyboard, Platform, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, StyleSheet, Text, View } from 'react-native';
 
-import { useReduceTransparency } from '../ui/accessibility';
+import { GlassBackground } from '../ui/GlassBackground';
 import { haptic } from '../ui/haptics';
 import { Ionicon, type IoniconName } from '../ui/Ionicon';
 import { PressScale } from '../ui/PressScale';
 import { dockLayout } from './dockLayout';
-import { blur, dock, text, tone } from './theme';
+import { dock, text, tone } from './theme';
 
-const LIQUID_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
 const icons: Record<string, IoniconName> = { index: 'map', events: 'calendar', organization: 'people', profile: 'person-circle' };
-
-function DockBackground() {
-  const opaque = useReduceTransparency();
-  if (opaque) return <View style={[styles.capsule, styles.opaque]} />;
-  if (LIQUID_GLASS) return <GlassView glassEffectStyle="regular" style={styles.capsule} />;
-  return <View style={styles.capsule}>
-    <BlurView intensity={blur.intensity} tint={blur.tint} style={StyleSheet.absoluteFill} />
-    <View style={[StyleSheet.absoluteFill, styles.tint]} />
-  </View>;
-}
 
 export function Dock({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const [keyboard, setKeyboard] = useState(Keyboard.isVisible());
@@ -35,7 +22,7 @@ export function Dock({ state, descriptors, emitter, navigateToTab, insets }: Bot
   }, []);
   if (keyboard) return null;
   return <View style={[styles.dock, { bottom: dockLayout(insets.bottom).bottom }]} accessibilityRole="tablist">
-    <DockBackground />
+    <GlassBackground />
     {state.routes.filter(route => !descriptors[route.key].options.hidden).map((route) => {
       const options = descriptors[route.key].options;
       const selected = state.routes[state.index].key === route.key;
@@ -63,9 +50,6 @@ export function Dock({ state, descriptors, emitter, navigateToTab, insets }: Bot
 const styles = StyleSheet.create({
   dock: { position: 'absolute', start: dock.sideInset, end: dock.sideInset, height: dock.height, flexDirection: 'row',
     borderRadius: 999, shadowColor: tone.ink, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
-  capsule: { ...StyleSheet.absoluteFill, borderRadius: 999, overflow: 'hidden' },
-  opaque: { backgroundColor: tone.paper, borderWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },
-  tint: { borderRadius: 999, backgroundColor: blur.fill, borderWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },
   item: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 4, gap: 4 },
   label: { ...text.footnote, fontWeight: '500', width: '100%', textAlign: 'center' },
   selected: { color: tone.amber, fontWeight: '600' },
