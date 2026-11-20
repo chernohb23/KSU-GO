@@ -1,8 +1,8 @@
-import { useDemoSession } from '../settings/DemoSession';
+import { useAccount } from '../account/AccountProvider';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 export function useWeekChoices() {
-  const { weekChoices } = useDemoSession();
+  const { weekChoices } = useAccount();
   const choices = useSyncExternalStore(weekChoices.subscribe, weekChoices.snapshot, weekChoices.snapshot);
   const [loadFailed, setLoadFailed] = useState(false);
   const retry = useCallback(() => {

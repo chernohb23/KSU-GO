@@ -8,6 +8,8 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 PipelineMode = Literal["mock", "live"]
 EventRange = Literal["today", "week"]
 Stage = Literal["ingest", "timeline", "geometry", "assemble", "verify"]
+Category = Literal["academic", "social", "career", "sports", "arts", "other"]
+Role = Literal["student", "organizer"]
 
 
 class ContractModel(BaseModel):
@@ -28,8 +30,11 @@ class EventDetails(ContractModel):
     id: str
     title: str
     description: str
+    organizationId: str
     organizer: str
-    category: Literal["academic", "social", "career", "sports", "arts", "other"]
+    partnerOrganizationId: str | None
+    category: Category
+    tags: list[str]
     location: Location
     routeId: str | None
     capacity: int | None
@@ -46,13 +51,75 @@ class EventSeed(EventDetails):
     durationMin: float
 
 
-class RegistrationRequest(ContractModel):
-    deviceId: str
+class Building(ContractModel):
+    id: str
+    name: str
+    footprint: list[tuple[float, float]]
+    heightM: float
+    entrance: tuple[float, float]
+
+
+class Campus(ContractModel):
+    attribution: str | None
+    buildings: list[Building]
+    paths: list[list[tuple[float, float]]]
+
+
+class OrganizationLogo(ContractModel):
+    initials: str
+    color: Literal["gold", "ink"]
+
+
+class Organization(ContractModel):
+    id: str
+    name: str
+    description: str
+    memberCount: int
+    logo: OrganizationLogo
 
 
 class Registration(ContractModel):
     registered: Literal[True] = True
     registeredCount: int
+
+
+class CreateEventRequest(ContractModel):
+    """Shape only; event_rules.py applies the contract's value rules."""
+    title: str
+    description: str
+    organizationId: str
+    partnerOrganizationId: str | None
+    category: Category
+    tags: list[str]
+    # A string: FastAPI validates bodies in Python mode, where strict datetimes refuse strings.
+    startsAt: str
+    durationMin: int
+    location: Location
+    capacity: int | None
+
+
+class User(ContractModel):
+    id: str
+    name: str
+    email: str
+    role: Role
+    organizationId: str | None
+
+
+class AuthResponse(ContractModel):
+    token: str
+    user: User
+
+
+class SignupRequest(ContractModel):
+    name: str
+    email: str
+    password: str
+
+
+class LoginRequest(ContractModel):
+    email: str
+    password: str
 
 
 class StepBase(ContractModel):

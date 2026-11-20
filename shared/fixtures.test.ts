@@ -3,8 +3,9 @@
 // compiler checks the parser against the type and the test checks the JSON.
 
 import { describe, expect, it } from "vitest";
-import type { Campus, Check, Event, EventSeed, Route, Step, StepBase } from "./types";
+import type { Campus, Check, Event, EventSeed, Organization, Route, Step, StepBase } from "./types";
 import seedJson from "./fixtures/events.seed.json";
+import organizationsJson from "./fixtures/organizations.json";
 import campusJson from "./fixtures/campus.json";
 import sampleJson from "./fixtures/route.sample.json";
 import flawedJson from "./fixtures/route.draft-flawed.json";
@@ -84,21 +85,25 @@ const TURN_DIRECTIONS: Record<Extract<Step, { type: "turn" }>["direction"], true
 };
 const STAIR_DIRECTIONS: Record<Extract<Step, { type: "stairs" }>["direction"], true> = { up: true, down: true };
 const LEVELS: Record<Check["level"], true> = { pass: true, warn: true, fail: true };
+const LOGO_COLORS: Record<Organization["logo"]["color"], true> = { gold: true, ink: true };
 
 // ---- Parsers, one per contract type ----
 
 function parseEventSeed(v: unknown, path: string): EventSeed {
   const o = obj(v, path);
-  keys(o, ["id", "title", "description", "organizer", "category", "startsInMin", "durationMin",
-    "location", "routeId", "capacity", "registeredCount"], path);
+  keys(o, ["id", "title", "description", "organizationId", "organizer", "partnerOrganizationId", "category",
+    "tags", "startsInMin", "durationMin", "location", "routeId", "capacity", "registeredCount"], path);
   const loc = obj(get(o, "location"), `${path}.location`);
   keys(loc, ["buildingId", "room"], `${path}.location`);
   return {
     id: str(get(o, "id"), `${path}.id`),
     title: str(get(o, "title"), `${path}.title`),
     description: str(get(o, "description"), `${path}.description`),
+    organizationId: str(get(o, "organizationId"), `${path}.organizationId`),
     organizer: str(get(o, "organizer"), `${path}.organizer`),
+    partnerOrganizationId: nullable(get(o, "partnerOrganizationId"), `${path}.partnerOrganizationId`, str),
     category: oneOf(CATEGORIES, get(o, "category"), `${path}.category`),
+    tags: arr(get(o, "tags"), `${path}.tags`, str),
     startsInMin: num(get(o, "startsInMin"), `${path}.startsInMin`),
     durationMin: num(get(o, "durationMin"), `${path}.durationMin`),
     location: {
@@ -108,6 +113,23 @@ function parseEventSeed(v: unknown, path: string): EventSeed {
     routeId: nullable(get(o, "routeId"), `${path}.routeId`, str),
     capacity: nullable(get(o, "capacity"), `${path}.capacity`, num),
     registeredCount: num(get(o, "registeredCount"), `${path}.registeredCount`),
+  };
+}
+
+function parseOrganization(v: unknown, path: string): Organization {
+  const o = obj(v, path);
+  keys(o, ["id", "name", "description", "memberCount", "logo"], path);
+  const logo = obj(get(o, "logo"), `${path}.logo`);
+  keys(logo, ["initials", "color"], `${path}.logo`);
+  return {
+    id: str(get(o, "id"), `${path}.id`),
+    name: str(get(o, "name"), `${path}.name`),
+    description: str(get(o, "description"), `${path}.description`),
+    memberCount: num(get(o, "memberCount"), `${path}.memberCount`),
+    logo: {
+      initials: str(get(logo, "initials"), `${path}.logo.initials`),
+      color: oneOf(LOGO_COLORS, get(logo, "color"), `${path}.logo.color`),
+    },
   };
 }
 
@@ -249,6 +271,7 @@ function lazy<T>(parse: () => T): () => T {
 }
 
 const seeds = lazy(() => arr(seedJson, "events.seed.json", parseEventSeed));
+const organizations = lazy(() => arr(organizationsJson, "organizations.json", parseOrganization));
 const campus = lazy(() => parseCampus(campusJson, "campus.json"));
 const sample = lazy(() => parseRoute(sampleJson, "route.sample.json"));
 const flawed = lazy(() => parseRoute(flawedJson, "route.draft-flawed.json"));
@@ -276,6 +299,9 @@ function findStep(route: Route, id: string): Step {
 describe("fixture shapes", () => {
   it("events.seed.json matches EventSeed[]", () => {
     expect(seeds().length).toBeGreaterThan(0);
+  });
+  it("organizations.json matches Organization[]", () => {
+    expect(organizations().length).toBeGreaterThan(0);
   });
   it("campus.json matches Campus", () => {
     expect(campus().buildings.length).toBeGreaterThan(0);
@@ -355,6 +381,74 @@ describe("events.seed.json", () => {
     for (const e of seeds().filter((s) => s.routeId === "route-sample")) {
       expect(e.location.buildingId).toBe(route.buildingId);
       expect(`Room ${e.location.room}`).toBe(route.destination);
+    }
+  });
+});
+
+describe("organizations.json", () => {
+  function org(id: string): Organization {
+    const found = organizations().find((o) => o.id === id);
+    if (found === undefined) throw new Error(`no organization ${id}`);
+    return found;
+  }
+
+  it("has unique ids and names, initials badges and positive member counts", () => {
+    const all = organizations();
+    expect(new Set(all.map((o) => o.id)).size).toBe(all.length);
+    expect(new Set(all.map((o) => o.name)).size).toBe(all.length);
+    for (const o of all) {
+      expect(o.logo.initials, o.id).toMatch(/^[A-Z]{1,4}$/);
+      expect(Number.isInteger(o.memberCount) && o.memberCount > 0, o.id).toBe(true);
+      expect(o.name.length, o.id).toBeGreaterThan(0);
+      expect(o.description.length, o.id).toBeGreaterThan(0);
+    }
+  });
+
+  it("features the Robotics Club and the Game Development Club", () => {
+    expect(org("org-robotics-club")).toMatchObject(
+      { name: "Robotics Club", memberCount: 32, logo: { initials: "RC", color: "gold" } },
+    );
+    expect(org("org-game-development-club")).toMatchObject(
+      { name: "Game Development Club", memberCount: 24, logo: { initials: "GD", color: "ink" } },
+    );
+  });
+
+  it("hosts every seed event, with organizer equal to the host's name", () => {
+    const byId = new Map(organizations().map((o) => [o.id, o]));
+    for (const e of seeds()) {
+      const host = byId.get(e.organizationId);
+      expect(host, `${e.id}: unknown organizationId "${e.organizationId}"`).toBeDefined();
+      expect(e.organizer, e.id).toBe(host?.name);
+    }
+  });
+
+  it("gives every partner a known organization other than the host, with both cases present", () => {
+    const ids = new Set(organizations().map((o) => o.id));
+    for (const e of seeds()) {
+      if (e.partnerOrganizationId === null) continue;
+      expect(ids.has(e.partnerOrganizationId), e.id).toBe(true);
+      expect(e.partnerOrganizationId, e.id).not.toBe(e.organizationId);
+    }
+    expect(seeds().some((e) => e.partnerOrganizationId === null)).toBe(true);
+    expect(seeds().some((e) => e.partnerOrganizationId !== null)).toBe(true);
+  });
+
+  it("hosts at least one seed event per organization", () => {
+    const hosts = new Set(seeds().map((e) => e.organizationId));
+    for (const o of organizations()) expect(hosts.has(o.id), o.id).toBe(true);
+  });
+});
+
+describe("event tags", () => {
+  it("are already trimmed, lowercase, unique, at most 8, each 1 to 24 characters", () => {
+    for (const e of seeds()) {
+      expect(e.tags.length, e.id).toBeLessThanOrEqual(8);
+      expect(new Set(e.tags).size, e.id).toBe(e.tags.length);
+      for (const tag of e.tags) {
+        expect(tag, e.id).toBe(tag.trim().toLowerCase());
+        expect(tag.length, e.id).toBeGreaterThanOrEqual(1);
+        expect(tag.length, e.id).toBeLessThanOrEqual(24);
+      }
     }
   });
 });

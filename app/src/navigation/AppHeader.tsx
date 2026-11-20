@@ -4,12 +4,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppData } from '../data/AppDataContext';
 import { BrandMark, palette } from './Brand';
 
-export function AppTitle() {
+/** The brand title. A long-press opens the hidden settings, also before signing in. */
+export function AppTitle({ variant = 'paper' }: { variant?: 'paper' | 'ink' }) {
   const router = useRouter();
   return (
-    <Pressable style={styles.brand} onLongPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Open server settings">
+    <Pressable style={styles.brand} onLongPress={() => router.push('/settings')} accessibilityRole="button"
+      accessibilityLabel="KSU-GO" accessibilityHint="Long-press to open settings">
       <BrandMark size={29} />
-      <Text style={styles.title}>KSU-GO</Text>
+      <Text style={[styles.title, variant === 'ink' && styles.inkTitle]}>KSU-GO</Text>
     </Pressable>
   );
 }
@@ -30,6 +32,7 @@ export const headerStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { color: palette.ink, fontSize: 18, fontWeight: '800', letterSpacing: 0.5 },
+  inkTitle: { color: palette.paper },
   badge: { marginRight: 10, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
   offline: { backgroundColor: '#ece3c8' },
   online: { backgroundColor: '#e0eee4' },
