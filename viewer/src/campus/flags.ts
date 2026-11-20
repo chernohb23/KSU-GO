@@ -1,6 +1,6 @@
-﻿import {
-  BoxGeometry, BufferGeometry, Group, Line, LineBasicMaterial,
-  Mesh, MeshBasicMaterial, OctahedronGeometry, SphereGeometry, Vector3,
+import {
+  BufferAttribute, BufferGeometry, CylinderGeometry, DoubleSide, Group,
+  Mesh, MeshBasicMaterial, PlaneGeometry, RingGeometry, Shape, ShapeGeometry,
 } from "three";
 import type { Event } from "../../../shared/types";
 import { palette } from "../palette";
@@ -18,13 +18,36 @@ function appearance(event: Event, nowMs: number): { state: State; heightM: numbe
 }
 
 function markerGeometry(state: State) {
-  if (state === "live") return new SphereGeometry(3.1, 12, 8);
-  if (state === "soon") return new BoxGeometry(6.2, 4.8, 3.4);
-  return new OctahedronGeometry(3.3);
+  if (state === "live") return new PlaneGeometry(13, 9, 8);
+  if (state === "soon") return new PlaneGeometry(13, 9);
+  return new BufferGeometry().setAttribute("position", new BufferAttribute(
+    new Float32Array([-5.5, 4, 0, -5.5, -4, 0, 5.5, 0, 0]), 3,
+  ));
 }
 
-export const createFlags: CreateFlags = (flagsLayer, campus, events, now) => {
+const FLAG_ANGLE = -Math.atan2(0.92, 0.4);
+
+function savedStar() {
+  const shape = new Shape();
+  shape.moveTo(0, 4);
+  for (let point = 1; point < 10; point++) {
+    const angle = point * Math.PI / 5;
+    const radius = point % 2 === 0 ? 4 : 1.8;
+    shape.lineTo(Math.sin(angle) * radius, Math.cos(angle) * radius);
+  }
+  shape.closePath();
+  const star = new Mesh(new ShapeGeometry(shape), new MeshBasicMaterial({
+    color: palette.ui.text, side: DoubleSide, depthTest: false, depthWrite: false,
+  }));
+  star.name = "flag-saved";
+  star.position.y = 5;
+  star.renderOrder = 3;
+  return star;
+}
+
+export const createFlags: CreateFlags = (flagsLayer, campus, events, now, savedEventIds) => {
   const activeByBuilding = new Map<string, { event: Event; state: State; heightM: number }[]>();
+  const saved = new Set(savedEventIds);
   const nowMs = Date.parse(now);
   for (const event of events) {
     const visual = appearance(event, nowMs);
@@ -37,9 +60,8 @@ export const createFlags: CreateFlags = (flagsLayer, campus, events, now) => {
 
   const flags: {
     flag: Group;
-    pole: Line<BufferGeometry, LineBasicMaterial>;
     marker: Mesh<BufferGeometry, MeshBasicMaterial>;
-    live: boolean;
+    pulse?: Mesh<RingGeometry, MeshBasicMaterial>;
   }[] = [];
   let elapsedSeconds = 0;
   for (const building of campus.buildings) {
@@ -47,23 +69,44 @@ export const createFlags: CreateFlags = (flagsLayer, campus, events, now) => {
     const [x, z] = building.entrance;
     active.forEach(({ event, state, heightM }, index) => {
       const offset = (index - (active.length - 1) / 2) * 22;
-      const base = new Vector3(x, 0, z);
-      // Fan across the default map view while all poles start at the entrance.
-      const tip = new Vector3(x + offset * 0.4, heightM, z + offset * 0.92);
-      const pole = new Line(
-        new BufferGeometry().setFromPoints([base, tip]),
-        new LineBasicMaterial({ color: palette.flags[state], transparent: true, opacity: 0.8 }),
-      );
-      const marker = new Mesh(markerGeometry(state), new MeshBasicMaterial({ color: palette.flags[state], depthTest: false }));
-      marker.name = "flag-marker";
-      marker.position.copy(tip);
-      marker.renderOrder = 2;
-
       const flag = new Group();
       flag.name = event.id;
-      flag.add(pole, marker);
+      flag.position.set(x + offset * 0.4, 0, z + offset * 0.92);
+
+      const hardware = new MeshBasicMaterial({ color: palette.ui.text });
+      const pole = new Mesh(new CylinderGeometry(0.65, 0.85, heightM, 8), hardware);
+      pole.name = "flag-pole";
+      pole.position.y = heightM / 2;
+      const base = new Mesh(new CylinderGeometry(2, 2.6, 0.6, 12), hardware);
+      base.name = "flag-base";
+      base.position.y = 0.3;
+
+      const cloth = new Group();
+      cloth.position.y = heightM;
+      cloth.rotation.y = FLAG_ANGLE;
+      const marker = new Mesh(markerGeometry(state), new MeshBasicMaterial({
+        color: palette.flags[state], side: DoubleSide, depthTest: false, depthWrite: false,
+      }));
+      marker.name = "flag-marker";
+      marker.geometry.computeBoundingBox();
+      marker.position.set(-marker.geometry.boundingBox!.min.x, -marker.geometry.boundingBox!.max.y, 0);
+      marker.renderOrder = 2;
+      cloth.add(marker);
+      if (saved.has(event.id)) cloth.add(savedStar());
+      flag.add(base, pole, cloth);
+
+      let pulse: (typeof flags)[number]["pulse"];
+      if (state === "live") {
+        pulse = new Mesh(new RingGeometry(2.8, 3.5, 24), new MeshBasicMaterial({
+          color: palette.flags.live, transparent: true, depthWrite: false,
+        }));
+        pulse.name = "flag-pulse";
+        pulse.rotation.x = -Math.PI / 2;
+        pulse.position.y = 0.15;
+        flag.add(pulse);
+      }
       flagsLayer.add(flag);
-      flags.push({ flag, pole, marker, live: state === "live" });
+      flags.push({ flag, marker, pulse });
     });
   }
 
@@ -71,19 +114,35 @@ export const createFlags: CreateFlags = (flagsLayer, campus, events, now) => {
     update(dtSeconds) {
       elapsedSeconds += dtSeconds;
       let animating = false;
-      for (const { flag, marker, live } of flags) {
-        const pulse = live ? 1 + 0.18 * Math.sin(elapsedSeconds * Math.PI * 2 / 1.6) : 1;
-        marker.scale.setScalar(pulse * (flag.userData.selected ? 1.5 : 1));
-        animating ||= live;
+      for (const { flag, marker, pulse } of flags) {
+        const scale = flag.userData.selected ? 1.5 : 1;
+        marker.scale.setScalar(scale);
+        const bounds = marker.geometry.boundingBox!;
+        marker.position.set(-bounds.min.x * scale, -bounds.max.y * scale, 0);
+        if (!pulse) continue;
+        animating = true;
+        const positions = marker.geometry.getAttribute("position");
+        for (let i = 0; i < positions.count; i++) {
+          const across = (positions.getX(i) - bounds.min.x) / (bounds.max.x - bounds.min.x);
+          positions.setZ(i, across * 1.7 * Math.sin(across * Math.PI * 2 - elapsedSeconds * 5));
+        }
+        positions.needsUpdate = true;
+        const phase = (elapsedSeconds % 1.6) / 1.6;
+        pulse.scale.setScalar(1 + phase * 1.8);
+        pulse.material.opacity = 0.8 * (1 - phase);
       }
       return animating;
     },
     dispose() {
-      for (const { flag, pole, marker } of flags) {
-        pole.geometry.dispose();
-        pole.material.dispose();
-        marker.geometry.dispose();
-        marker.material.dispose();
+      for (const { flag } of flags) {
+        const materials = new Set<MeshBasicMaterial>();
+        flag.traverse(object => {
+          if (object instanceof Mesh) {
+            object.geometry.dispose();
+            materials.add(object.material);
+          }
+        });
+        materials.forEach(material => material.dispose());
         flag.removeFromParent();
       }
       flags.length = 0;

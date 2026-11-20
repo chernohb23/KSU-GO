@@ -1,4 +1,4 @@
-﻿import { Group, Line, LineBasicMaterial, Mesh } from "three";
+import { Box3, CylinderGeometry, Group, Mesh, MeshBasicMaterial, Vector3 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import fixture from "../../../shared/fixtures/campus.json";
 import type { Campus, Event } from "../../../shared/types";
@@ -20,8 +20,8 @@ function event(id: string, start: number, end: number, buildingId = building.id)
 }
 
 function pole(group: Group, id: string) {
-  const object = group.getObjectByName(id)?.children[0];
-  if (!(object instanceof Line) || !(object.material instanceof LineBasicMaterial)) {
+  const object = group.getObjectByName(id)?.getObjectByName("flag-pole");
+  if (!(object instanceof Mesh) || !(object.geometry instanceof CylinderGeometry)) {
     throw new Error("Missing event pole: " + id);
   }
   return object;
@@ -40,13 +40,17 @@ describe("campus event flags", () => {
     const group = new Group();
     const flags = createFlags(group, campus, [event("sample", start, end)], minutes(0));
     const stem = pole(group, "sample");
-    const position = stem.geometry.getAttribute("position");
     const [x, z] = building.entrance;
-    expect(position.getX(0)).toBeCloseTo(x);
-    expect(position.getY(0)).toBe(0);
-    expect(position.getZ(0)).toBeCloseTo(z);
-    expect(position.getY(1)).toBeCloseTo(height);
-    expect(stem.material.color.getHex()).toBe(color);
+    const bounds = new Box3().setFromObject(stem);
+    expect(stem.getWorldPosition(new Vector3()).toArray()).toEqual([x, height / 2, z]);
+    expect(bounds.min.y).toBeCloseTo(0);
+    expect(bounds.max.y).toBeCloseTo(height);
+    const marker = group.getObjectByName("sample")!.getObjectByName("flag-marker") as Mesh;
+    expect((marker.material as MeshBasicMaterial).color.getHex()).toBe(color);
+    expect(marker.geometry.index?.count ?? marker.geometry.getAttribute("position").count).toBe(
+      start <= 0 ? 48 : start <= 60 ? 6 : 3,
+    );
+    expect(group.getObjectByName("flag-base")).toBeInstanceOf(Mesh);
     flags.dispose();
   });
 
@@ -56,10 +60,14 @@ describe("campus event flags", () => {
       event("first", 10, 50), event("second", 10, 50),
       event("ended", -25, 0), event("unknown", 10, 50, "missing"),
     ], minutes(0));
-    const first = pole(group, "first").geometry.getAttribute("position");
-    const second = pole(group, "second").geometry.getAttribute("position");
-    expect(first.getX(0)).toBe(second.getX(0));
-    expect(first.getX(1)).toBeLessThan(second.getX(1));
+    const first = pole(group, "first");
+    const second = pole(group, "second");
+    const firstPosition = first.getWorldPosition(new Vector3());
+    const secondPosition = second.getWorldPosition(new Vector3());
+    expect(firstPosition.x).toBeLessThan(secondPosition.x);
+    expect(firstPosition.x + secondPosition.x).toBeCloseTo(2 * building.entrance[0]);
+    expect(firstPosition.z + secondPosition.z).toBeCloseTo(2 * building.entrance[1]);
+    for (const stem of [first, second]) expect(stem.rotation.toArray().slice(0, 3)).toEqual([0, 0, 0]);
     expect(group.getObjectByName("ended")).toBeUndefined();
     expect(group.getObjectByName("unknown")).toBeUndefined();
     flags.dispose();
@@ -71,9 +79,13 @@ describe("campus event flags", () => {
     group.add(buildingObject);
     const flags = createFlags(group, campus, [event("live", -10, 30)], minutes(0));
     const marker = group.getObjectByName("live")?.getObjectByName("flag-marker") as Mesh;
+    const ring = group.getObjectByName("flag-pulse") as Mesh;
     expect(flags.update(0)).toBe(true);
+    const before = Array.from(marker.geometry.getAttribute("position").array);
+    const ringScale = ring.scale.x;
     expect(flags.update(0.24)).toBe(true);
-    expect(marker.scale.x).toBeGreaterThan(1);
+    expect(Array.from(marker.geometry.getAttribute("position").array)).not.toEqual(before);
+    expect(ring.scale.x).not.toBe(ringScale);
 
     const geometryDisposed = vi.fn();
     const materialDisposed = vi.fn();

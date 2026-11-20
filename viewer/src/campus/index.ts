@@ -6,7 +6,7 @@ import { MapControls } from "three/addons/controls/MapControls.js";
 import type { CampusCommand, CampusLoad } from "../bridge";
 import { palette } from "../palette";
 import type { ViewerScene } from "../scene";
-import { createCampusWorld, type CampusInfo } from "./build";
+import { createCampusWorld, type BuildingData, type CampusInfo } from "./build";
 import { createFlags } from "./flags";
 import { createRenderLoop } from "./renderLoop";
 
@@ -49,7 +49,7 @@ export function createCampusScene(
   Object.assign(credit.style, {
     position: "absolute",
     right: "6px",
-    bottom: "7px",
+    top: "8px",
     padding: "1px 6px",
     borderRadius: "4px",
     background: css(palette.ui.surface, 0.75),
@@ -60,6 +60,9 @@ export function createCampusScene(
     display: "none",
   });
   container.append(credit);
+  const legend = createFlagLegend();
+  container.append(legend);
+  const labels: { element: HTMLElement; anchor: Vector3 }[] = [];
 
   // ---- render on demand: frames run only while something moves --------------
   let userMoved = false;
@@ -84,6 +87,15 @@ export function createCampusScene(
     fog.near = d * 1.1;
     fog.far = d * 2.5;
     renderer.render(scene, camera);
+    for (const { element, anchor } of labels) {
+      projected.copy(anchor).project(camera);
+      const visible = Math.max(Math.abs(projected.x), Math.abs(projected.y), Math.abs(projected.z)) <= 1;
+      element.hidden = !visible;
+      if (visible) {
+        element.style.left = `${(projected.x + 1) * 50}%`;
+        element.style.top = `${(1 - projected.y) * 50}%`;
+      }
+    }
   }
 
   const loop = createRenderLoop(
@@ -118,7 +130,7 @@ export function createCampusScene(
     if (!start || start.id !== event.pointerId || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) return;
 
     const rect = renderer.domElement.getBoundingClientRect();
-    let closest = 25;
+    let closest = 30;
     let eventId: string | undefined;
     for (const flag of world.flagsLayer.children) {
       const marker = flag.getObjectByName("flag-marker");
@@ -273,10 +285,34 @@ export function createCampusScene(
       const first = !world.built;
       const built = world.load(message.campus); // builds buildings on the first load only
 
-      loop.replaceFlags(() => createFlags(world.flagsLayer, message.campus, message.events, message.now));
+      loop.replaceFlags(() => createFlags(
+        world.flagsLayer, message.campus, message.events, message.now, message.savedEventIds,
+      ));
       selectFlag(selectedId);
 
       if (first) {
+        for (const building of built.buildings.values()) {
+          const { name, heightM } = building.userData as BuildingData;
+          const element = document.createElement("span");
+          element.textContent = name;
+          Object.assign(element.style, {
+            position: "absolute",
+            transform: "translate(-50%, -100%)",
+            maxWidth: "104px",
+            padding: "2px 5px",
+            borderRadius: "4px",
+            background: css(palette.ui.surface, 0.9),
+            color: css(palette.ui.text),
+            font: "600 10px/1.2 system-ui, sans-serif",
+            textAlign: "center",
+            pointerEvents: "none",
+            userSelect: "none",
+          });
+          element.hidden = true;
+          labels.push({ element, anchor: building.position.clone().setY(heightM + 4) });
+          container.append(element);
+        }
+        legend.hidden = false;
         info = built.info;
         const { bounds, center } = info;
         controls.cursor.set(center[0], 0, center[1]);
@@ -312,8 +348,52 @@ export function createCampusScene(
       renderer.dispose();
       renderer.domElement.remove();
       credit.remove();
+      legend.remove();
+      for (const { element } of labels) element.remove();
     },
   };
+}
+
+function createFlagLegend(): HTMLElement {
+  const legend = document.createElement("div");
+  legend.setAttribute("role", "note");
+  legend.hidden = true;
+  Object.assign(legend.style, {
+    position: "absolute",
+    top: "8px",
+    left: "8px",
+    zIndex: "1",
+    padding: "5px 8px",
+    borderRadius: "6px",
+    background: css(palette.ui.surface, 0.92),
+    color: css(palette.ui.text),
+    font: "11px/1.5 system-ui, sans-serif",
+    pointerEvents: "none",
+    userSelect: "none",
+  });
+
+  const key = document.createElement("div");
+  Object.assign(key.style, { display: "flex", gap: "8px" });
+  for (const [state, label] of [["live", "Live"], ["soon", "Within 1 hr"], ["later", "Later"]] as const) {
+    const item = document.createElement("span");
+    const dot = document.createElement("span");
+    Object.assign(dot.style, {
+      display: "inline-block",
+      width: "7px",
+      height: "7px",
+      marginRight: "3px",
+      borderRadius: "50%",
+      background: css(palette.flags[state]),
+    });
+    const text = document.createElement("span");
+    text.textContent = label;
+    item.append(dot, text);
+    key.append(item);
+  }
+  const height = document.createElement("div");
+  height.textContent = "Taller flags start sooner";
+  legend.append(key, height);
+  return legend;
 }
 
 function css(hex: number, alpha = 1): string {
