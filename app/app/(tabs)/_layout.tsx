@@ -26,10 +26,15 @@ export default function TabsLayout() {
       tabBarStyle: { backgroundColor: tone.paper },
       tabBarLabelStyle: { fontWeight: '600' },
       tabBarIcon: ({ color, size }) => (
-        <Image accessible={false} source={icons[route.name as keyof typeof icons]}
+        // Profile lives at profile/index (see the note on the screen list below).
+        <Image accessible={false} source={icons[route.name.replace(/\/index$/, '') as keyof typeof icons]}
           style={{ width: size, height: size, tintColor: color }} />
       ),
     })}>
+      {/* Declared in the same order expo-router seeds the tab state (index first, then
+          shorter route names first), so mounting the tabs on sign-in queues no
+          ROUTE_NAMES_CHANGED. That is why Profile is profile/index (13 characters)
+          and sorts after organizer (9). Keep this order when adding tabs. */}
       <Tabs.Screen name="index" options={{ title: 'Map' }} />
       <Tabs.Screen name="events" options={{ title: 'Events' }} />
       <Tabs.Protected guard={isOrganizer(state)}>

@@ -91,7 +91,7 @@ export function EventDetails({ event, onTakeMeThere }: { event: Event; onTakeMeT
           )}
         </Pressable>
         {availability === 'needs-server' && !registered ? (
-          <Text style={styles.note}>Registering needs the server. Try again when Server data shows.</Text>
+          <Text style={styles.note}>Registering needs the server. Try again once the Offline data badge is gone.</Text>
         ) : null}
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
         {event.routeId ? (

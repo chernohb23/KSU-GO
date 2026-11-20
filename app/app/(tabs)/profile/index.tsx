@@ -1,13 +1,13 @@
 import { useRouter } from 'expo-router';
 import { ActionSheetIOS, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import organizationsJson from '../../../shared/fixtures/organizations.json';
-import type { Organization } from '../../../shared/types';
-import { useAccount } from '../../src/account/AccountProvider';
-import { useAuth } from '../../src/auth/AuthProvider';
-import { useAppData } from '../../src/data/AppDataContext';
-import { et } from '../../src/events/format';
-import { radius, space, text, tone } from '../../src/navigation/theme';
+import organizationsJson from '../../../../shared/fixtures/organizations.json';
+import type { Organization } from '../../../../shared/types';
+import { useAccount } from '../../../src/account/AccountProvider';
+import { useAuth } from '../../../src/auth/AuthProvider';
+import { useAppData } from '../../../src/data/AppDataContext';
+import { et } from '../../../src/events/format';
+import { radius, space, text, tone } from '../../../src/navigation/theme';
 
 const organizations = organizationsJson as Organization[];
 

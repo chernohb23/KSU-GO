@@ -67,6 +67,21 @@ test('restore keeps a saved session read-only until /me confirms it', async () =
   assert.equal(JSON.parse(storage.values.get(SESSION_KEY)).user.name, 'Maya C.');
 });
 
+test('a recheck that confirms an already verified session changes nothing', async () => {
+  const { controller, storage, calls } = setup({ api: { me: () => ({ ...noah }) } });
+  await controller.restore();
+  await controller.signIn('organizer@ksu-go.example', 'OrganizerDemo!26');
+  const before = controller.state;
+  const savedBefore = storage.values.get(SESSION_KEY);
+  const seen = [];
+  controller.subscribe((state) => seen.push(state));
+  await controller.recheck();
+  assert.deepEqual(calls.map(([name]) => name), ['login', 'me']);
+  assert.deepEqual(seen, []);
+  assert.equal(controller.state, before);
+  assert.equal(storage.values.get(SESSION_KEY), savedBefore);
+});
+
 test('offline restore: an unreachable server keeps the session, read-only, and a later recheck verifies it', async () => {
   let online = false;
   const { controller } = setup({

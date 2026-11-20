@@ -30,7 +30,7 @@ export default function SignInScreen() {
   }
 
   return (
-    <AuthScreen headline="Find the event, then the room." lede="Sign in to register and keep your events.">
+    <AuthScreen headline="Explore campus. Live our community.">
       {ended && !error ? <FormMessage message={ended} tone="info" /> : null}
       <FieldGroup>
         <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false}
@@ -57,7 +57,6 @@ export default function SignInScreen() {
 
       <View style={styles.divider} />
       <TextButton label="Browse offline" onPress={() => controller.browseOffline()} />
-      <Text style={styles.footnote}>Browsing offline shows this week’s events and directions from data on this phone. Registering needs an account.</Text>
       <TextButton label="New here? Create an account" onPress={() => router.push('/sign-up')} />
     </AuthScreen>
   );
@@ -70,5 +69,4 @@ const styles = StyleSheet.create({
   demoText: { ...text.subhead, color: tone.ink, fontWeight: '600' },
   pressed: { opacity: 0.7 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: tone.hairline },
-  footnote: { ...text.footnote, textAlign: 'center', marginTop: -space.s },
 });

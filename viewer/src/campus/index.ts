@@ -99,7 +99,7 @@ export function createCampusScene(
   });
   controls.addEventListener("change", requestRender);
 
-  // ---- default view: frame the demo building and the plaza -------------------
+  // ---- default view: frame the Globe plaza and the buildings around it --------
   const ground = new Plane(new Vector3(0, 1, 0), 0);
   const raycaster = new Raycaster();
   const spherical = new Spherical();
@@ -178,18 +178,13 @@ export function createCampusScene(
   }
 
   /**
-   * Default view. First the closest centered camera that keeps every focus
-   * point inside the margins (MAP-1's fit). Then, on screens with height to
-   * spare, the view slides away from the camera until the focus area rests on
-   * the bottom margin, backing off just enough to stay inside the sides. Spare
-   * height goes to the horizon at the top instead of to empty lawn below.
+   * Default view: the closest camera, centered on the Globe plaza, that keeps
+   * every focus point inside the margins (MAP-1's fit). The whole campus stays
+   * reachable by zooming out to twice that distance.
    */
   function fitView(campusInfo: CampusInfo, tilt: number) {
+    // Flags are not part of the fit: one far flag would pull the camera back to the forest.
     const points = campusInfo.focusPoints.map(([x, y, z]) => new Vector3(x, y, z));
-    for (const flag of world.flagsLayer.children) {
-      const marker = flag.getObjectByName("flag-marker");
-      if (marker) points.push(marker.getWorldPosition(new Vector3()));
-    }
     const target = new Vector3();
     points.forEach((p) => target.add(p));
     target.divideScalar(points.length).setY(0);
@@ -211,34 +206,8 @@ export function createCampusScene(
       retarget(target, distance, tilt, (e.minX + e.maxX) / 2, (e.minY + e.maxY) / 2);
     }
 
-    // Slide along the ground, away from the camera, until the lowest focus
-    // point sits on the bottom margin. It moves down as the slide grows, so
-    // bisection finds the slide; a second bisection finds the distance.
-    if (extent(points).minY > -marginY + 0.02) {
-      const away = new Vector3(-Math.sin(AZIMUTH), 0, -Math.cos(AZIMUTH));
-      const centered = target.clone();
-      const anchored = (d: number) => {
-        let lo = 0, hi = d;
-        for (let k = 0; k < 30; k++) {
-          const slide = (lo + hi) / 2;
-          placeCamera(target.copy(centered).addScaledVector(away, slide), d, tilt);
-          if (extent(points).minY > -marginY) lo = slide;
-          else hi = slide;
-        }
-        placeCamera(target.copy(centered).addScaledVector(away, lo), d, tilt);
-        return extent(points);
-      };
-      let lo = distance, hi = distance * 2;
-      for (let k = 0; k < 24; k++) {
-        const d = (lo + hi) / 2;
-        if (fits(anchored(d))) hi = d;
-        else lo = d;
-      }
-      distance = hi;
-      anchored(distance);
-    }
     controls.target.copy(target);
-    controls.maxDistance = Math.max(distance, Math.min(Math.max(distance * 1.5, 300), 380));
+    controls.maxDistance = Math.max(distance * 2, 380);
     controls.update();
   }
 

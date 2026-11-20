@@ -16,11 +16,13 @@ export function AppTitle({ variant = 'paper' }: { variant?: 'paper' | 'ink' }) {
   );
 }
 
+/** Shown only while the app is on bundled data; hidden while the server answers. */
 export function DataSourceBadge() {
   const { offline } = useAppData();
+  if (!offline) return null;
   return (
-    <View accessibilityLabel={offline ? 'Offline data' : 'Server data'} style={[styles.badge, offline ? styles.offline : styles.online]}>
-      <Text style={[styles.badgeText, offline ? styles.offlineText : styles.onlineText]}>{offline ? 'Offline data' : 'Server data'}</Text>
+    <View accessibilityLabel="Offline data" style={styles.badge}>
+      <Text style={styles.badgeText}>Offline data</Text>
     </View>
   );
 }
@@ -33,10 +35,7 @@ const styles = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { color: palette.ink, fontSize: 18, fontWeight: '800', letterSpacing: 0.5 },
   inkTitle: { color: palette.paper },
-  badge: { marginRight: 10, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
-  offline: { backgroundColor: '#ece3c8' },
-  online: { backgroundColor: '#e0eee4' },
-  badgeText: { fontSize: 11, fontWeight: '700' },
-  offlineText: { color: '#6b4b00' },
-  onlineText: { color: '#326144' },
+  // Same height as the 29 pt brand mark, centered, so the badge sits on the title's center line.
+  badge: { height: 29, marginRight: 10, justifyContent: 'center', borderRadius: 14.5, paddingHorizontal: 10, backgroundColor: '#ece3c8' },
+  badgeText: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#6b4b00' },
 });
