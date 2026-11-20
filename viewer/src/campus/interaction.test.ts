@@ -72,6 +72,7 @@ describe("campus scene tap and selection", () => {
   let receive: (message: unknown) => void;
   let frames: Map<number, FrameRequestCallback>;
   let time: number;
+  let overlays: HTMLElement[];
 
   function frame(at: number) {
     time = at;
@@ -102,6 +103,7 @@ describe("campus scene tap and selection", () => {
 
   beforeEach(() => {
     time = 0;
+    overlays = [];
     frames = new Map();
     let nextFrame = 0;
     vi.spyOn(performance, "now").mockImplementation(() => time);
@@ -112,7 +114,7 @@ describe("campus scene tap and selection", () => {
     vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
     vi.stubGlobal("window", { devicePixelRatio: 1, matchMedia: () => ({ matches: false }) });
     vi.stubGlobal("document", {
-      createElement: () => ({ style: {}, setAttribute() {}, remove() {} }),
+      createElement: () => ({ style: {}, setAttribute() {}, append() {}, remove() {} }),
     });
     vi.stubGlobal("ResizeObserver", class {
       observe() {}
@@ -121,7 +123,7 @@ describe("campus scene tap and selection", () => {
     const container = {
       clientWidth: 390, clientHeight: 844,
       replaceChildren(child: EventTarget) { canvas = child; },
-      append() {},
+      append(...elements: HTMLElement[]) { overlays.push(...elements); },
     } as unknown as HTMLElement;
     messages = [];
     const host = { ksugo: { receive: (_message: unknown) => {} } };
@@ -152,6 +154,30 @@ describe("campus scene tap and selection", () => {
   it("a tap on empty ground emits nothing", () => {
     tap(15, 25);
     expect(messages).toEqual([]);
+  });
+
+  it("marks only saved event flags and clears the mark on a load without saved IDs", () => {
+    const load = { type: "campus:load", campus, events: [event, { ...event, id: "event-2" }], now };
+    receive({ ...load, savedEventIds: [event.id, "unknown"] });
+    frame(20);
+    const savedMark = (id: string) => flags.getObjectByName(id)?.getObjectByName("flag-saved");
+    expect(savedMark(event.id)).toBeDefined();
+    expect(savedMark("event-2")).toBeUndefined();
+    expect(flags.getObjectByName("unknown")).toBeUndefined();
+    const point = screenPoint();
+    tap(point.x, point.y);
+    expect(messages).toEqual([{ type: "campus:flagTapped", eventId: event.id }]);
+    receive(load);
+    frame(40);
+    expect(savedMark(event.id)).toBeUndefined();
+    expect(savedMark("event-2")).toBeUndefined();
+  });
+
+  it("adds non-interactive building labels and positions them on the map", () => {
+    const labels = overlays.filter(element => campus.buildings.some(building => building.name === element.textContent));
+    expect(labels.map(label => label.textContent)).toEqual(campus.buildings.map(building => building.name));
+    expect(labels.some(label => label.style.left?.endsWith("%"))).toBe(true);
+    expect(labels.every(label => label.style.pointerEvents === "none")).toBe(true);
   });
 
   it("campus:select highlights its flag and eases the camera to its ground position", () => {

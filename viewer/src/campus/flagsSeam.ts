@@ -1,7 +1,7 @@
 // The contract between the campus scene (MAP-3, ./index.ts) and the event
 // flags (MAP-4, ./flags.ts). MAP-4 implements it as:
 //
-//   export const createFlags: CreateFlags = (flagsLayer, campus, events, now) => { ... };
+//   export const createFlags: CreateFlags = (flagsLayer, campus, events, now, savedEventIds) => { ... };
 //
 // The scene calls createFlags once per campus:load, after disposing the handle
 // from the previous load, and calls update() on every frame it draws.
@@ -25,4 +25,6 @@ export type FlagsHandle = {
  * placing them at building entrances from `campus`. `now` is the ISO time sent
  * with campus:load; flag state and height follow CONTRACTS.md §2.
  */
-export type CreateFlags = (flagsLayer: Group, campus: Campus, events: Event[], now: string) => FlagsHandle;
+export type CreateFlags = (
+  flagsLayer: Group, campus: Campus, events: Event[], now: string, savedEventIds?: readonly string[],
+) => FlagsHandle;
