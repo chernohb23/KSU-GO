@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, Text } from 'react-native';
 
 import { useAccount } from '../../../src/account/AccountProvider';
@@ -12,12 +12,14 @@ import { screenStyles } from '../../../src/ui/controls';
 
 export default function CreateEventScreen() {
   const router = useRouter();
+  const { organizationId: requestedId } = useLocalSearchParams<{ organizationId?: string }>();
   const { api } = useAccount();
   const { now, refresh, offline } = useAppData();
   const { state } = useAuth();
   const { organizations, organization } = useOrganizations();
   const { organizationId } = useOrganizationTab();
-  const host = organization(organizationId);
+  const host = organization(requestedId && state.status === 'signedIn' && state.user.ownedOrganizationIds.includes(requestedId)
+    ? requestedId : organizationId);
 
   return (
     <ScrollView style={screenStyles.screen} contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled"
@@ -30,7 +32,7 @@ export default function CreateEventScreen() {
             void refresh(); // Events and the map show it at once
             router.replace({ pathname: '/organization/event/[eventId]', params: { eventId: event.id } });
           }} />
-      ) : <Text style={text.subhead}>Creating events needs the server.</Text>}
+      ) : <Text style={text.subhead}>Connect to create an event.</Text>}
     </ScrollView>
   );
 }

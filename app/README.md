@@ -27,7 +27,7 @@ The app opens on **Sign in**. Accounts are demo accounts checked by our own serv
 - **Create an account** starts without organization ownership. Any signed-in user can create an organization from Profile, own several and switch between them in the Organization tab. Only an owner manages the organization and its events; seeded clubs have no owner except Noah's Robotics Club. Real-world approval is outside the demo's scope.
 - Signing in, registering, profiles, organizations and follows need the server. Registrations (including cancellation status and registration time) come from the account on the server. Saved events, swipes, editable Interests, selected organization and upload history stay on this phone per account. Phase C sessions retain their token but are read-only until `/api/me` refreshes the user; legacy phone registration ids are discarded.
 - **Sign out** is in Profile. It ends the session only: the server address and every account’s data on the phone stay. A session lasts 7 days; if the server ends it, the app returns to Sign in with “Your session ended. Sign in again.”
-- **Demo mode.** With `EXPO_PUBLIC_DEMO_MODE=1`, Sign in shows **Use demo student** and **Use demo organizer**, which fill the form. Without the variable they are hidden. Start Expo with it like this:
+- **Demo mode.** With `EXPO_PUBLIC_DEMO_MODE=1`, Sign in shows **Maya Chen** and **Noah Brooks**, which fill the form. Without the variable they are hidden. Start Expo with it like this:
 
   ```bash
   EXPO_PUBLIC_DEMO_MODE=1 npx expo start --tunnel        # WSL / macOS / Linux
@@ -48,7 +48,7 @@ With no server, choose **Browse offline** on Sign in. The guest sees Map, Events
 
 A signed-in user whose server stops answering keeps the session, read-only, with **Offline data** showing; registering says it needs the server until the badge disappears.
 
-To rehearse again, long-press **KSU-GO**, choose **Reset demo**, and confirm. This signs you out and clears every account's local saved events, swipes, Interests and upload history, plus the server address override. Account registrations, profiles, follows and organizations stay on the server. The same screen has **Dev: event with route**, which opens an event with directions.
+To rehearse again, long-press **KSU-GO**, choose **Reset app**, and confirm. This signs you out and clears every account's local saved events, swipes, Interests and upload history, plus the server address override. Account registrations, profiles, follows and organizations stay on the server. The same screen has **Preview directions**, which opens an event with directions.
 
 The student route follows the room's confirmed route. Confirmed JSON routes under `shared/fixtures/routes/` are bundled by Metro alongside the existing sample. There is no route-drafts tab or list: a draft opens only from its event's Directions row.
 

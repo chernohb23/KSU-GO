@@ -1,21 +1,24 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { Event } from '../../../shared/types';
 import { useAccount } from '../../src/account/AccountProvider';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { useAppData } from '../../src/data/AppDataContext';
-import { EventListRow } from '../../src/events/EventListRow';
-import { text } from '../../src/navigation/theme';
+import { space, text } from '../../src/navigation/theme';
+import { useOfflineHeaderRight } from '../../src/navigation/AppHeader';
+import { OrganizationEventCard } from '../../src/orgs/OrganizationEventCard';
 import { OrgHeader } from '../../src/orgs/OrgHeader';
+import { SELECTED_ORGANIZATION_KEY } from '../../src/orgs/OrganizationTab';
 import { useOrganizations } from '../../src/orgs/OrganizationsProvider';
-import { Button, Group, Notice, Section, screenStyles } from '../../src/ui/controls';
+import { Button, Notice, Section, Segmented, screenStyles } from '../../src/ui/controls';
+import { HeaderIconButton } from '../../src/ui/Ionicon';
 
 export default function PublicOrganization() {
   const { orgId } = useLocalSearchParams<{ orgId: string }>();
   const router = useRouter();
-  const { api } = useAccount();
+  const { api, storage } = useAccount();
   const { state, controller } = useAuth();
   const { offline, weekEvents, now } = useAppData();
   const { organization, upsert } = useOrganizations();
@@ -23,21 +26,31 @@ export default function PublicOrganization() {
   const [events, setEvents] = useState<{ id: string; list: Event[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [when, setWhen] = useState<'upcoming' | 'past'>('upcoming');
+  const offlineHeaderRight = useOfflineHeaderRight();
+  const owner = state.status === 'signedIn' && state.user.ownedOrganizationIds.includes(orgId);
+  const key = `${orgId}:${owner ? when : 'upcoming'}`;
   useFocusEffect(useCallback(() => {
     let active = true;
     if (!api || offline) return;
     setError(null);
-    void Promise.all([api.getOrganization(orgId), api.organizationEvents(orgId, 'upcoming')]).then(([fresh, list]) => {
+    void Promise.all([api.getOrganization(orgId), api.organizationEvents(orgId, owner ? when : 'upcoming')]).then(([fresh, list]) => {
       if (!active) return;
       upsert(fresh);
-      setEvents({ id: orgId, list });
+      setEvents({ id: key, list });
     }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load this organization.'); });
     return () => { active = false; };
-  }, [api, offline, orgId, upsert]));
+  }, [api, key, offline, orgId, owner, upsert, when]));
   const following = state.status === 'signedIn' && state.user.followingOrganizationIds.includes(orgId);
   const canFollow = state.status === 'signedIn' && state.verified && !offline && !!org;
-  const list = (events?.id === orgId && !offline ? events.list : weekEvents.filter((event) => event.organizationId === orgId))
-    .filter((event) => event.status === 'active' && Date.parse(event.endsAt) > now.getTime());
+  const canManage = owner && canFollow;
+  const list = (events?.id === key ? events.list : owner && when === 'past' ? [] : weekEvents.filter((event) => event.organizationId === orgId))
+    .filter((event) => owner || event.status === 'active' && Date.parse(event.endsAt) > now.getTime());
+
+  async function openOwnerScreen(pathname: '/organization/edit' | '/organization/create-event' | '/organization/event/[eventId]', eventId?: string) {
+    await storage.setItem(SELECTED_ORGANIZATION_KEY, orgId).catch(() => {});
+    router.push({ pathname, params: { organizationId: orgId, ...(eventId && { eventId }) } });
+  }
 
   async function follow() {
     if (!api || !org) return;
@@ -52,16 +65,26 @@ export default function PublicOrganization() {
   }
   return (
     <ScrollView style={screenStyles.screen} contentContainerStyle={screenStyles.content}>
-      <Stack.Screen options={{ title: 'Organization' }} />
-      {org ? <OrgHeader organization={org} /> : <Text style={text.subhead}>Loading organization…</Text>}
-      <Button label={following ? 'Unfollow' : 'Follow'} kind={following ? 'secondary' : 'primary'} busy={busy} disabled={!canFollow} onPress={() => void follow()} />
-      {!canFollow ? <Notice kind="info" message="Following needs a signed-in account and the server." /> : null}
+      <Stack.Screen options={{ title: 'Organization',
+        headerRight: canManage ? () => <HeaderIconButton name="pencil" label="Edit organization"
+          onPress={() => void openOwnerScreen('/organization/edit')} /> : offlineHeaderRight,
+      }} />
+      {org ? <OrgHeader key={orgId} organization={org} action={owner
+        ? <Button label="Create event" kind="gold" disabled={!canManage}
+            onPress={() => void openOwnerScreen('/organization/create-event')} />
+        : <Button label={following ? 'Following ✓' : 'Follow'} kind={following ? 'outline' : 'gold'} busy={busy}
+            disabled={!canFollow} onPress={() => void follow()} />
+      } /> : <Text style={text.subhead}>Loading organization…</Text>}
       <Notice message={error} />
-      <Section label="Upcoming events">
-        {list.length ? <Group>{list.map((event, index) => <EventListRow key={event.id} event={event} now={now} last={index === list.length - 1}
-          onPress={() => router.push({ pathname: '/event/[eventId]', params: { eventId: event.id } })} />)}</Group>
-          : <Text style={text.subhead}>No upcoming events.</Text>}
+      <Section label={owner ? 'Events' : 'Upcoming events'}>
+        {owner ? <Segmented<'upcoming' | 'past'> value={when} onChange={setWhen} options={[{ key: 'upcoming', label: 'Upcoming' }, { key: 'past', label: 'Past' }]} /> : null}
+        {list.length ? <View style={styles.cards}>{list.map((event) => <OrganizationEventCard key={event.id} event={event}
+          onPress={() => owner ? void openOwnerScreen('/organization/event/[eventId]', event.id)
+            : router.push({ pathname: '/event/[eventId]', params: { eventId: event.id } })} />)}</View>
+          : <Text style={text.subhead}>{owner && when === 'past' ? 'No past events.' : 'No upcoming events.'}</Text>}
       </Section>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({ cards: { gap: space.s } });

@@ -25,7 +25,7 @@ export default function EditEvent() {
             await refresh();
             router.back();
           }} />
-      ) : <Notice kind="info" message="Editing needs an active event, its owner and the server." />}
+      ) : <Notice kind="info" message="This event is unavailable for editing." />}
     </ScrollView>
   );
 }

@@ -1,11 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
 
 import { AuthScreen, Field, FieldGroup, FormMessage, PrimaryButton, TextButton, type FieldHandle } from '../src/auth/AuthScreen';
 import { useAuth } from '../src/auth/AuthProvider';
 import { AuthFormError } from '../src/auth/controller';
-import { space, text } from '../src/navigation/theme';
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -30,7 +28,7 @@ export default function SignUpScreen() {
   }
 
   return (
-    <AuthScreen headline="Create a student account." lede="Register for events and keep track of the ones you’re going to.">
+    <AuthScreen headline="Create an account.">
       <FieldGroup>
         <Field label="Name" value={name} onChangeText={setName} textContentType="name" autoComplete="name"
           returnKeyType="next" onSubmitEditing={() => emailField.current?.focus()} editable={!busy} />
@@ -44,12 +42,7 @@ export default function SignUpScreen() {
       <FormMessage message={error} />
       <PrimaryButton label="Create account" busy={busy} disabled={!name.trim() || !email.trim() || !password}
         onPress={() => void signUp()} />
-      <Text style={styles.footnote}>Organizer accounts are set up by the university.</Text>
       <TextButton label="I already have an account" onPress={() => router.back()} />
     </AuthScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  footnote: { ...text.footnote, textAlign: 'center', marginTop: -space.s },
-});

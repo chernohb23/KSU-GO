@@ -64,14 +64,14 @@ export function ChipRow({ children }: PropsWithChildren) {
 }
 
 export function Button({ label, onPress, kind = 'primary', busy = false, disabled = false }: {
-  label: string; onPress(): void; kind?: 'primary' | 'secondary' | 'ink' | 'destructive'; busy?: boolean; disabled?: boolean;
+  label: string; onPress(): void; kind?: 'primary' | 'secondary' | 'ink' | 'destructive' | 'gold' | 'outline'; busy?: boolean; disabled?: boolean;
 }) {
   const off = busy || disabled;
   return (
     <Pressable accessibilityRole="button" accessibilityState={{ disabled: off, busy }} disabled={off} onPress={onPress}
       style={({ pressed }) => [styles.button, containers[kind], off && styles.dimmed, pressed && styles.pressed]}>
-      {busy ? <ActivityIndicator color={kind === 'secondary' || kind === 'destructive' ? tone.ink : tone.surface} /> : (
-        <Text style={[text.headline, kind === 'secondary' ? styles.onPaper : kind === 'destructive' ? styles.destructive : styles.onFill]}>
+      {busy ? <ActivityIndicator color={kind === 'secondary' || kind === 'destructive' || kind === 'gold' || kind === 'outline' ? tone.ink : tone.surface} /> : (
+        <Text style={[text.headline, kind === 'secondary' || kind === 'gold' || kind === 'outline' ? styles.onPaper : kind === 'destructive' ? styles.destructive : styles.onFill]}>
           {label}
         </Text>
       )}
@@ -125,6 +125,8 @@ export function initials(name: string): string {
 
 const containers = StyleSheet.create({
   primary: { backgroundColor: tone.amber },
+  gold: { backgroundColor: tone.gold },
+  outline: { backgroundColor: 'transparent', borderWidth: StyleSheet.hairlineWidth, borderColor: tone.ink },
   ink: { backgroundColor: tone.ink },
   secondary: { backgroundColor: tone.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },
   destructive: { backgroundColor: tone.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },

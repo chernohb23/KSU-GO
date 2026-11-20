@@ -2,7 +2,7 @@ import { Image } from 'react-native';
 import { Tabs } from 'expo-router';
 
 import { useAuth } from '../../src/auth/AuthProvider';
-import { AppTitle, DataSourceBadge, headerStyles } from '../../src/navigation/AppHeader';
+import { AppTitle, headerStyles, useOfflineHeaderRight } from '../../src/navigation/AppHeader';
 import { ownsOrganization } from '../../src/navigation/access';
 import { tone } from '../../src/navigation/theme';
 
@@ -15,10 +15,11 @@ const icons = {
 
 export default function TabsLayout() {
   const { state } = useAuth();
+  const headerRight = useOfflineHeaderRight();
   return (
     <Tabs screenOptions={({ route }) => ({
       headerTitle: () => <AppTitle />,
-      headerRight: () => <DataSourceBadge />,
+      headerRight,
       headerStyle: headerStyles.header,
       headerShadowVisible: false,
       tabBarActiveTintColor: tone.amber,
@@ -38,7 +39,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: 'Map' }} />
       <Tabs.Screen name="events" options={{ title: 'Events' }} />
       <Tabs.Protected guard={ownsOrganization(state)}>
-        <Tabs.Screen name="organization" options={{ title: 'Organization' }} />
+        <Tabs.Screen name="organization" options={{ title: 'Organization', headerShown: false }} />
       </Tabs.Protected>
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>

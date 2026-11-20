@@ -13,6 +13,8 @@ import { radius, space, text, tone } from '../navigation/theme';
 import { buildingName } from '../organizer/ui';
 import { useOrganizations } from '../orgs/OrganizationsProvider';
 import { capacityLabel, et } from './format';
+import { useWeekChoices } from '../week/useWeekChoices';
+import { Button } from '../ui/controls';
 
 export { roomLabel } from '../../../shared/rooms';
 
@@ -25,12 +27,17 @@ function statusLine(event: Event, now: Date): string | null {
 }
 
 /** The one event card: the map's sheet and the event screen both render it. */
-export function EventDetails({ event, onTakeMeThere, showActions = true }: { event: Event; onTakeMeThere(routeId: string): void; showActions?: boolean }) {
+export function EventDetails({ event, onTakeMeThere, showActions = true, compact = false }: {
+  event: Event; onTakeMeThere(routeId: string): void; showActions?: boolean; compact?: boolean;
+}) {
   const router = useRouter();
   const { organization } = useOrganizations();
   const { state, controller } = useAuth();
   const { offline, now } = useAppData();
-  const { registeredEventIds, registrationsReady, register } = useAccount();
+  const { registeredEventIds, registrationsReady, register, weekChoices } = useAccount();
+  const { choices, loadFailed, retry } = useWeekChoices();
+  const saved = !!choices?.some(choice => choice.id === event.id && choice.saved);
+  const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const availability = registerAvailability({ state, offline, registered: registeredEventIds.includes(event.id) });
@@ -42,7 +49,7 @@ export function EventDetails({ event, onTakeMeThere, showActions = true }: { eve
   async function onRegister() {
     setError(null);
     if (availability === 'sign-in') {
-      Alert.alert('Sign in to register', 'Registering needs an account. You can keep browsing without one.', [
+      Alert.alert('Sign in to register', undefined, [
         { text: 'Not now', style: 'cancel' },
         { text: 'Sign in', onPress: () => controller.leaveGuest() },
       ]);
@@ -72,13 +79,25 @@ export function EventDetails({ event, onTakeMeThere, showActions = true }: { eve
         </Pressable>
       </View>
 
-      <View style={styles.facts}>
+      {compact ? <View style={styles.compactFacts}>
+        <Text style={[text.body, text.figures]}>{et.range(event.startsAt, event.endsAt, now)}</Text>
+        <Text style={text.subhead}>{buildingName(event.location.buildingId)}, {roomLabel(event.location.room)}</Text>
+      </View> : <View style={styles.facts}>
         <Fact label="When" value={et.range(event.startsAt, event.endsAt, now)} figures />
         <Fact label="Where" value={`${buildingName(event.location.buildingId)}, ${roomLabel(event.location.room)}`} />
         <Fact label="Going" value={capacityLabel(event)} figures emphasis={full} last />
-      </View>
+      </View>}
 
       {event.description ? <Text style={styles.description}>{event.description}</Text> : null}
+
+      {showActions ? <Button label={loadFailed ? 'Retry Saved' : saved ? 'Saved ✓' : 'Save'} kind="secondary" busy={saving} disabled={choices === null && !loadFailed}
+        onPress={() => {
+          if (loadFailed) { retry(); return; }
+          setSaving(true);
+          setError(null);
+          void weekChoices.setSaved(event, !saved).catch(() => setError('Could not update Saved. Try again.')).finally(() => setSaving(false));
+        }} /> : null}
+      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
 
       {showActions && !cancelled ? <View style={styles.actions}>
         <Pressable
@@ -95,9 +114,8 @@ export function EventDetails({ event, onTakeMeThere, showActions = true }: { eve
           )}
         </Pressable>
         {availability === 'needs-server' && !registered ? (
-          <Text style={styles.note}>Registering needs the server. Try again once the Offline data badge is gone.</Text>
+          <Text style={styles.note}>Connect to register.</Text>
         ) : null}
-        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
         {event.routeId ? (
           <Pressable accessibilityRole="button" onPress={() => onTakeMeThere(event.routeId as string)}
             style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
@@ -125,6 +143,7 @@ function Fact({ label, value, figures = false, emphasis = false, last = false }:
 const styles = StyleSheet.create({
   root: { gap: space.l },
   heading: { gap: space.xs },
+  compactFacts: { gap: space.xs },
   status: { ...text.footnote, color: tone.amber, fontWeight: '600' },
   organizer: { ...text.subhead, color: tone.amber, paddingVertical: space.xs },
   cancelled: { ...text.headline, color: tone.danger, padding: space.l, borderRadius: radius.group, backgroundColor: tone.surface },

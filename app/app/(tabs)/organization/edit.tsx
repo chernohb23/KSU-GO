@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, Text } from 'react-native';
 
 import { useAccount } from '../../../src/account/AccountProvider';
@@ -12,12 +12,14 @@ import { screenStyles } from '../../../src/ui/controls';
 
 export default function EditOrganizationScreen() {
   const router = useRouter();
+  const { organizationId: requestedId } = useLocalSearchParams<{ organizationId?: string }>();
   const { api } = useAccount();
   const { state } = useAuth();
   const { offline } = useAppData();
   const { organization, upsert } = useOrganizations();
   const { organizationId } = useOrganizationTab();
-  const org = organization(organizationId);
+  const org = organization(requestedId && state.status === 'signedIn' && state.user.ownedOrganizationIds.includes(requestedId)
+    ? requestedId : organizationId);
 
   return (
     <ScrollView style={screenStyles.screen} contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled"
@@ -28,7 +30,7 @@ export default function EditOrganizationScreen() {
           upsert(await api.updateOrganization(org.id, body));
           router.back();
         }} />
-      ) : <Text style={text.subhead}>Editing needs the server.</Text>}
+      ) : <Text style={text.subhead}>Connect to edit this organization.</Text>}
     </ScrollView>
   );
 }

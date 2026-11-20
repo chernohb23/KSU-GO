@@ -8,7 +8,7 @@ import { Interests } from '../../../src/account/Interests';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { useAppData } from '../../../src/data/AppDataContext';
 import { EventListRow } from '../../../src/events/EventListRow';
-import { et } from '../../../src/events/format';
+import { SavedEventRow, savedListStyles } from '../../../src/events/SavedEventRow';
 import { space, text } from '../../../src/navigation/theme';
 import { useOrganizations } from '../../../src/orgs/OrganizationsProvider';
 import { Badge, Button, Group, initials, Notice, Row, Section, screenStyles } from '../../../src/ui/controls';
@@ -33,7 +33,7 @@ export default function ProfileScreen() {
       <View style={styles.identity}>
         <Badge label="?" color="ink" size={88} />
         <Text style={text.title}>Browsing offline</Text>
-        <Text style={[text.subhead, styles.center]}>You can browse events and confirmed directions. Sign in to register or create an organization.</Text>
+        <Text style={[text.subhead, styles.center]}>Sign in to see your events.</Text>
       </View>
       <Button label="Sign in" onPress={() => controller.leaveGuest()} />
     </ScrollView>
@@ -48,14 +48,13 @@ export default function ProfileScreen() {
 
   function confirmSignOut() {
     const signOut = () => void controller.signOut();
-    const message = 'Your saved events and interests stay on this phone for next time.';
     if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: ['Sign out', 'Cancel'],
-      destructiveButtonIndex: 0, cancelButtonIndex: 1, message }, (index) => { if (index === 0) signOut(); });
-    else Alert.alert('Sign out?', message, [{ text: 'Cancel', style: 'cancel' }, { text: 'Sign out', style: 'destructive', onPress: signOut }]);
+      title: 'Sign out?', destructiveButtonIndex: 0, cancelButtonIndex: 1 }, (index) => { if (index === 0) signOut(); });
+    else Alert.alert('Sign out?', undefined, [{ text: 'Cancel', style: 'cancel' }, { text: 'Sign out', style: 'destructive', onPress: signOut }]);
   }
   const openEvent = (eventId: string) => router.push({ pathname: '/event/[eventId]', params: { eventId } });
   const figures = [
-    { label: 'Registered this month', value: registrations === null ? '—' : String(counts.registeredThisMonth) },
+    { label: 'This month', value: registrations === null ? '—' : String(counts.registeredThisMonth) },
     { label: 'Upcoming', value: registrations === null ? '—' : String(counts.upcoming) },
     { label: 'Saved', value: choices === null ? '—' : String(counts.saved) },
     { label: 'Following', value: String(counts.following) },
@@ -71,33 +70,32 @@ export default function ProfileScreen() {
         {user.profile.bio ? <Text style={[text.body, styles.center]}>{user.profile.bio}</Text> : null}
       </View>
       <Button label="Edit profile" kind="secondary" disabled={!canEdit} onPress={() => router.push('/edit-profile')} />
-      <Section footer="Saved events are on this phone only. Registrations and follows come from your account.">
+      <Section>
         <View style={styles.insights}>{figures.map((figure) => <View key={figure.label} style={styles.figure}>
-          <Text style={[text.title, text.figures]}>{figure.value}</Text><Text style={[text.footnote, styles.center]}>{figure.label}</Text>
+          <Text style={[text.title, text.figures]}>{figure.value}</Text><Text style={[text.footnote, styles.statLabel]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{figure.label}</Text>
         </View>)}</View>
       </Section>
-      {!canEdit ? <Notice kind="info" message="Account changes and fresh activity need the server." /> : null}
       <Section label="Upcoming">
-        {registrations === null ? <Text style={text.subhead}>Registrations load when your account connects to the server.</Text>
+        {registrations === null ? <Text style={text.subhead}>Connect to load your events.</Text>
           : upcoming.length ? upcoming.map((event) => <View key={event.id} style={styles.upcoming}>
             <Group><EventListRow event={event} now={now} last onPress={() => openEvent(event.id)} /></Group>
             <Text style={[text.footnote, text.figures]}>{countdown(event, now)}</Text>
             {event.status === 'active' && event.routeId ? <Button label="Take me there" kind="ink"
               onPress={() => router.push({ pathname: '/route/[routeId]', params: { routeId: event.routeId as string } })} /> : null}
-          </View>) : <Text style={text.subhead}>No upcoming registrations. Find something in Events.</Text>}
+          </View>) : <Text style={text.subhead}>No upcoming events.</Text>}
       </Section>
-      <Section label="Saved" footer="Saved on this phone only.">
+      <Section label="Saved">
         {loadFailed ? <Button label="Retry saved events" kind="secondary" onPress={retry} /> : choices === null ? <Text style={text.subhead}>Loading saved events…</Text>
-          : saved.length ? <Group>{saved.map((choice, index) => {
+          : saved.length ? <View style={savedListStyles.group}>{saved.map((choice, index) => {
             const event = weekEvents.find((event) => event.id === choice.id);
-            return <View key={choice.id}>
-              <Row label={event?.title ?? choice.saved?.title ?? 'Saved event'} value={et.when(event?.startsAt ?? choice.saved!.startsAt, now)}
-                onPress={() => openEvent(choice.id)} />
-              <Row label="Remove from Saved" last={index === saved.length - 1} onPress={() => {
-                void weekChoices.remove(choice.id).catch(() => setError('Could not remove this saved event. Try again.'));
-              }} />
-            </View>;
-          })}</Group> : <Text style={text.subhead}>Save events in Discover to find them here.</Text>}
+            return <SavedEventRow key={choice.id} title={event?.title ?? choice.saved!.title}
+              startsAt={event?.startsAt ?? choice.saved!.startsAt} now={now} last={index === saved.length - 1}
+              onPress={() => openEvent(choice.id)} onRemove={async () => {
+                setError(null);
+                try { await weekChoices.remove(choice.id); }
+                catch { setError('Could not remove this event. Try again.'); }
+              }} />;
+          })}</View> : <Text style={text.subhead}>No saved events.</Text>}
       </Section>
       <Interests key={accountId} suggested={suggested} />
       <Section label="Organizations I follow">
@@ -105,7 +103,7 @@ export default function ProfileScreen() {
           const org = organizations.find((org) => org.id === id);
           return <Row key={id} label={org?.name ?? 'Organization'} last={index === ids.length - 1}
             onPress={() => router.push({ pathname: '/org/[orgId]', params: { orgId: id } })} />;
-        })}</Group> : <Text style={text.subhead}>Open an event’s organization to follow it.</Text>}
+        })}</Group> : <Text style={text.subhead}>No organizations followed.</Text>}
       </Section>
       <Button label="Create organization" disabled={!canEdit} onPress={() => router.push('/new-organization')} />
       <Notice message={error} />
@@ -119,5 +117,6 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   insights: { flexDirection: 'row', gap: space.s },
   figure: { flex: 1, alignItems: 'center', gap: space.xs },
+  statLabel: { alignSelf: 'stretch', textAlign: 'center' },
   upcoming: { gap: space.s, marginBottom: space.s },
 });

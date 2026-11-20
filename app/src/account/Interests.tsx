@@ -17,7 +17,7 @@ export function Interests({ suggested }: { suggested: Event['category'][] }) {
     let active = true;
     void storage.getItem(INTERESTS_KEY).then((raw) => {
       if (active) { setSelected(parseInterests(raw)); setReady(true); }
-    }).catch(() => { if (active) setError('Could not load interests from this phone.'); });
+    }).catch(() => { if (active) setError('Could not load interests.'); });
     return () => { active = false; };
   }, [storage]);
   const values = selected ?? suggested;
@@ -25,10 +25,10 @@ export function Interests({ suggested }: { suggested: Event['category'][] }) {
     const next = toggleInterest(values, category);
     setBusy(true);
     try { await storage.setItem(INTERESTS_KEY, JSON.stringify(next)); setSelected(next); setError(null); }
-    catch { setError('Could not save interests on this phone. Try again.'); }
+    catch { setError('Could not save interests. Try again.'); }
     finally { setBusy(false); }
   }
-  return <Section label="Interests" footer="Tap to edit. Suggestions come from your saves and registrations; your choices stay on this phone.">
+  return <Section label="Interests">
     <ChipRow>{CATEGORIES.map((category) => <Chip key={category} label={categoryLabel(category)} selected={values.includes(category)}
       disabled={!ready || busy} onPress={() => void toggle(category)} />)}</ChipRow>
     <Notice message={error} />

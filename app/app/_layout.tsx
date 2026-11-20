@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { AccountProvider } from '../src/account/AccountProvider';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
 import { AppDataProvider } from '../src/data/AppDataProvider';
-import { AppTitle, DataSourceBadge, headerStyles } from '../src/navigation/AppHeader';
+import { AppTitle, headerStyles, useOfflineHeaderRight } from '../src/navigation/AppHeader';
 import { LaunchScreen } from '../src/navigation/Brand';
 import { showsSignIn } from '../src/navigation/access';
 import { tone } from '../src/navigation/theme';
@@ -15,11 +15,12 @@ import { DemoSessionProvider } from '../src/settings/DemoSession';
 function AppStack() {
   const { state } = useAuth();
   const signedOut = showsSignIn(state);
+  const headerRight = useOfflineHeaderRight();
   return (
     <>
       <Stack screenOptions={{
         headerTitle: () => <AppTitle />,
-        headerRight: () => <DataSourceBadge />,
+        headerRight,
         headerStyle: headerStyles.header,
         headerTintColor: tone.amber,
         headerBackButtonDisplayMode: 'minimal',
@@ -45,7 +46,7 @@ function AppStack() {
           <Stack.Screen name="new-organization" options={{ headerTitle: 'Create organization' }} />
           <Stack.Screen name="edit-profile" options={{ headerTitle: 'Edit profile' }} />
         </Stack.Protected>
-        <Stack.Screen name="settings" options={{ headerTitle: 'Settings', headerRight: () => null }} />
+        <Stack.Screen name="settings" options={{ headerTitle: 'Settings', headerRight: undefined }} />
       </Stack>
       {state.status === 'restoring' ? (
         <View style={StyleSheet.absoluteFill}><LaunchScreen label="Opening KSU-GO…" /></View>

@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 
 import { useAuth } from '../src/auth/AuthProvider';
-import { easternClock } from '../src/events/format';
 import { useAppData } from '../src/data/AppDataContext';
 import { showsSignIn } from '../src/navigation/access';
 import { useDemoSession } from '../src/settings/DemoSession';
@@ -36,7 +35,7 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Server settings</Text>
-      <Text style={styles.body}>Enter the API server's base address. For the PC mock server, use the Wi-Fi address ending in :8000. Leave blank to use the default.</Text>
+      <Text style={styles.body}>Leave blank to use the default address.</Text>
       <TextInput
         accessibilityLabel="Server URL"
         autoCapitalize="none"
@@ -53,32 +52,29 @@ export default function SettingsScreen() {
       <Text accessibilityLiveRegion="polite" style={styles.message}>
         {saving && 'Checking server…'}
         {status === 'error' && 'Could not save the server address.'}
-        {status === 'saved' && !serverUrl && 'Address cleared. Using offline data.'}
+        {status === 'saved' && !serverUrl && 'Address cleared.'}
         {status === 'saved' && serverUrl && (offline
-          ? 'Address saved. Could not connect to the API. Check the address and that the server is running.'
-          : 'Address saved. Connected to server.')}
+          ? 'Could not connect. Check the address.'
+          : 'Connected.')}
       </Text>
       {eventWithRoute ? (
         <Pressable accessibilityRole="button" style={styles.reset} disabled={saving || resetting}
           onPress={() => router.push({ pathname: '/event/[eventId]', params: { eventId: eventWithRoute.id } })}>
-          <Text style={styles.buttonText}>Dev: event with route</Text>
+          <Text style={styles.buttonText}>Preview directions</Text>
         </Pressable>
       ) : null}
-      <Text style={styles.message}>
-        Campus time (ET) comes from {easternClock.source === 'intl' ? 'the phone’s time-zone data' : 'built-in US daylight-time rules'}.
-      </Text>
       <Pressable accessibilityRole="button" style={styles.reset} disabled={saving || resetting}
-        onPress={() => Alert.alert('Reset demo on this device?', 'Sign out, and clear every account’s registrations record, saved events, swipe history and upload history on this phone, plus the saved server address. Server records stay on the server.', [
+        onPress={() => Alert.alert('Reset app?', 'Clear all saved events, interests and preferences, and sign out?', [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Reset', style: 'destructive', onPress: () => {
             setResetting(true);
             void resetDemo().then(
-              () => Alert.alert('Demo reset', 'This phone is ready for another walkthrough.'),
-              () => { setResetting(false); Alert.alert('Could not reset the demo', 'Please try again.'); },
+              () => Alert.alert('Reset complete'),
+              () => { setResetting(false); Alert.alert('Could not reset the app', 'Please try again.'); },
             );
           } },
         ])}>
-        <Text style={styles.buttonText}>{resetting ? 'Resetting…' : 'Reset demo'}</Text>
+        <Text style={styles.buttonText}>{resetting ? 'Resetting…' : 'Reset app'}</Text>
       </Pressable>
     </ScrollView>
   );

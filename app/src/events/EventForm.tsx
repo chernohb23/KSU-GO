@@ -133,7 +133,7 @@ export function EventForm({ initial, host, organizations, now, submitLabel, onSu
         ) : null}
       </Section>
 
-      <Section label="Who" footer={`Hosted by ${host.name}. A partner organization is shown on the event too.`}>
+      <Section label="Who" footer={`Hosted by ${host.name}.`}>
         <Group>
           <Row label="Partner" value={partner?.name ?? 'None'} onPress={() => setChoosing(choosing === 'partner' ? null : 'partner')} />
           {choosing === 'partner' ? [null, ...organizations.filter((o) => o.id !== host.id)].map((o) => (
@@ -141,12 +141,12 @@ export function EventForm({ initial, host, organizations, now, submitLabel, onSu
               accessory={values.partnerOrganizationId === (o?.id ?? null) ? <Text style={styles.check}>✓</Text> : undefined}
               onPress={() => { set({ partnerOrganizationId: o?.id ?? null }); setChoosing(null); }} />
           )) : null}
-          <Field label="Capacity (leave empty for none)" value={values.capacity} keyboardType="number-pad"
+          <Field label="Capacity (optional)" value={values.capacity} keyboardType="number-pad"
             onChangeText={(capacity) => set({ capacity: capacity.replace(/\D/g, '') })} last />
         </Group>
       </Section>
 
-      <Section label="Tags" footer="Up to 8. Capacity is shown on the event, never enforced.">
+      <Section label="Tags" footer="Up to 8 tags.">
         <Group>
           <Field label="Add a tag" value={tagDraft} onChangeText={setTagDraft} autoCapitalize="none" returnKeyType="done"
             onSubmitEditing={() => { set({ tags: addTag(values.tags, tagDraft) }); setTagDraft(''); }} last />

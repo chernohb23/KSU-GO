@@ -5,7 +5,7 @@ import { ApiRequestError, type ApiClient } from '../api/client.ts';
 import { registerAvailability, type AuthState } from '../navigation/access.ts';
 
 export const REGISTER_TIMEOUT_MS = 5_000;
-export const NEEDS_SERVER = 'Registering needs the server. Try again once the Offline data badge is gone.';
+export const NEEDS_SERVER = 'Connect to register.';
 export const NEEDS_SIGN_IN = 'Sign in to register.';
 
 export type RegisterInput = {

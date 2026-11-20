@@ -1,12 +1,13 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActionSheetIOS, Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActionSheetIOS, Alert, Modal, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { roomLabel } from '../../../shared/rooms';
 import type { EventDirections, EventRegistrations } from '../../../shared/types';
 import { useAppData } from '../data/AppDataContext';
 import { EventDetails } from '../events/EventDetails';
 import { et } from '../events/format';
-import { space, text } from '../navigation/theme';
+import { space, text, tone } from '../navigation/theme';
 import { ROUTE_POLL_MS } from '../organizer/session';
 import { ProgressBar } from '../organizer/ui';
 import { Button, Group, Notice, Row, Section, screenStyles } from '../ui/controls';
@@ -17,10 +18,11 @@ export default function ManageEvent() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
   const { event, api, canManage, error, setEvent } = useManagedEvent(eventId);
-  const { refresh, now } = useAppData();
+  const { refresh, now, offline } = useAppData();
   const [details, setDetails] = useState<{ id: string; directions: EventDirections; registrations: EventRegistrations } | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showRegistrations, setShowRegistrations] = useState(false);
 
   useFocusEffect(useCallback(() => {
     if (!api || !canManage) return;
@@ -59,7 +61,7 @@ export default function ManageEvent() {
   }
 
   function confirmCancel() {
-    const message = 'Registered students will see Cancelled in Profile. This cannot be undone.';
+    const message = 'This cannot be undone.';
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions({ title: 'Cancel this event?', message,
         options: ['Cancel event', 'Keep event'], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
@@ -81,12 +83,20 @@ export default function ManageEvent() {
     <ScrollView style={screenStyles.screen} contentContainerStyle={screenStyles.content}>
       <Stack.Screen options={{ title: 'Manage event' }} />
       <Notice message={error ?? problem} />
-      {!canManage ? <Notice kind="info" message="Managing this event needs a verified owner account and the server." /> : null}
+      {offline ? <Notice kind="info" message="Connect to manage this event." /> : null}
       {event ? <>
-        <EventDetails event={event} showActions={false} onTakeMeThere={() => {}} />
-        <Section label="Directions" footer="Directions belong to the room. Every event here uses them once confirmed.">
+        <EventDetails event={event} compact showActions={false} onTakeMeThere={() => {}} />
+        <Section label="Directions">
           {current && row ? <Group>
-            <Row label={row.label} last onPress={row.action && (row.action !== 'upload' || editable) ? openDirections : undefined} />
+            <Pressable accessibilityRole="button" disabled={!row.action || row.action === 'upload' && !editable}
+              accessibilityState={{ disabled: !row.action || row.action === 'upload' && !editable }}
+              onPress={openDirections} style={({ pressed }) => [styles.directions, pressed && styles.pressed]}>
+              <View style={styles.directionsBody}>
+                <Text style={text.headline}>{row.label}</Text>
+                <Text style={text.footnote}>Shared with every event in {roomLabel(event.location.room)}</Text>
+              </View>
+              {row.action && (row.action !== 'upload' || editable) ? <Text style={styles.chevron}>›</Text> : null}
+            </Pressable>
           </Group> : <Text style={text.subhead}>Loading directions…</Text>}
           {current?.directions.state === 'processing' && route ? <ProgressBar label={route.progress?.stage ?? 'Processing'} percent={route.progress?.pct ?? 0} /> : null}
           {current?.directions.state === 'failed' ? <Notice message={route?.error ?? 'Directions could not be drafted. Choose another video and try again.'} /> : null}
@@ -96,13 +106,20 @@ export default function ManageEvent() {
             onPress={() => router.push({ pathname: '/organization/event/[eventId]/edit', params: { eventId } })} /></View>
           <View style={styles.action}><Button label="Cancel event" kind="destructive" disabled={!editable} busy={busy} onPress={confirmCancel} /></View>
         </View>
-        <Section label="Registrations" footer="The total includes sample and device registrations, which have no names.">
-          {current ? <Group>
-            <Row label="Registered" value={String(current.registrations.registeredCount)} last={!current.registrations.people.length} />
-            {current.registrations.people.map((person, index, people) => <Row key={person.userId} label={person.name}
-              value={et.dateTime(person.registeredAt)} last={index === people.length - 1} />)}
-          </Group> : <Text style={text.subhead}>Loading registrations…</Text>}
-        </Section>
+        <Group><Row label="Registrations" value={String(current?.registrations.registeredCount ?? event.registeredCount)} last
+          onPress={current?.registrations.people.length ? () => setShowRegistrations(true) : undefined} /></Group>
+        <Modal visible={showRegistrations} presentationStyle="pageSheet" onRequestClose={() => setShowRegistrations(false)}>
+          <SafeAreaView style={screenStyles.screen}>
+            <View style={styles.sheetHeader}>
+              <Text style={text.title}>Registrations</Text>
+              <Button label="Done" kind="secondary" onPress={() => setShowRegistrations(false)} />
+            </View>
+            <ScrollView contentContainerStyle={screenStyles.content}>
+              <Group>{current?.registrations.people.map((person, index, people) => <Row key={person.userId} label={person.name}
+                value={et.dateTime(person.registeredAt)} last={index === people.length - 1} />)}</Group>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
       </> : <Text style={text.subhead}>Loading event…</Text>}
     </ScrollView>
   );
@@ -111,4 +128,9 @@ export default function ManageEvent() {
 const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: space.m },
   action: { flex: 1 },
+  directions: { minHeight: 80, flexDirection: 'row', alignItems: 'center', gap: space.m, paddingRight: space.l, paddingVertical: space.l },
+  directionsBody: { flex: 1, gap: space.xs },
+  chevron: { ...text.title, color: tone.muted },
+  pressed: { opacity: 0.65 },
+  sheetHeader: { padding: space.gutter, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.l },
 });

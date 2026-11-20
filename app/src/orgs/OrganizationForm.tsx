@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import type { Organization, OrganizationRequest } from '../../../shared/types.ts';
-import { space, text } from '../navigation/theme';
+import { space } from '../navigation/theme';
 import { Badge, Button, Chip, ChipRow, Field, Group, Notice, Section } from '../ui/controls';
 
 /** Suggested initials from a name: "Game Development Club" → "GDC" (capped at 4 letters). */
@@ -50,7 +50,6 @@ export function OrganizationForm({ initial, submitLabel, onSubmit }: {
     <View style={styles.root}>
       <View style={styles.preview}>
         <Badge label={badge} color={color} size={72} />
-        <Text style={[text.footnote, styles.center]}>Original initials badge. No real logos.</Text>
       </View>
       <Section label="Organization">
         <Group>
@@ -70,7 +69,7 @@ export function OrganizationForm({ initial, submitLabel, onSubmit }: {
           <Chip label="Ink" selected={color === 'ink'} onPress={() => setColor('ink')} />
         </ChipRow>
       </Section>
-      <Section label="Details" footer="Members is the number you enter. Followers are counted from real follows.">
+      <Section label="Details">
         <Group>
           <Field label="Members" value={members} onChangeText={setMembers} keyboardType="number-pad" placeholder="0" editable={!busy} />
           <Field label="Meets" value={meets} onChangeText={setMeets} placeholder="Tuesdays 6 PM, Mathematics 215" maxLength={80} editable={!busy} />
@@ -89,5 +88,4 @@ export function OrganizationForm({ initial, submitLabel, onSubmit }: {
 const styles = StyleSheet.create({
   root: { gap: space.xl },
   preview: { alignItems: 'center', gap: space.s },
-  center: { textAlign: 'center' },
 });

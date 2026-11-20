@@ -44,7 +44,7 @@ export default function SignInScreen() {
       <PrimaryButton label="Sign in" busy={busy} disabled={!email.trim() || !password} onPress={() => void signIn()} />
 
       {DEMO_MODE ? (
-        <View style={styles.demo} accessibilityLabel="Demo accounts">
+        <View style={styles.demo} accessibilityLabel="Accounts">
           {DEMO_ACCOUNTS.map((account) => (
             <Pressable key={account.email} accessibilityRole="button" disabled={busy}
               onPress={() => { setEmail(account.email); setPassword(account.password); setError(null); }}

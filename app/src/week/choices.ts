@@ -93,6 +93,17 @@ export class WeekChoices {
       ? choices : [...choices, eventChoice(event, decision)]);
   }
 
+  /** Explicit saving also works for an event previously skipped in Discover. */
+  setSaved(event: Event, saved: boolean) {
+    return this.change(choices => {
+      const previous = choices.find(choice => choice.id === event.id);
+      if (!saved) return previous?.saved ? choices.filter(choice => choice.id !== event.id) : choices;
+      if (previous?.saved) return choices;
+      const next = eventChoice(event, 'save');
+      return previous ? choices.map(choice => choice.id === event.id ? next : choice) : [...choices, next];
+    });
+  }
+
   remove(id: string) { return this.change(choices => choices.filter(choice => choice.id !== id)); }
   reset = () => this.change(() => []);
 }

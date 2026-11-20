@@ -54,7 +54,7 @@ export default function EditProfile() {
   return <ScrollView style={screenStyles.screen} contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Stack.Screen options={{ title: 'Edit profile' }} />
     {state.status === 'signedIn' && state.verified && !offline ? <ProfileForm key={state.user.id} user={state.user} />
-      : <Notice kind="info" message="Editing your profile needs a signed-in account and the server." />}
+      : <Notice kind="info" message="Connect to edit your profile." />}
   </ScrollView>;
 }
 

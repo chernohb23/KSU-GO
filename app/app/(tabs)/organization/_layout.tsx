@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 
 import { useAccount } from '../../../src/account/AccountProvider';
 import { useAuth } from '../../../src/auth/AuthProvider';
-import { DataSourceBadge, headerStyles } from '../../../src/navigation/AppHeader';
+import { headerStyles, useOfflineHeaderRight } from '../../../src/navigation/AppHeader';
 import { ownsOrganization } from '../../../src/navigation/access';
 import { tone } from '../../../src/navigation/theme';
 import { OrganizerContext } from '../../../src/organizer/context';
@@ -15,6 +15,7 @@ export const unstable_settings = { initialRouteName: 'index' };
 
 export default function OrganizationLayout() {
   const { state } = useAuth();
+  const headerRight = useOfflineHeaderRight();
   const { api, storage } = useAccount();
   // Uploads and draft reviews run through OrganizerSession (APP-6b), scoped to this account.
   // No bundled drafts: the server's directions endpoint ties each draft to its event.
@@ -53,7 +54,7 @@ export default function OrganizationLayout() {
       <OrganizationTabContext.Provider value={tab}>
         {/* Screens set their own titles, so the declared order always matches the seeded one. */}
         <Stack screenOptions={{
-          headerRight: () => <DataSourceBadge />,
+          headerRight,
           headerStyle: headerStyles.header,
           headerShadowVisible: false,
           headerTintColor: tone.amber,

@@ -21,8 +21,8 @@ import type { KeyValueStorage } from '../settings/storage.ts';
 export type { AuthState };
 export const SESSION_KEY = 'ksu-go.session';
 export const SESSION_ENDED = 'Your session ended. Sign in again.';
-export const NO_SERVER = 'No server address is set. Long-press KSU-GO to add one, or browse offline.';
-export const UNREACHABLE = "Can't reach the server. Long-press KSU-GO to check the server address, or browse offline.";
+export const NO_SERVER = 'Unable to connect. Try again or browse offline.';
+export const UNREACHABLE = "Unable to connect. Try again or browse offline.";
 export const ME_TIMEOUT_MS = 4_000;
 export const SIGN_IN_TIMEOUT_MS = 10_000;
 

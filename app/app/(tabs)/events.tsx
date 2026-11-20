@@ -11,6 +11,7 @@ import { useAppData } from '../../src/data/AppDataContext';
 import { getEventFlagState } from '../../src/data/events';
 import { roomLabel } from '../../src/events/EventDetails';
 import { et } from '../../src/events/format';
+import { SavedEventRow, savedListStyles } from '../../src/events/SavedEventRow';
 import { radius, space, text, tone } from '../../src/navigation/theme';
 import { buildingName } from '../../src/organizer/ui';
 import { rankDeck, swipeDecision, type Decision } from '../../src/week/choices';
@@ -135,11 +136,10 @@ function DiscoverCard({ event, onError, onOpen }: { event: Event; onError(messag
   );
 }
 
-function Empty({ title, body }: { title: string; body: string }) {
+function Empty({ title }: { title: string }) {
   return (
     <View style={styles.empty}>
       <Text style={text.headline}>{title}</Text>
-      <Text style={[text.subhead, styles.center]}>{body}</Text>
     </View>
   );
 }
@@ -186,7 +186,7 @@ export default function EventsScreen() {
           </View>
         )}
         renderItem={({ item }) => <EventRow event={item} now={now} onPress={() => open(item.id)} />}
-        ListEmptyComponent={<Empty title="No events this week" body="New events show up here as organizers add them." />}
+        ListEmptyComponent={<Empty title="No events this week" />}
       />
     );
   }
@@ -204,25 +204,16 @@ export default function EventsScreen() {
         ) : view === 'discover' ? (
           remaining.length
             ? <DiscoverCard key={remaining[0].id} event={remaining[0]} onError={setError} onOpen={() => open(remaining[0].id)} />
-            : <Empty title={weekEvents.length ? 'You’ve seen every event this week' : 'No events this week'}
-                body="Saved events stay in Saved. Skipped ones still show in All." />
+            : <Empty title={weekEvents.length ? 'You’re all caught up' : 'No events this week'} />
         ) : saved.length ? (
-          <View style={styles.group}>
+          <View style={savedListStyles.group}>
             {saved.map((event, index) => (
-              <View key={event.id} style={[styles.savedRow, index < saved.length - 1 && styles.divider]}>
-                <Pressable accessibilityRole="button" style={styles.savedMain} onPress={() => open(event.id)}>
-                  <Text style={text.headline} numberOfLines={2}>{event.title}</Text>
-                  <Text style={[text.subhead, text.figures]}>{et.when(event.startsAt, now)}</Text>
-                </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${event.title} from Saved`}
-                  hitSlop={8} onPress={() => void unsave(event.id)} style={styles.remove}>
-                  <Text style={styles.removeText}>Remove</Text>
-                </Pressable>
-              </View>
+              <SavedEventRow key={event.id} title={event.title} startsAt={event.startsAt} now={now}
+                last={index === saved.length - 1} onPress={() => open(event.id)} onRemove={() => unsave(event.id)} />
             ))}
           </View>
         ) : (
-          <Empty title="Nothing saved yet" body="Swipe right in Discover to save an event. Saving doesn’t register you." />
+          <Empty title="No saved events" />
         )}
       </View>
     </ScrollView>
@@ -234,7 +225,6 @@ const styles = StyleSheet.create({
   listContent: { paddingBottom: space.xxl },
   header: { paddingHorizontal: space.gutter, paddingTop: space.s, paddingBottom: space.l, gap: space.l },
   body: { paddingHorizontal: space.gutter },
-  center: { textAlign: 'center' },
   segmented: { flexDirection: 'row', padding: 2, borderRadius: 9, backgroundColor: tone.fill },
   segment: { flex: 1, minHeight: 32, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   segmentSelected: { backgroundColor: tone.surface, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 4,
@@ -264,12 +254,6 @@ const styles = StyleSheet.create({
   choice: { flex: 1, minHeight: 50, borderRadius: radius.control, alignItems: 'center', justifyContent: 'center' },
   skip: { backgroundColor: tone.surface, borderWidth: 1, borderColor: tone.hairline },
   save: { backgroundColor: tone.amber },
-  group: { borderRadius: radius.group, backgroundColor: tone.surface, paddingLeft: space.l },
-  savedRow: { flexDirection: 'row', alignItems: 'center', gap: space.m, paddingVertical: space.m, paddingRight: space.l },
-  divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },
-  savedMain: { flex: 1, gap: 2 },
-  remove: { minHeight: 44, justifyContent: 'center' },
-  removeText: { ...text.subhead, color: tone.amber, fontWeight: '600' },
   empty: { alignItems: 'center', gap: space.s, paddingVertical: space.xxl, paddingHorizontal: space.gutter },
   retry: { minHeight: 44, justifyContent: 'center' },
   error: { ...text.footnote, color: tone.error },

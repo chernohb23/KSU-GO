@@ -25,7 +25,7 @@ export default function CreateOrganization() {
           await storage.setItem(SELECTED_ORGANIZATION_KEY, organization.id).catch(() => {});
           await controller.setUser(await api.me());
           router.replace('/organization');
-        }} /> : <Notice kind="info" message="Creating an organization needs a signed-in account and the server." />}
+        }} /> : <Notice kind="info" message="Sign in and connect to create an organization." />}
     </ScrollView>
   );
 }

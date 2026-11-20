@@ -41,7 +41,7 @@ export default function EventScreen() {
       ) : (
         <View style={styles.missing}>
           <Text style={text.title}>{loading ? 'Loading event…' : 'This event is unavailable'}</Text>
-          <Text style={text.subhead}>Older and cancelled events need the server. Events shows everything active this week.</Text>
+          <Text style={text.subhead}>Try again when connected.</Text>
         </View>
       )}
     </ScrollView>

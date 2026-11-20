@@ -27,7 +27,7 @@ export default function ReviewDirections() {
     void api.eventDirections(eventId).then(async (directions) => {
       if (!active) return;
       if (directions.route?.id !== routeId) {
-        setError('These directions no longer belong to this event. Return to the event to see its room’s directions.');
+        setError('Directions changed. Open them from the event.');
         return;
       }
       setAuthorized(routeId);
@@ -54,11 +54,10 @@ export default function ReviewDirections() {
     <ScrollView style={screenStyles.screen} contentContainerStyle={screenStyles.content}>
       <Stack.Screen options={{ title: 'Directions' }} />
       <Notice message={error ?? readErrors[routeId] ?? null} />
-      {!canManage ? <Notice kind="info" message="Reviewing directions needs the server and the event’s owner." /> : null}
+      {!canManage ? <Notice kind="info" message="Connect to review directions." /> : null}
       {route?.status === 'processing' ? <ProgressBar label={route.progress?.stage ?? 'Processing'} percent={route.progress?.pct ?? 0} /> : null}
       {route?.status === 'confirmed' ? <>
         <Text style={text.title}>Directions ready</Text>
-        <Text style={text.body}>Every event in this room now uses these directions.</Text>
         <Button label="View directions" onPress={() => router.push({ pathname: '/route/[routeId]', params: { routeId } })} />
       </> : route?.status === 'failed' ? <Notice message={route.error ?? 'Directions could not be drafted. Return to the event and try again.'} />
         : !route ? <Text style={text.subhead}>Loading directions…</Text> : null}

@@ -27,6 +27,14 @@ export function DataSourceBadge() {
   );
 }
 
+const renderDataSourceBadge = () => <DataSourceBadge />;
+
+/** Native headers create a container for any callback, even one that returns null. */
+export function useOfflineHeaderRight() {
+  const { offline } = useAppData();
+  return offline ? renderDataSourceBadge : undefined;
+}
+
 export const headerStyles = StyleSheet.create({
   header: { backgroundColor: palette.paper },
 });
