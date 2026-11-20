@@ -1,14 +1,19 @@
-import { Group, PerspectiveCamera, Scene, Vector3 } from "three";
+import { Box3, Group, PerspectiveCamera, Scene, Vector3 } from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import campusJson from "../../../shared/fixtures/campus.json";
 import type { Campus, Event } from "../../../shared/types";
 import { installBridge, type OutgoingMessage } from "../bridge";
 import { createCampusScene } from "./index";
+import { browserLoad } from "../browser";
+import { roofCenter } from "./roof";
+import { nativeLabelLayout, overlaps, type Rect } from "./labelPlacement";
 
 const rendered = vi.hoisted(() => ({
   scene: undefined as Scene | undefined,
   camera: undefined as PerspectiveCamera | undefined,
   target: undefined as Vector3 | undefined,
+  facingErrors: [] as number[],
+  maxDistance: 0,
 }));
 
 // Keep the real scene, flags and camera math; only replace WebGL and DOM controls.
@@ -29,6 +34,12 @@ vi.mock("three", async (importOriginal) => {
         camera.updateMatrixWorld(true);
         rendered.scene = scene;
         rendered.camera = camera;
+        rendered.facingErrors = (scene.getObjectByName("flags")?.children ?? []).map(flag => {
+          const cloth = flag.getObjectByName("flag-cloth")!;
+          const normal = cloth.getWorldDirection(new actual.Vector3()).setY(0).normalize();
+          const towardCamera = camera.position.clone().sub(cloth.getWorldPosition(new actual.Vector3())).setY(0).normalize();
+          return normal.angleTo(towardCamera) * 180 / Math.PI;
+        });
       }
     },
   };
@@ -40,13 +51,18 @@ vi.mock("three/addons/controls/MapControls.js", async () => {
     MapControls: class {
       target = new Vector3();
       cursor = new Vector3();
+      lastPosition = new Vector3();
+      maxDistance = Infinity;
       constructor(private camera: PerspectiveCamera) {
         rendered.target = this.target;
       }
       update() {
         this.camera.lookAt(this.target);
         this.camera.updateMatrixWorld(true);
-        return false;
+        rendered.maxDistance = this.maxDistance;
+        const moved = !this.lastPosition.equals(this.camera.position);
+        this.lastPosition.copy(this.camera.position);
+        return moved;
       }
       addEventListener() {}
       dispose() {}
@@ -176,10 +192,111 @@ describe("campus scene tap and selection", () => {
   it("adds non-interactive building labels and positions them on the map", () => {
     const labels = overlays.filter(element => campus.buildings.some(building => building.name === element.textContent));
     expect(labels.map(label => label.textContent)).toEqual(campus.buildings.map(building => building.name));
-    expect(labels.some(label => label.style.left?.endsWith("px"))).toBe(true);
+    expect(labels.every(label => label.style.opacity === "0")).toBe(true);
+    const offset = rendered.camera!.position.clone().sub(rendered.target!);
+    rendered.camera!.position.copy(rendered.target!).add(offset.multiplyScalar(0.8));
+    frame(20);
+    expect(labels.some(label => label.style.visibility === "visible" && label.style.left?.endsWith("px"))).toBe(true);
     expect(labels.every(label => label.style.pointerEvents === "none")).toBe(true);
     expect(labels.every(label => label.style.whiteSpace === "nowrap")).toBe(true);
     expect(labels.every(label => label.style.textOverflow === "ellipsis")).toBe(true);
+  });
+
+  it.each([[390, 844], [430, 932]])("anchors zoomed-in labels to their own roofs at %sx%s", (width, height) => {
+    scene.dispose();
+    window.ReactNativeWebView = { postMessage() {} };
+    overlays = [];
+    const container = {
+      clientWidth: width, clientHeight: height,
+      replaceChildren(child: EventTarget) { canvas = child; },
+      append(...elements: HTMLElement[]) { overlays.push(...elements); },
+    } as unknown as HTMLElement;
+    scene = createCampusScene(container, () => {});
+    const load = browserLoad("?scene=campus", new Date(now))!;
+    if (load.type !== "campus:load") throw new Error("Expected campus fixture");
+    scene.load({ ...load, savedEventIds: load.events.map(event => event.id) });
+    frame(20);
+    const labels = overlays.filter(element => campus.buildings.some(building => building.name === element.textContent));
+    const projectRect = (object: Group) => {
+      const box = new Box3().setFromObject(object);
+      const points = [];
+      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+        const p = new Vector3(x, y, z).project(rendered.camera!);
+        points.push([(p.x + 1) * width / 2, (1 - p.y) * height / 2]);
+      }
+      return { left: Math.min(...points.map(p => p[0])), top: Math.min(...points.map(p => p[1])),
+        right: Math.max(...points.map(p => p[0])), bottom: Math.max(...points.map(p => p[1])) };
+    };
+    expect(labels).toHaveLength(campus.buildings.length);
+    expect(labels.every(label => label.style.opacity === "0")).toBe(true);
+    const camera = rendered.camera!, target = rendered.target!;
+    const offset = camera.position.clone().sub(target);
+    const openingDistance = offset.length();
+    const mathematics = campus.buildings.find(building => building.id === "b-mathematics")!;
+    const [mx, mz] = roofCenter(mathematics.footprint);
+    expect(target.toArray()).toEqual([mx / 2, 0, mz / 2]);
+    const { viewport } = nativeLabelLayout(width, height);
+    const projectedTarget = target.clone().project(camera);
+    expect((1 - projectedTarget.y) * height / 2).toBeCloseTo((viewport.top + viewport.bottom) / 2);
+    expect(rendered.maxDistance).toBeCloseTo(openingDistance / 0.75 * 2);
+    // The full fit remains reachable and includes every building in the visible band.
+    camera.position.copy(target).add(offset.clone().multiplyScalar(1 / 0.75));
+    frame(30);
+    for (const building of campus.buildings) {
+      const rect = projectRect(rendered.scene!.getObjectByName(building.id)! as Group);
+      expect(rect.left).toBeGreaterThanOrEqual(viewport.left - 0.001);
+      expect(rect.right).toBeLessThanOrEqual(viewport.right + 0.001);
+      expect(rect.top).toBeGreaterThanOrEqual(viewport.top - 0.001);
+      expect(rect.bottom).toBeLessThanOrEqual(viewport.bottom + 0.001);
+    }
+    camera.position.copy(target).add(offset.clone().multiplyScalar(0.8));
+    frame(40);
+    const obstacles = rendered.scene!.getObjectByName("flags")!.children.map(flag => projectRect(flag as Group));
+    const visible = labels.filter(label => label.style.visibility === "visible");
+    expect(visible.length).toBeGreaterThan(0);
+    const rects: Rect[] = visible.map(label => ({ left: Number.parseFloat(label.style.left), top: Number.parseFloat(label.style.top),
+      right: Number.parseFloat(label.style.left) + Number.parseFloat(label.style.width), bottom: Number.parseFloat(label.style.top) + 20 }));
+    rects.forEach((rect, index) => {
+      expect(Number(visible[index].style.opacity)).toBeCloseTo(1);
+      expect(rect.left).toBeGreaterThanOrEqual(viewport.left);
+      expect(rect.right).toBeLessThanOrEqual(viewport.right);
+      expect(rect.top).toBeGreaterThanOrEqual(viewport.top);
+      expect(rect.bottom).toBeLessThanOrEqual(viewport.bottom);
+      for (const obstacle of [...obstacles, ...rects.slice(index + 1)]) expect(overlaps(rect, obstacle)).toBe(false);
+    });
+    rects.forEach((rect, index) => {
+      const building = campus.buildings.find(building => building.name === visible[index].textContent)!;
+      const [x, z] = roofCenter(building.footprint);
+      const anchor = new Vector3(x, building.heightM, z).project(camera);
+      expect(Math.hypot((rect.left + rect.right) / 2 - (anchor.x + 1) * width / 2,
+        (rect.top + rect.bottom) / 2 - (1 - anchor.y) * height / 2)).toBeLessThanOrEqual(40.001);
+    });
+    for (const [ratio, alpha] of [[0.825, 0.5], [0.86, 0], [0.825, 0.5], [0.8, 1]]) {
+      camera.position.copy(target).add(offset.clone().multiplyScalar(ratio));
+      frame(time + 20);
+      const shown = labels.filter(label => label.style.visibility === "visible");
+      if (alpha === 0) expect(shown).toHaveLength(0);
+      else {
+        expect(shown.length).toBeGreaterThan(0);
+        for (const label of shown) expect(Number(label.style.opacity)).toBeCloseTo(alpha);
+      }
+    }
+  });
+
+  it("updates flag facing before drawing during orbit and focus animation", () => {
+    const expectFacing = () => {
+      expect(rendered.facingErrors.length).toBe(2);
+      for (const angle of rendered.facingErrors) expect(angle).toBeLessThan(2);
+    };
+    expectFacing();
+    rendered.camera!.position.set(-250, 200, 80);
+    frame(16);
+    expectFacing();
+    receive({ type: "campus:select", eventId: event.id });
+    frame(225);
+    expectFacing();
+    frame(466);
+    expectFacing();
   });
 
   it("campus:select highlights its flag and eases the camera to its ground position", () => {

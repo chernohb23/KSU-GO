@@ -62,7 +62,7 @@ export default function App() {
       <StatusBar style="light" />
       <View style={styles.header}>
         <View style={styles.headingCopy}>
-          <Text style={styles.eyebrow}>KSU-GO · APP-1 SPIKE</Text>
+          <Text style={styles.eyebrow}>KSU GO · APP-1 SPIKE</Text>
           <Text style={styles.title}>Hallway viewer</Text>
         </View>
         <Pressable

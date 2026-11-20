@@ -42,6 +42,13 @@ export default function MapScreen() {
   const [listOpen, setListOpen] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+  // Local HTML presentation settings keep label exclusions aligned with native controls.
+  const mapSource = useMemo(() => ({ html: viewerHtml.replace('<head>', `<head><style>:root {
+    --map-control-top: ${safe.top + space.l}px;
+    --map-control-left: ${safe.left + space.gutter}px;
+    --map-control-right: ${safe.right + space.gutter}px;
+    --map-control-clearance: ${clearance}px;
+  }</style>`) }), [safe.top, safe.left, safe.right, clearance]);
 
   const { choices } = useWeekChoices();
   const initialMessage = useMemo(() => ({
@@ -88,7 +95,7 @@ export default function MapScreen() {
       <View style={styles.map}>
         <ViewerWebView
           ref={viewer}
-          source={{ html: viewerHtml }}
+          source={mapSource}
           initialMessage={initialMessage}
           onMessage={handleViewerMessage}
           onReady={() => { setMapReady(true); setMapError(null); }}
@@ -106,7 +113,7 @@ export default function MapScreen() {
         top: safe.top + space.l, left: safe.left + space.gutter, right: safe.right + space.gutter,
       }]}>
         <View style={styles.logoGroup}>
-          <PressScale accessibilityRole="button" accessibilityLabel="KSU-GO" accessibilityHint="Long-press to open settings"
+          <PressScale accessibilityRole="button" accessibilityLabel="KSU GO" accessibilityHint="Long-press to open settings"
             onLongPress={() => router.push('/settings')} style={[styles.glass, styles.logoBubble]}>
             <GlassBackground />
             <AppTitle compact />
@@ -138,7 +145,7 @@ export default function MapScreen() {
         </PressScale>
       </View>
       {campus.attribution ? <Text pointerEvents="none" style={[styles.credit, {
-        bottom: clearance - space.l, left: safe.left + space.gutter,
+        bottom: clearance - space.l, right: safe.right + space.gutter,
       }]}>© OpenStreetMap</Text> : null}
 
       <Modal visible={legendOpen} transparent animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={() => setLegendOpen(false)}>
@@ -213,10 +220,10 @@ const styles = StyleSheet.create({
   offlineBubble: { height: 28, paddingHorizontal: space.s, justifyContent: 'center' },
   offlineText: { ...text.footnote, color: tone.ink, fontWeight: '600' },
   actions: { flexDirection: 'row', gap: space.s },
-  bottomControls: { position: 'absolute', alignItems: 'center' },
+  bottomControls: { position: 'absolute', alignItems: 'flex-start' },
   eventsButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.l, maxWidth: '100%' },
   iconButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  credit: { position: 'absolute', color: tone.muted, fontSize: 11, lineHeight: 14 },
+  credit: { position: 'absolute', textAlign: 'right', color: tone.muted, fontSize: 11, lineHeight: 14 },
   infoHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.l },
   legend: { paddingTop: space.l, gap: space.m },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: space.m },

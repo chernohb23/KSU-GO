@@ -1,6 +1,6 @@
 import {
   BufferAttribute, BufferGeometry, CircleGeometry, CylinderGeometry, DoubleSide, Group,
-  Mesh, MeshBasicMaterial, PlaneGeometry, RingGeometry, Shape, ShapeGeometry,
+  Mesh, MeshBasicMaterial, PlaneGeometry, RingGeometry, Shape, ShapeGeometry, Vector3, type Object3D,
 } from "three";
 import type { Event } from "../../../shared/types";
 import { palette } from "../palette";
@@ -26,7 +26,21 @@ function markerGeometry(state: State) {
   ));
 }
 
-const FLAG_ANGLE = -Math.atan2(0.92, 0.4);
+const facingPosition = new Vector3();
+
+/** Turn only the cloth around its pole; its local +Z normal faces the camera. */
+export function faceFlagsToCamera(flagsLayer: Object3D, cameraPosition: Vector3): void {
+  for (const flag of flagsLayer.children) {
+    const cloth = flag.getObjectByName("flag-cloth");
+    if (!cloth) continue;
+    // Work in the pole's local space so the pivot stays attached to the pole.
+    facingPosition.copy(cameraPosition);
+    flag.worldToLocal(facingPosition);
+    if (Math.hypot(facingPosition.x, facingPosition.z) > 1e-8) {
+      cloth.rotation.y = Math.atan2(facingPosition.x, facingPosition.z);
+    }
+  }
+}
 
 function savedStar() {
   const shape = new Shape();
@@ -89,7 +103,7 @@ export const createFlags: CreateFlags = (flagsLayer, campus, events, now, savedE
 
       const cloth = new Group();
       cloth.position.y = heightM;
-      cloth.rotation.y = FLAG_ANGLE;
+      cloth.name = "flag-cloth";
       const marker = new Mesh(markerGeometry(state), new MeshBasicMaterial({
         color: palette.flags[state], side: DoubleSide, depthTest: false, depthWrite: false,
       }));
@@ -133,6 +147,7 @@ export const createFlags: CreateFlags = (flagsLayer, campus, events, now, savedE
           positions.setZ(i, across * 1.7 * Math.sin(across * Math.PI * 2 - elapsedSeconds * 5));
         }
         positions.needsUpdate = true;
+        marker.geometry.computeBoundingBox();
         const phase = (elapsedSeconds % 1.6) / 1.6;
         pulse.scale.setScalar(1 + phase * 1.8);
         pulse.material.opacity = 0.8 * (1 - phase);

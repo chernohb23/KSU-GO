@@ -1,4 +1,4 @@
-# KSU-GO in Expo Go
+# KSU GO in Expo Go
 
 The original APP-1 corridor prototype checked the in-app WebView path: the corridor HTML contains the three.js module, makes no network requests, and exchanges the existing `route:goto` and `route:stepChanged` messages from `CONTRACTS.md` section 6. The `FPS` label in the scene reports the measured render rate while orbiting.
 
@@ -40,7 +40,7 @@ The app opens on **Sign in**. Accounts are demo accounts checked by our own serv
 
 ### Run against the server
 
-Start the server in mock mode (`server/README.md`), then point the app at it: long-press the **KSU-GO** logo bubble on Map or the logo in the Sign in header, and enter the server address without `/api`, for example `http://192.168.1.20:8000` or the tunnel URL. `EXPO_PUBLIC_API_URL` sets the default. While the server answers, no offline badge appears. Map shows an **Offline** glass pill when the app falls back to bundled data; other headers show **Offline data**.
+Start the server in mock mode (`server/README.md`), then point the app at it: long-press the **KSU GO** logo bubble on Map or the logo in the Sign in header, and enter the server address without `/api`, for example `http://192.168.1.20:8000` or the tunnel URL. `EXPO_PUBLIC_API_URL` sets the default. While the server answers, no offline badge appears. Map shows an **Offline** glass pill when the app falls back to bundled data; other headers show **Offline data**.
 
 ### Offline demo on iPhone (guest)
 
@@ -48,7 +48,7 @@ With no server, choose **Browse offline** on Sign in. The guest sees Map, Events
 
 A signed-in user whose server stops answering keeps the session, read-only, with **Offline data** showing; registering says it needs the server until the badge disappears.
 
-To rehearse again, long-press the **KSU-GO** logo on Map or Sign in, choose **Reset app**, and confirm. This signs you out and clears every account's local saved events, swipes, Interests and upload history, plus the server address override. Account registrations, profiles, follows and organizations stay on the server. The same screen has **Preview directions**, which opens an event with directions.
+To rehearse again, long-press the **KSU GO** logo on Map or Sign in, choose **Reset app**, and confirm. This signs you out and clears every account's local saved events, swipes, Interests and upload history, plus the server address override. Account registrations, profiles, follows and organizations stay on the server. The same screen has **Preview directions**, which opens an event with directions.
 
 The student route follows the room's confirmed route. Confirmed JSON routes under `shared/fixtures/routes/` are bundled by Metro alongside the existing sample. There is no route-drafts tab or list: a draft opens only from its event's Directions row.
 
@@ -97,7 +97,7 @@ Directions has five states: **Directions ready** (view only), **Add directions**
 
 Every event card is the same component, wherever it opens. Times are always campus time, labeled **ET**, whatever the phone's time zone. Capacity shows as “34 / 50”, or “Full” once reached; it never blocks registering. **Take me there** opens directions above the tabs. Cancelled events leave Map, Events and Discover; event details can still fetch them directly and show a Cancelled banner with no registration or directions action.
 
-If the app has no configured server URL, it starts in fixture mode. Hidden **Settings** opens only by long-pressing the **KSU-GO** logo bubble on Map or the logo in the Sign in header. The sign-up and Settings brands are static. Enter the server base URL without `/api`; the app saves it on the device and checks it immediately. Leaving the field blank clears the override and returns to `EXPO_PUBLIC_API_URL`, if configured. Health is rechecked every 10 seconds, with a 2-second timeout.
+If the app has no configured server URL, it starts in fixture mode. Hidden **Settings** opens only by long-pressing the **KSU GO** logo bubble on Map or the logo in the Sign in header. The sign-up and Settings brands are static. Enter the server base URL without `/api`; the app saves it on the device and checks it immediately. Leaving the field blank clears the override and returns to `EXPO_PUBLIC_API_URL`, if configured. Health is rechecked every 10 seconds, with a 2-second timeout.
 
 The typed API client lives in `src/api/client.ts`. Fixture conversion and fallback live in `src/data/`. `ViewerWebView` and the typed section 6 bridge live in `src/viewer/` and load HTML strings as required by the contract.
 

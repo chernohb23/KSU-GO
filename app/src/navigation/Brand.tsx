@@ -13,7 +13,7 @@ export function LaunchScreen({ label }: { label: string }) {
   return (
     <View accessibilityRole="progressbar" accessibilityLabel={label} style={styles.launch}>
       <BrandMark size={104} />
-      <Text style={styles.name}>KSU-GO</Text>
+      <Text style={styles.name}>KSU GO</Text>
       <Text style={styles.status}>{label}</Text>
     </View>
   );

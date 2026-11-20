@@ -54,7 +54,7 @@ function AppStack() {
         <Stack.Screen name="settings" options={{ headerTitle: 'Settings', headerRight: undefined, unstable_headerRightItems: undefined }} />
       </Stack>
       {state.status === 'restoring' ? (
-        <View style={StyleSheet.absoluteFill}><LaunchScreen label="Opening KSU-GO…" /></View>
+        <View style={StyleSheet.absoluteFill}><LaunchScreen label="Opening KSU GO…" /></View>
       ) : null}
     </>
   );
