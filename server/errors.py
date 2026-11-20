@@ -4,13 +4,15 @@ from typing import Literal
 
 
 ErrorCode = Literal[
-    "not_found", "invalid_request", "wrong_status", "route_has_failed_checks",
-    "video_rejected", "budget_exceeded",
+    "not_found", "invalid_request", "unauthenticated", "forbidden", "wrong_status",
+    "route_has_failed_checks", "video_rejected", "budget_exceeded",
 ]
 
 ERRORS: dict[ErrorCode, tuple[int, str]] = {
     "not_found": (404, "The requested item was not found."),
     "invalid_request": (422, "The request has missing or invalid fields."),
+    "unauthenticated": (401, "Sign in to do this."),
+    "forbidden": (403, "Your account can't do this."),
     "wrong_status": (409, "Only draft routes can be edited or confirmed."),
     "route_has_failed_checks": (409, "Fix the failed checks before confirming."),
     "video_rejected": (422, "The video could not be read."),

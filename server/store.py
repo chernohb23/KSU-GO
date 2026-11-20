@@ -1,14 +1,22 @@
 """In-memory fixture data and atomic saves for a single server process."""
 
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Lock
+from uuid import uuid4
 
-from pydantic import Field, TypeAdapter
+from pydantic import AwareDatetime, Field, TypeAdapter
 
+import accounts
 from checks import refresh_mock_checks
+from demo_accounts import DEMO_ACCOUNTS
 from errors import APIError
-from models import Check, ContractModel, Door, Event, EventRange, EventSeed, PipelineMode, Route, Step
+from event_rules import new_event_fields
+from models import (
+    Campus, Check, ContractModel, CreateEventRequest, Door, Event, EventRange, EventSeed, Location,
+    Organization, PipelineMode, Role, Route, Step, User,
+)
 from pipeline.motion import SavedMotion
 from pipeline.verify import verify
 
@@ -21,29 +29,92 @@ class Upload(ContractModel):
     motion: SavedMotion | None = None
 
 
+class SavedUser(ContractModel):
+    id: str
+    name: str
+    email: str
+    role: Role
+    organizationId: str | None
+    password: str  # accounts.hash_password record; never returned or logged
+
+
+class SavedSession(ContractModel):
+    userId: str
+    expiresAt: AwareDatetime
+
+
 class SavedState(ContractModel):
+    # Device-id registrations from before accounts existed. They still count
+    # toward registeredCount but belong to no user.
     registrations: dict[str, set[str]] = Field(default_factory=dict)
+    user_registrations: dict[str, set[str]] = Field(default_factory=dict)
     uploads: dict[str, Upload] = Field(default_factory=dict)
     event_routes: dict[str, str] = Field(default_factory=dict)
+    # Signed-up accounts only; demo accounts are rebuilt in memory at startup.
+    users: dict[str, SavedUser] = Field(default_factory=dict)
+    # Keyed by the SHA-256 of the token; the token itself is never stored.
+    sessions: dict[str, SavedSession] = Field(default_factory=dict)
+    # Base values (registeredCount 0); counts and route links are applied on load.
+    created_events: dict[str, Event] = Field(default_factory=dict)
+
+
+SESSION_LIFETIME = timedelta(days=7)
+
+
+def serves_room(route: Route, location: Location) -> bool:
+    """The same-room rule of POST /api/routes/{id}/confirm."""
+    return (
+        route.buildingId == location.buildingId
+        and f"Room {location.room.strip()}".casefold() == route.destination.strip().casefold()
+    )
+
+
+def _user_view(user: SavedUser) -> User:
+    return User(
+        id=user.id, name=user.name, email=user.email, role=user.role,
+        organizationId=user.organizationId,
+    )
 
 
 class Store:
-    def __init__(self, data_dir: Path, fixtures_dir: Path):
+    def __init__(
+        self, data_dir: Path, fixtures_dir: Path,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ):
         self._lock = Lock()
+        self._clock = clock
         self._path = data_dir / "state.json"
         try:
             self._saved = SavedState.model_validate_json(self._path.read_bytes())
         except FileNotFoundError:
             self._saved = SavedState()
 
-        now = datetime.now(UTC)
+        organizations = TypeAdapter(list[Organization]).validate_json(
+            (fixtures_dir / "organizations.json").read_bytes()
+        )
+        self._organizations = {organization.id: organization for organization in organizations}
+        campus = Campus.model_validate_json((fixtures_dir / "campus.json").read_bytes())
+        self._building_ids = {building.id for building in campus.buildings}
+
+        self._demo_users: dict[str, SavedUser] = {}
+        for account in DEMO_ACCOUNTS:
+            organization_id = account["organizationId"]
+            if organization_id is not None and organization_id not in self._organizations:
+                raise ValueError(f"Demo account {account['id']} names an unknown organization.")
+            self._demo_users[account["id"]] = SavedUser(
+                id=account["id"], name=account["name"], email=account["email"],
+                role=account["role"], organizationId=organization_id,
+                password=accounts.hash_password(account["password"]),
+            )
+
+        now = self._clock()
         seeds = TypeAdapter(list[EventSeed]).validate_json(
             (fixtures_dir / "events.seed.json").read_bytes()
         )
         self._events: dict[str, Event] = {}
         for seed in seeds:
             fields = seed.model_dump(exclude={"startsInMin", "durationMin"})
-            fields["registeredCount"] += len(self._saved.registrations.get(seed.id, ()))
+            fields["registeredCount"] += self._saved_registrations(seed.id)
             fields["routeId"] = self._saved.event_routes.get(seed.id, seed.routeId)
             starts_at = now + timedelta(minutes=seed.startsInMin)
             event = Event(
@@ -77,6 +148,36 @@ class Store:
             route_id: upload.route for route_id, upload in self._saved.uploads.items()
         })
 
+        # Created events keep their exact times. A fixture route confirmed in an
+        # earlier run is a draft again after a restart, so a link to a route
+        # that is no longer confirmed is derived again from the room.
+        for event_id, base in self._saved.created_events.items():
+            route_id = self._saved.event_routes.get(event_id, base.routeId)
+            route = self._routes.get(route_id) if route_id is not None else None
+            if route is None or route.status != "confirmed":
+                route_id = self._room_route(base.location)
+            self._events[event_id] = base.model_copy(update={
+                "routeId": route_id,
+                "registeredCount": base.registeredCount + self._saved_registrations(event_id),
+            })
+
+    def _saved_registrations(self, event_id: str) -> int:
+        return (
+            len(self._saved.registrations.get(event_id, ()))
+            + len(self._saved.user_registrations.get(event_id, ()))
+        )
+
+    def _room_route(self, location: Location) -> str | None:
+        """The most recently confirmed route that serves this room."""
+        candidates = [
+            route for route in self._routes.values()
+            if route.status == "confirmed" and route.confirmedAt is not None
+            and serves_room(route, location)
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda route: route.confirmedAt).id
+
     def _save(self, state: SavedState) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         pending = self._path.with_suffix(".tmp")
@@ -88,7 +189,7 @@ class Store:
         self._saved = state
 
     def list_events(self, event_range: EventRange) -> list[Event]:
-        now = datetime.now(UTC)
+        now = self._clock()
         cutoff = now + timedelta(days=1 if event_range == "today" else 7)
         with self._lock:
             return sorted(
@@ -107,17 +208,95 @@ class Store:
         with self._lock:
             return self._event(event_id)
 
-    def register(self, event_id: str, device_id: str) -> int:
+    def register(self, event_id: str, user_id: str) -> int:
         with self._lock:
             event = self._event(event_id)
-            devices = self._saved.registrations.get(event_id, set())
-            if device_id in devices:
+            users = self._saved.user_registrations.get(event_id, set())
+            if user_id in users:
                 return event.registeredCount
-            registrations = self._saved.registrations | {event_id: devices | {device_id}}
-            self._save(self._saved.model_copy(update={"registrations": registrations}))
+            registrations = self._saved.user_registrations | {event_id: users | {user_id}}
+            self._save(self._saved.model_copy(update={"user_registrations": registrations}))
             updated = event.model_copy(update={"registeredCount": event.registeredCount + 1})
             self._events[event_id] = updated
             return updated.registeredCount
+
+    def create_event(self, body: CreateEventRequest, user: User) -> Event:
+        if body.organizationId != user.organizationId:
+            raise APIError("forbidden", "You can only create events for your own organization.")
+        with self._lock:
+            fields = new_event_fields(
+                body, now=self._clock(), organizations=self._organizations,
+                building_ids=self._building_ids,
+            )
+            event = Event(
+                id=f"ev-{uuid4()}",
+                organizer=self._organizations[body.organizationId].name,
+                routeId=self._room_route(fields["location"]),
+                registeredCount=0,
+                **fields,
+            )
+            created = self._saved.created_events | {event.id: event}
+            self._save(self._saved.model_copy(update={"created_events": created}))
+            self._events[event.id] = event
+            return event
+
+    # ---- Accounts and sessions ----
+
+    def _all_users(self) -> dict[str, SavedUser]:
+        return self._saved.users | self._demo_users
+
+    def _start_session(self, user_id: str, users: dict[str, SavedUser] | None = None) -> str:
+        """Save a new session (and any new user) and return its token. Hold the lock."""
+        now = self._clock()
+        token = accounts.new_token()
+        sessions = {
+            key: session for key, session in self._saved.sessions.items() if session.expiresAt > now
+        } | {accounts.token_hash(token): SavedSession(userId=user_id, expiresAt=now + SESSION_LIFETIME)}
+        changes: dict[str, object] = {"sessions": sessions}
+        if users is not None:
+            changes["users"] = users
+        self._save(self._saved.model_copy(update=changes))
+        return token
+
+    def signup(self, name: str, email: str, password: str) -> tuple[str, User]:
+        name, email = accounts.checked_signup(name, email, password)
+        record = accounts.hash_password(password)  # slow on purpose; outside the lock
+        with self._lock:
+            if any(user.email == email for user in self._all_users().values()):
+                raise APIError("invalid_request", "An account with this email already exists.")
+            user = SavedUser(
+                id=f"user-{uuid4()}", name=name, email=email, role="student",
+                organizationId=None, password=record,
+            )
+            token = self._start_session(user.id, self._saved.users | {user.id: user})
+            return token, _user_view(user)
+
+    def login(self, email: str, password: str) -> tuple[str, User]:
+        email = accounts.normalize_email(email)
+        with self._lock:
+            user = next((u for u in self._all_users().values() if u.email == email), None)
+        if user is None:
+            accounts.burn_password_check(password)
+            raise APIError("unauthenticated", "Email or password is wrong.")
+        if not accounts.verify_password(password, user.password):
+            raise APIError("unauthenticated", "Email or password is wrong.")
+        with self._lock:
+            return self._start_session(user.id), _user_view(user)
+
+    def user_for_token(self, token: str) -> User | None:
+        with self._lock:
+            session = self._saved.sessions.get(accounts.token_hash(token))
+            if session is None or self._clock() >= session.expiresAt:
+                return None
+            user = self._all_users().get(session.userId)
+            return _user_view(user) if user is not None else None
+
+    def logout(self, token: str) -> None:
+        with self._lock:
+            key = accounts.token_hash(token)
+            if key in self._saved.sessions:
+                sessions = {k: v for k, v in self._saved.sessions.items() if k != key}
+                self._save(self._saved.model_copy(update={"sessions": sessions}))
 
     def _route(self, route_id: str) -> Route:
         route = self._routes.get(route_id)
@@ -202,17 +381,14 @@ class Store:
                 raise APIError("route_has_failed_checks")
 
             confirmed = route.model_copy(update={
-                "status": "confirmed", "confirmedAt": datetime.now(UTC),
+                "status": "confirmed", "confirmedAt": self._clock(),
             })
             upload = self._saved.uploads.get(route_id)
             explicit_event = upload.event_id if upload else None
-            destination = route.destination.strip().casefold()
             attached = tuple(
                 event.id for event in self._events.values()
                 if event.id == explicit_event or (
-                    event.routeId is None
-                    and event.location.buildingId == route.buildingId
-                    and f"Room {event.location.room.strip()}".casefold() == destination
+                    event.routeId is None and serves_room(route, event.location)
                 )
             )
             self._replace_route(confirmed, attached)
