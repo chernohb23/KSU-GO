@@ -6,6 +6,15 @@
 }
 
 * { box-sizing: border-box; }
+/* The viewer is a touch surface, not a document: a long press must never select
+   text (building labels, legend, credit) or open the iOS callout (Copy, Look Up).
+   Touch handling stays on the canvas through touch-action below. */
+*, *::before, *::after {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
 body { margin: 0; }
 #viewer { position: fixed; inset: 0; }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
