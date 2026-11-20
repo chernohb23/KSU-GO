@@ -1,0 +1,34 @@
+{
+  "id": "route-room-215-hand",
+  "version": 1,
+  "status": "confirmed",
+  "progress": null,
+  "error": null,
+  "buildingId": "b-mathematics",
+  "destination": "Room 215",
+  "startFloor": "1",
+  "destinationFloor": "2",
+  "corridorWidthM": 2.0,
+  "ceilingHeightM": 2.7,
+  "steps": [
+    { "id": "s1", "type": "door", "label": "Main entrance", "source": "organizer", "confidence": null, "tSec": null, "note": null },
+    { "id": "s2", "type": "walk", "lengthM": 8, "source": "organizer", "confidence": null, "tSec": null, "note": "Paced estimate; verify with a building contact." },
+    { "id": "s3", "type": "turn", "direction": "right", "source": "organizer", "confidence": null, "tSec": null, "note": null },
+    { "id": "s4", "type": "walk", "lengthM": 2, "source": "organizer", "confidence": null, "tSec": null, "note": "Paced estimate; verify with a building contact." },
+    { "id": "s5", "type": "stairs", "direction": "up", "riseM": 1.8, "runM": 3, "toFloor": null, "source": "organizer", "confidence": null, "tSec": null, "note": null },
+    { "id": "s6", "type": "turn", "direction": "u_left", "source": "organizer", "confidence": null, "tSec": null, "note": "U-turn on the stair landing." },
+    { "id": "s7", "type": "stairs", "direction": "up", "riseM": 1.8, "runM": 3, "toFloor": "2", "source": "organizer", "confidence": null, "tSec": null, "note": null },
+    { "id": "s8", "type": "walk", "lengthM": 2, "source": "organizer", "confidence": null, "tSec": null, "note": "Paced estimate; verify with a building contact." },
+    { "id": "s9", "type": "turn", "direction": "right", "source": "organizer", "confidence": null, "tSec": null, "note": null },
+    { "id": "s10", "type": "walk", "lengthM": 7, "source": "organizer", "confidence": null, "tSec": null, "note": "Paced estimate; verify with a building contact." },
+    { "id": "s11", "type": "turn", "direction": "left", "source": "organizer", "confidence": null, "tSec": null, "note": null },
+    { "id": "s12", "type": "walk", "lengthM": 1, "source": "organizer", "confidence": null, "tSec": null, "note": "Paced estimate; verify with a building contact." },
+    { "id": "s13", "type": "door", "label": "Room 215", "source": "organizer", "confidence": null, "tSec": null, "note": "Door sign reads D215." }
+  ],
+  "checks": [
+    { "id": "leg_length_range", "level": "pass", "message": "No walk is shorter than 0.5 m.", "stepId": null }
+  ],
+  "stats": null,
+  "createdAt": "2026-11-19T12:00:00-05:00",
+  "confirmedAt": "2026-11-19T12:00:00-05:00"
+}

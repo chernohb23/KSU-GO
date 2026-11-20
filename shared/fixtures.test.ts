@@ -10,6 +10,8 @@ import campusJson from "./fixtures/campus.json";
 import sampleJson from "./fixtures/route.sample.json";
 import flawedJson from "./fixtures/route.draft-flawed.json";
 import placeholderJson from "./fixtures/routes/placeholder.draft.json";
+import room215HandJson from "./fixtures/routes/room-215.hand.json";
+import room113HandJson from "./fixtures/routes/room-113.hand.json";
 
 // ---- Generic helpers ----
 
@@ -276,6 +278,8 @@ const campus = lazy(() => parseCampus(campusJson, "campus.json"));
 const sample = lazy(() => parseRoute(sampleJson, "route.sample.json"));
 const flawed = lazy(() => parseRoute(flawedJson, "route.draft-flawed.json"));
 const placeholder = lazy(() => parseRoute(placeholderJson, "routes/placeholder.draft.json"));
+const room215Hand = lazy(() => parseRoute(room215HandJson, "routes/room-215.hand.json"));
+const room113Hand = lazy(() => parseRoute(room113HandJson, "routes/room-113.hand.json"));
 
 const ISO_WITH_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}:\d{2}|Z)$/;
 const SOON_MIN = 60;
@@ -286,7 +290,7 @@ const isLive = (e: EventSeed) => e.startsInMin <= 0 && e.startsInMin + e.duratio
 const isSoon = (e: EventSeed) => e.startsInMin > 0 && e.startsInMin <= SOON_MIN;
 const isLaterToday = (e: EventSeed) => e.startsInMin > SOON_MIN && e.startsInMin < DAY_MIN;
 const isToday = (e: EventSeed) => e.startsInMin < DAY_MIN && e.startsInMin + e.durationMin > 0;
-const inMath204 = (e: EventSeed) => e.location.buildingId === "b-mathematics" && e.location.room === "204";
+const inDemoRoom = (e: EventSeed, room: string) => e.location.buildingId === "b-mathematics" && e.location.room === room;
 
 function findStep(route: Route, id: string): Step {
   const step = route.steps.find((s) => s.id === id);
@@ -314,6 +318,10 @@ describe("fixture shapes", () => {
   });
   it("routes/placeholder.draft.json matches Route", () => {
     expect(placeholder().id).toBe("route-placeholder-draft");
+  });
+  it("both hand route fixtures match Route", () => {
+    expect(room215Hand().id).toBe("route-room-215-hand");
+    expect(room113Hand().id).toBe("route-room-113-hand");
   });
 });
 
@@ -360,28 +368,60 @@ describe("events.seed.json", () => {
       + week.length).toBe(all.length);
   });
 
-  it("has exactly two today-events on route-sample at b-mathematics/204, one of them soon", () => {
-    const onSample = seeds().filter((e) => e.routeId === "route-sample");
-    expect(onSample).toHaveLength(2);
-    for (const e of onSample) {
+  it("points the two Room 215 demo events at the stair route", () => {
+    const events = seeds().filter((e) => e.routeId === room215Hand().id);
+    expect(events).toHaveLength(2);
+    for (const e of events) {
       expect(isToday(e), e.id).toBe(true);
-      expect(inMath204(e), e.id).toBe(true);
+      expect(inDemoRoom(e, "215"), e.id).toBe(true);
     }
-    expect(onSample.some(isSoon)).toBe(true);
+    expect(events.some(isSoon)).toBe(true);
   });
 
-  it("has exactly one other event at b-mathematics/204, with no route", () => {
-    const others = seeds().filter((e) => inMath204(e) && e.routeId !== "route-sample");
-    expect(others).toHaveLength(1);
-    expect(others[0]?.routeId).toBeNull();
+  it("keeps the Room 113 stage demo event without directions", () => {
+    const event = seeds().find((e) => e.id === "ev-10");
+    expect(event).toBeDefined();
+    expect(inDemoRoom(event!, "113")).toBe(true);
+    expect(event?.routeId).toBeNull();
+    expect(room113Hand().status).toBe("confirmed");
   });
 
-  it("matches the route-sample destination room", () => {
-    const route = sample();
-    for (const e of seeds().filter((s) => s.routeId === "route-sample")) {
-      expect(e.location.buildingId).toBe(route.buildingId);
-      expect(`Room ${e.location.room}`).toBe(route.destination);
+  it("matches every linked event with its confirmed route destination", () => {
+    const routes = [room215Hand(), room113Hand()];
+    for (const event of seeds().filter((seed) => routes.some((route) => route.id === seed.routeId))) {
+      const route = routes.find((candidate) => candidate.id === event.routeId)!;
+      expect(event.location.buildingId).toBe(route.buildingId);
+      expect(`Room ${event.location.room}`).toBe(route.destination);
     }
+  });
+});
+
+describe("hand routes", () => {
+  it("confirms the Room 215 stair sequence on floors 1 to 2", () => {
+    const route = room215Hand();
+    expect(route.status).toBe("confirmed");
+    expect(route.startFloor).toBe("1");
+    expect(route.destinationFloor).toBe("2");
+    expect(route.steps.map((step) => step.type === "turn" ? step.direction : step.type)).toEqual([
+      "door", "walk", "right", "walk", "stairs", "u_left", "stairs", "walk", "right", "walk", "left", "walk", "door",
+    ]);
+    expect(route.steps.filter((step) => step.type === "walk").map((step) => step.type === "walk" ? step.lengthM : null))
+      .toEqual([8, 2, 2, 7, 1]);
+    expect(route.steps.every((step) => step.source === "organizer")).toBe(true);
+    expect(route.steps.filter((step) => step.type === "stairs").every((step) => step.direction === "up")).toBe(true);
+  });
+
+  it("confirms the Room 113 right turn without changing floors", () => {
+    const route = room113Hand();
+    expect(route.status).toBe("confirmed");
+    expect(route.startFloor).toBe("1");
+    expect(route.destinationFloor).toBe("1");
+    expect(route.steps.map((step) => step.type === "turn" ? step.direction : step.type)).toEqual([
+      "door", "walk", "right", "walk", "door",
+    ]);
+    expect(route.steps.filter((step) => step.type === "walk").map((step) => step.type === "walk" ? step.lengthM : null))
+      .toEqual([18, 3]);
+    expect(route.steps.every((step) => step.source === "organizer")).toBe(true);
   });
 });
 
