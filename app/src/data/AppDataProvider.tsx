@@ -11,19 +11,12 @@ import { eventsInRange, loadFixtureEvents } from './events.ts';
 import { findFixtureRoute } from './routes.ts';
 import { AppDataContext } from './AppDataContext.ts';
 import { AppDataController } from './controller.ts';
-import {
-  getOrCreateDeviceId,
-  loadOfflineRegisteredCounts,
-  loadRegisteredEventIds,
-  loadServerUrlOverride,
-  saveOfflineRegisteredCounts,
-  saveRegisteredEventIds,
-  saveServerUrlOverride,
-} from '../settings/storage.ts';
+import { loadServerUrlOverride, saveServerUrlOverride } from '../settings/storage.ts';
 
 const fixtureSeeds = campusEvents as unknown as EventSeed[];
 const fixtureRoutes = [...bundledRoutes, routeSample, routeDraft] as unknown as Route[];
 
+/** Device-wide server data: the server address, health, and the open event and route endpoints. */
 export function AppDataProvider({ children }: PropsWithChildren) {
   const { storage } = useDemoSession();
   const controller = useMemo(
@@ -38,69 +31,30 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     [storage],
   );
   const [state, setState] = useState(controller.state);
-  const [deviceId, setDeviceId] = useState<string | null>(null);
-  const [registeredEventIds, setRegisteredEventIds] = useState<string[]>([]);
-  const [offlineRegisteredCounts, setOfflineRegisteredCounts] = useState<Record<string, number>>({});
-  const [registrationsReady, setRegistrationsReady] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
     const unsubscribe = controller.subscribe(setState);
     void controller.start();
-    void Promise.all([
-      getOrCreateDeviceId(storage),
-      loadRegisteredEventIds(storage),
-      loadOfflineRegisteredCounts(storage),
-    ]).then(([id, savedIds, savedCounts]) => {
-      if (!mounted) return;
-      setDeviceId(id);
-      setRegisteredEventIds(savedIds);
-      setOfflineRegisteredCounts(savedCounts);
-      setRegistrationsReady(true);
-    });
     return () => {
-      mounted = false;
       unsubscribe();
       controller.stop();
     };
-  }, [controller, storage]);
+  }, [controller]);
 
-  const registerEvent = useCallback(async (eventId: string) => {
-    if (!deviceId) throw new Error('The device ID is not ready.');
-    if (!registrationsReady) throw new Error('Saved registrations are still loading.');
-    if (registeredEventIds.includes(eventId)) {
-      return state.events.find((event) => event.id === eventId)?.registeredCount ?? 0;
-    }
-
-    const registeredCount = await controller.registerEvent(eventId, deviceId);
-    const nextIds = [...registeredEventIds, eventId];
-    await saveRegisteredEventIds(storage, nextIds);
-    setRegisteredEventIds(nextIds);
-
-    if (controller.state.source === 'fixtures') {
-      const nextCounts = { ...offlineRegisteredCounts, [eventId]: registeredCount };
-      await saveOfflineRegisteredCounts(storage, nextCounts);
-      setOfflineRegisteredCounts(nextCounts);
-    }
-    return registeredCount;
-  }, [controller, deviceId, offlineRegisteredCounts, registeredEventIds, registrationsReady, state.events, storage]);
-
-  const weekEvents = useMemo(() => state.events.map((event) => {
-    const offlineCount = offlineRegisteredCounts[event.id];
-    return state.source === 'fixtures' && offlineCount !== undefined
-      ? { ...event, registeredCount: offlineCount }
-      : event;
-  }), [offlineRegisteredCounts, state.events, state.source]);
-
-  const events = useMemo(() => eventsInRange(weekEvents, state.now, 'today'), [weekEvents, state.now]);
-
+  const events = useMemo(() => eventsInRange(state.events, state.now, 'today'), [state.events, state.now]);
   const refresh = useCallback(() => controller.refresh(), [controller]);
   const setServerUrl = useCallback((url: string) => controller.setServerUrl(url), [controller]);
   const getRoute = useCallback((id: string) => controller.getRoute(id), [controller]);
+  const setRegisteredCount = useCallback(
+    (eventId: string, count: number) => controller.setRegisteredCount(eventId, count), [controller],
+  );
+  const markOffline = useCallback(() => controller.markOffline(), [controller]);
 
   const value = useMemo(
-    () => ({ ...state, events, weekEvents, deviceId, registeredEventIds, registrationsReady, registerEvent, refresh, setServerUrl, getRoute }),
-    [deviceId, events, weekEvents, getRoute, refresh, registerEvent, registeredEventIds, registrationsReady, setServerUrl, state],
+    () => ({
+      ...state, events, weekEvents: state.events, refresh, setServerUrl, getRoute, setRegisteredCount, markOffline,
+    }),
+    [events, getRoute, markOffline, refresh, setRegisteredCount, setServerUrl, state],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

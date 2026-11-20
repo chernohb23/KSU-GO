@@ -15,7 +15,7 @@ test('uses the contract method, path, query, and JSON body for event and route e
   await client.health();
   await client.listEvents('week');
   await client.getEvent('event/one');
-  await client.register('event/one', 'device-1');
+  await client.register('event/one');
   await client.getRoute('route/one');
   await client.updateRouteSteps('route/one', []);
   await client.confirmRoute('route/one');
@@ -29,7 +29,7 @@ test('uses the contract method, path, query, and JSON body for event and route e
     ['https://campus.example/api/routes/route%2Fone/steps', 'PUT'],
     ['https://campus.example/api/routes/route%2Fone/confirm', 'POST'],
   ]);
-  assert.deepEqual(JSON.parse(calls[3].init.body), { deviceId: 'device-1' });
+  assert.equal(calls[3].init.body, undefined); // registering is per signed-in user, with no body
   assert.deepEqual(JSON.parse(calls[5].init.body), { steps: [] });
   assert.equal(calls[6].init.body, undefined);
 });
@@ -75,11 +75,11 @@ test('passes cancellation signals to route and registration requests', async () 
   const controller = new AbortController();
 
   await client.getRoute('route-1', controller.signal);
-  await client.register('event-1', 'device-1', controller.signal);
+  await client.register('event-1', controller.signal);
 
   assert.equal(calls[0].init.signal, controller.signal);
   assert.equal(calls[1].init.signal, controller.signal);
-  assert.deepEqual(JSON.parse(calls[1].init.body), { deviceId: 'device-1' });
+  assert.equal(calls[1].init.body, undefined);
 });
 
 test('sends actual byte progress and preserves server errors on the multipart transport', async () => {
@@ -129,4 +129,89 @@ test('an active upload can keep going, but a stalled transfer or response releas
   t.mock.timers.tick(10_001);
   assert.equal(aborted, true);
   await rejected;
+});
+
+test('adds Authorization: Bearer to every request when a token exists, and nothing without one', async () => {
+  const calls = [];
+  let token = 'tok-noah';
+  const client = createApiClient('http://campus.example', jsonFetcher({ ok: true }, calls), undefined, undefined, {
+    token: () => token, onUnauthorized: () => {},
+  });
+  await client.me();
+  await client.register('ev-04');
+  await client.updateRouteSteps('route-1', []);
+  assert.deepEqual(calls.map(({ init }) => new Headers(init.headers).get('authorization')), [
+    'Bearer tok-noah', 'Bearer tok-noah', 'Bearer tok-noah',
+  ]);
+  assert.equal(new Headers(calls[2].init.headers).get('content-type'), 'application/json');
+  token = null;
+  await client.listEvents('week');
+  assert.equal(calls[3].init.headers, undefined);
+});
+
+test('a 401 on a request that carried a token reports that token; a login 401 without one does not', async () => {
+  const expired = [];
+  const fetcher = async () => new Response(JSON.stringify({ error: { code: 'unauthenticated', message: 'Sign in to do this.' } }), { status: 401 });
+  let token = 'tok-old';
+  const client = createApiClient('http://campus.example', fetcher, undefined, undefined, {
+    token: () => token, onUnauthorized: (sent) => expired.push(sent),
+  });
+  await assert.rejects(client.me(), (error) => error instanceof ApiRequestError && error.code === 'unauthenticated');
+  assert.deepEqual(expired, ['tok-old']);
+  token = null;
+  await assert.rejects(client.login({ email: 'a@b.c', password: 'wrong' }), (error) => error.status === 401);
+  assert.deepEqual(expired, ['tok-old']);
+  const forbidden = createApiClient('http://campus.example',
+    async () => new Response(JSON.stringify({ error: { code: 'forbidden', message: "Your account can't do this." } }), { status: 403 }),
+    undefined, undefined, { token: () => 'tok', onUnauthorized: (sent) => expired.push(sent) });
+  await assert.rejects(forbidden.confirmRoute('r'), (error) => error.code === 'forbidden');
+  assert.deepEqual(expired, ['tok-old']);
+});
+
+test('the auth endpoints use the contract paths and bodies; logout accepts 204', async () => {
+  const calls = [];
+  const fetcher = async (input, init = {}) => {
+    calls.push({ input: String(input), init });
+    if (String(input).endsWith('/logout')) return new Response(null, { status: 204 });
+    return new Response(JSON.stringify({ token: 't', user: {} }), { status: 200 });
+  };
+  const client = createApiClient('http://campus.example/', fetcher);
+  await client.signup({ name: 'Ana', email: 'ana@example.com', password: 'long enough' });
+  await client.login({ email: 'ana@example.com', password: 'long enough' });
+  await client.me();
+  assert.equal(await client.logout(), undefined);
+  assert.deepEqual(calls.map(({ input, init }) => [input, init.method ?? 'GET']), [
+    ['http://campus.example/api/auth/signup', 'POST'],
+    ['http://campus.example/api/auth/login', 'POST'],
+    ['http://campus.example/api/me', 'GET'],
+    ['http://campus.example/api/auth/logout', 'POST'],
+  ]);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { name: 'Ana', email: 'ana@example.com', password: 'long enough' });
+  assert.deepEqual(JSON.parse(calls[1].init.body), { email: 'ana@example.com', password: 'long enough' });
+});
+
+test('the multipart upload carries the Bearer token and a 401 signs out that token', async () => {
+  const requests = [];
+  const createXHR = () => {
+    const request = { upload: {}, headers: {}, open() {}, setRequestHeader(name, value) { this.headers[name] = value; }, send() {}, abort() {} };
+    requests.push(request);
+    return request;
+  };
+  const expired = [];
+  const client = createApiClient('http://campus.example', () => { throw Error('Unexpected fetch'); }, () => ({ append() {} }), createXHR,
+    { token: () => 'tok-noah', onUnauthorized: (sent) => expired.push(sent) });
+  const input = { video: { uri: 'file:///a.mov', name: 'a.mov', type: 'video/quicktime' }, buildingId: 'b', destination: 'Room 1', startFloor: '1', destinationFloor: '1' };
+  const pending = client.uploadRoute(input, () => {});
+  assert.equal(requests[0].headers.Authorization, 'Bearer tok-noah');
+  requests[0].status = 401;
+  requests[0].responseText = '{"error":{"code":"unauthenticated","message":"Sign in to do this."}}';
+  requests[0].onload();
+  await assert.rejects(pending, (error) => error.code === 'unauthenticated');
+  assert.deepEqual(expired, ['tok-noah']);
+  const unreadable = client.uploadRoute(input, () => {});
+  requests[1].status = 401;
+  requests[1].responseText = '<html>';
+  requests[1].onload();
+  await assert.rejects(unreadable, (error) => error.status === 401);
+  assert.deepEqual(expired, ['tok-noah', 'tok-noah']);
 });

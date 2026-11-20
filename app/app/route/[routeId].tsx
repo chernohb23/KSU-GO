@@ -101,15 +101,15 @@ export default function RouteScreen() {
     <View style={styles.container}>
       {!routeId ? (
         <View style={styles.message}>
-          <Text style={styles.title}>Route</Text>
-          <Text style={styles.body}>Open an event on the map and choose “Take me there” for directions to its room.</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.navigate('/')} style={styles.mapLink}>
-            <Text style={styles.playButtonText}>Open map</Text>
+          <Text style={styles.title}>Directions</Text>
+          <Text style={styles.body}>Choose “Take me there” on an event for directions to its room.</Text>
+          <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.mapLink}>
+            <Text style={styles.playButtonText}>Back</Text>
           </Pressable>
         </View>
       ) : error ? (
         <View style={styles.message}>
-          <Text style={styles.title}>Route</Text>
+          <Text style={styles.title}>Directions</Text>
           <Text accessibilityRole="alert" style={styles.body}>{error}</Text>
         </View>
       ) : route ? (

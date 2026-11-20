@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { getOrCreateDeviceId, loadOfflineRegisteredCounts, loadRegisteredEventIds, loadServerUrlOverride, resolveServerUrl, saveOfflineRegisteredCounts, saveRegisteredEventIds, saveServerUrlOverride } from '../settings/storage.ts';
+import { loadRegisteredEventIds, loadServerUrlOverride, resolveServerUrl, saveRegisteredEventIds, saveServerUrlOverride } from '../settings/storage.ts';
 import { AppDataController } from './controller.ts';
 import { WeekChoices } from '../week/choices.ts';
 import { DemoStorage } from '../settings/demoStorage.ts';
@@ -40,20 +40,14 @@ function makeController(overrides = {}) {
   };
 }
 
-test('blank URL overrides fall back to EXPO_PUBLIC_API_URL and persist stable device ids', async () => {
+// The device id is gone: registering is per signed-in user (CONTRACTS.md section 5).
+test('blank URL overrides fall back to EXPO_PUBLIC_API_URL', async () => {
   const storage = memoryStorage();
   await saveServerUrlOverride(storage, ' https://server.test/ ');
   assert.equal(await loadServerUrlOverride(storage), 'https://server.test/');
   await saveServerUrlOverride(storage, '  ');
   assert.equal(await loadServerUrlOverride(storage), null);
   assert.equal(resolveServerUrl(await loadServerUrlOverride(storage), 'https://default.test/'), 'https://default.test/');
-
-  let generated = 0;
-  const first = await getOrCreateDeviceId(storage, () => `device-${++generated}`);
-  const second = await getOrCreateDeviceId(storage, () => `device-${++generated}`);
-  assert.equal(first, 'device-1');
-  assert.equal(second, first);
-  assert.equal(generated, 1);
 });
 
 test('persists registered event ids and ignores malformed storage values', async () => {
@@ -63,9 +57,6 @@ test('persists registered event ids and ignores malformed storage values', async
 
   await storage.setItem('ksu-go.registered-event-ids', '{bad json');
   assert.deepEqual(await loadRegisteredEventIds(storage), []);
-
-  await saveOfflineRegisteredCounts(storage, { 'event-1': 5, invalid: -1 });
-  assert.deepEqual(await loadOfflineRegisteredCounts(storage), { 'event-1': 5 });
 });
 
 test('uses fixtures immediately when no server URL is configured', async () => {
@@ -160,65 +151,6 @@ test('changing the server URL refreshes immediately and later polls use the new 
   controller.stop();
 });
 
-test('registers an event in fixture mode and increments its local count', async () => {
-  const { controller } = makeController({
-    defaultApiUrl: '',
-    fixtureEvents: () => [{ id: 'event-1', registeredCount: 4 }],
-    loadServerUrlOverride: async () => null,
-  });
-
-  await controller.start();
-  const registeredCount = await controller.registerEvent('event-1', 'device-1');
-
-  assert.equal(registeredCount, 5);
-  assert.equal(controller.state.events[0].registeredCount, 5);
-  controller.stop();
-});
-
-test('registers with the server and uses its returned count', async () => {
-  let registration;
-  const { controller } = makeController({
-    fixtureEvents: () => [{ id: 'event-1', registeredCount: 4 }],
-    clientFactory: () => ({
-      health: async () => ({ ok: true, pipelineMode: 'mock' }),
-      listEvents: async () => [{ id: 'event-1', registeredCount: 4 }],
-      getRoute: async () => null,
-      register: async (eventId, deviceId) => {
-        registration = { eventId, deviceId };
-        return { registered: true, registeredCount: 5 };
-      },
-    }),
-  });
-
-  await controller.start();
-  const registeredCount = await controller.registerEvent('event-1', 'device-1');
-
-  assert.deepEqual(registration, { eventId: 'event-1', deviceId: 'device-1' });
-  assert.equal(registeredCount, 5);
-  assert.equal(controller.state.events[0].registeredCount, 5);
-  controller.stop();
-});
-
-test('falls back to a local registration when the server is unreachable', async () => {
-  const { controller } = makeController({
-    fixtureEvents: () => [{ id: 'event-1', registeredCount: 4 }],
-    clientFactory: () => ({
-      health: async () => ({ ok: true, pipelineMode: 'mock' }),
-      listEvents: async () => [{ id: 'event-1', registeredCount: 4 }],
-      getRoute: async () => null,
-      register: async () => { throw new TypeError('network unavailable'); },
-    }),
-  });
-
-  await controller.start();
-  const registeredCount = await controller.registerEvent('event-1', 'device-1');
-
-  assert.equal(controller.state.source, 'fixtures');
-  assert.equal(registeredCount, 5);
-  assert.equal(controller.state.events[0].registeredCount, 5);
-  controller.stop();
-});
-
 test('a stalled route request aborts at its configured deadline and returns the fixture route', async (t) => {
   const fixture = { id: 'route-fixture' };
   let signal;
@@ -254,56 +186,41 @@ test('a stalled route request aborts at its configured deadline and returns the 
   assert.equal(controller.state.source, 'fixtures');
 });
 
-test('a stalled registration aborts at its configured deadline and increments the fixture count once', async (t) => {
-  let signal;
-  let finishRequest;
-  const { controller } = makeController({
-    registerTimeoutMs: 25,
-    fixtureEvents: () => [{ id: 'event-1', registeredCount: 4 }],
-    clientFactory: () => ({
-      health: async () => ({ ok: true, pipelineMode: 'mock' }),
-      listEvents: async () => [{ id: 'event-1', registeredCount: 20 }],
-      register: (_id, _deviceId, requestSignal) => {
-        signal = requestSignal;
-        return new Promise((resolve) => { finishRequest = resolve; });
-      },
-    }),
-  });
-  t.after(() => controller.stop());
-  await controller.start();
-  t.mock.timers.enable({ apis: ['setTimeout'] });
-
-  const pending = controller.registerEvent('event-1', 'device-1');
-  t.mock.timers.tick(24);
-  assert.equal(signal.aborted, false);
-  assert.equal(controller.state.source, 'server');
-  t.mock.timers.tick(1);
-  assert.equal(await pending, 5);
-  assert.equal(signal.aborted, true);
-  assert.equal(controller.state.offline, true);
-  assert.equal(controller.state.events[0].registeredCount, 5);
-
-  finishRequest({ registered: true, registeredCount: 21 });
-  await Promise.resolve();
-  assert.equal(controller.state.events[0].registeredCount, 5);
-});
-
-test('route and registration API errors are rethrown without switching to fixtures', async (t) => {
+// Registration errors are covered in src/account/register.test.mjs.
+test('route API errors are rethrown without switching to fixtures', async (t) => {
   const error = new ApiRequestError(404, 'not_found', 'Not found.');
   const { controller } = makeController({
     clientFactory: () => ({
       health: async () => ({ ok: true, pipelineMode: 'mock' }),
       listEvents: async () => [{ id: 'server' }],
       getRoute: async () => { throw error; },
-      register: async () => { throw error; },
     }),
   });
   t.after(() => controller.stop());
   await controller.start();
 
   await assert.rejects(controller.getRoute('missing'), (caught) => caught === error);
-  await assert.rejects(controller.registerEvent('missing', 'device-1'), (caught) => caught === error);
   assert.equal(controller.state.source, 'server');
+});
+
+test('a server registration count replaces the shown count, and markOffline falls back to fixtures', async (t) => {
+  const { controller } = makeController({
+    fixtureEvents: () => [{ id: 'event-1', registeredCount: 4 }],
+    clientFactory: () => ({
+      health: async () => ({ ok: true, pipelineMode: 'mock' }),
+      listEvents: async () => [{ id: 'event-1', registeredCount: 20 }],
+      getRoute: async () => null,
+    }),
+  });
+  t.after(() => controller.stop());
+  await controller.start();
+
+  controller.setRegisteredCount('event-1', 21);
+  controller.setRegisteredCount('missing', 99);
+  assert.deepEqual(controller.state.events, [{ id: 'event-1', registeredCount: 21 }]);
+  controller.markOffline();
+  assert.equal(controller.state.source, 'fixtures');
+  assert.deepEqual(controller.state.events, [{ id: 'event-1', registeredCount: 4 }]);
 });
 
 test('weekly choices serialize, survive restart, and reset independently of registration', async () => {

@@ -1,25 +1,29 @@
 import { Image } from 'react-native';
 import { Tabs } from 'expo-router';
 
+import { useAuth } from '../../src/auth/AuthProvider';
 import { AppTitle, DataSourceBadge, headerStyles } from '../../src/navigation/AppHeader';
-import { palette } from '../../src/navigation/Brand';
+import { isOrganizer } from '../../src/navigation/access';
+import { tone } from '../../src/navigation/theme';
 
 const icons = {
   index: require('../../assets/map.png'),
-  week: require('../../assets/week.png'),
-  route: require('../../assets/route.png'),
+  events: require('../../assets/week.png'),
   organizer: require('../../assets/organizer.png'),
+  profile: require('../../assets/profile.png'),
 };
 
 export default function TabsLayout() {
+  const { state } = useAuth();
   return (
     <Tabs screenOptions={({ route }) => ({
       headerTitle: () => <AppTitle />,
       headerRight: () => <DataSourceBadge />,
       headerStyle: headerStyles.header,
-      tabBarActiveTintColor: palette.amber,
-      tabBarInactiveTintColor: palette.muted,
-      tabBarStyle: { backgroundColor: palette.paper },
+      headerShadowVisible: false,
+      tabBarActiveTintColor: tone.amber,
+      tabBarInactiveTintColor: tone.muted,
+      tabBarStyle: { backgroundColor: tone.paper },
       tabBarLabelStyle: { fontWeight: '600' },
       tabBarIcon: ({ color, size }) => (
         <Image accessible={false} source={icons[route.name as keyof typeof icons]}
@@ -27,9 +31,11 @@ export default function TabsLayout() {
       ),
     })}>
       <Tabs.Screen name="index" options={{ title: 'Map' }} />
-      <Tabs.Screen name="week" options={{ title: 'This week' }} />
-      <Tabs.Screen name="route" options={{ title: 'Route' }} />
-      <Tabs.Screen name="organizer" options={{ title: 'Organizer' }} />
+      <Tabs.Screen name="events" options={{ title: 'Events' }} />
+      <Tabs.Protected guard={isOrganizer(state)}>
+        <Tabs.Screen name="organizer" options={{ title: 'Organizer' }} />
+      </Tabs.Protected>
+      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
   );
 }
