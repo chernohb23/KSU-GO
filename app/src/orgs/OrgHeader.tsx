@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   root: { gap: space.l },
   identity: { alignItems: 'center', gap: space.s },
   center: { textAlign: 'center' },
-  description: { ...text.body, textAlign: 'center' },
+  description: { ...text.body },
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 52, gap: space.m, paddingRight: space.l, paddingVertical: space.m },
   value: { flex: 1, color: tone.ink },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },

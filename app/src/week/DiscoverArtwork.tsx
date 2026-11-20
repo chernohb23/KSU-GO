@@ -15,10 +15,10 @@ const artwork: Record<Event['category'], { icon: IoniconName; tint: string }> = 
 };
 
 /** Decorative, offline artwork; a future image can be supplied without changing Event. */
-export function DiscoverArtwork({ category, imageUri }: { category: Event['category']; imageUri?: string }) {
+export function DiscoverArtwork({ category, imageUri, fill = false }: { category: Event['category']; imageUri?: string; fill?: boolean }) {
   const [failedUri, setFailedUri] = useState<string>();
   const { icon, tint } = artwork[category];
-  return <View style={styles.frame} pointerEvents="none" accessible={false}
+  return <View style={[styles.frame, fill ? styles.fill : styles.landscape]} pointerEvents="none" accessible={false}
     accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
     {imageUri && imageUri !== failedUri ? (
       <Image source={{ uri: imageUri }} resizeMode="cover" style={StyleSheet.absoluteFill}
@@ -36,8 +36,10 @@ export function DiscoverArtwork({ category, imageUri }: { category: Event['categ
 }
 
 const styles = StyleSheet.create({
-  frame: { width: '100%', aspectRatio: 16 / 9, flexShrink: 0, borderRadius: radius.group, overflow: 'hidden',
+  frame: { width: '100%', flexShrink: 0, borderRadius: radius.group, overflow: 'hidden',
     backgroundColor: tone.paper, alignItems: 'center', justifyContent: 'center' },
+  landscape: { aspectRatio: 16 / 9 },
+  fill: { flexGrow: 1, flexBasis: 144, minHeight: 144 },
   ring: { position: 'absolute', width: 144, height: 144, borderRadius: 72, borderWidth: 16,
     left: -48, top: -48, opacity: 0.08 },
   square: { position: 'absolute', width: 96, height: 96, borderRadius: radius.group,

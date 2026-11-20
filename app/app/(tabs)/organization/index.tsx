@@ -64,11 +64,11 @@ export default function OrganizationHome() {
   return (
     <ScrollView style={screenStyles.screen} contentContainerStyle={screenStyles.content}>
       <Stack.Screen options={{
-        title: 'Organization',
+        title: org?.name ?? 'Organization',
         headerTitle: owned.length > 1 ? () => <PressScale accessibilityRole="button" accessibilityLabel="Switch organization"
           onPress={switchOrganization} style={styles.switcher}>
-          <Text style={text.headline}>Organization</Text><Ionicon name="chevron-down" size={18} color={tone.amber} />
-        </PressScale> : undefined,
+          <Text style={[text.headline, styles.switcherTitle]} numberOfLines={1}>{org?.name ?? 'Organization'}</Text><Ionicon name="chevron-down" size={18} color={tone.amber} />
+        </PressScale> : org?.name ?? 'Organization',
         headerRight: canEdit ? () => <HeaderIconButton name="pencil" label="Edit organization"
           onPress={() => router.push('/organization/edit')} /> : offlineHeaderRight,
       }} />
@@ -94,7 +94,8 @@ export default function OrganizationHome() {
 }
 
 const styles = StyleSheet.create({
-  switcher: { flexDirection: 'row', alignItems: 'center', gap: space.xs, justifyContent: 'center' },
+  switcher: { flexDirection: 'row', alignItems: 'center', gap: space.xs, justifyContent: 'center', maxWidth: '100%' },
+  switcherTitle: { flexShrink: 1 },
   cards: { gap: space.s },
   pad: { paddingHorizontal: space.l },
 });

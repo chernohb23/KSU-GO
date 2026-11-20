@@ -21,7 +21,9 @@ function AppStack() {
   return (
     <>
       <Stack screenOptions={{
-        headerTitle: () => <AppTitle />,
+        headerTitleAlign: 'center',
+        headerTitleStyle: { fontSize: 17, fontWeight: '600' },
+        headerLargeTitle: false,
         headerRight,
         unstable_headerRightItems: headerItems,
         headerStyle: headerStyles.header,
@@ -30,7 +32,7 @@ function AppStack() {
       }}>
         <Stack.Protected guard={signedOut}>
           <Stack.Screen name="sign-in" options={{
-            headerTitle: () => <AppTitle variant="ink" />,
+            headerTitle: () => <AppTitle variant="ink" settingsShortcut />,
             headerStyle: { backgroundColor: tone.ink },
             headerShadowVisible: false,
           }} />

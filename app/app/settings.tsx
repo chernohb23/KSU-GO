@@ -10,6 +10,7 @@ import { useAppData } from '../src/data/AppDataContext';
 import { showsSignIn } from '../src/navigation/access';
 import { useDemoSession } from '../src/settings/DemoSession';
 import { palette } from '../src/navigation/Brand';
+import { AppTitle } from '../src/navigation/AppHeader';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -37,6 +38,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <AppTitle />
       <Text style={styles.title}>Server settings</Text>
       <Text style={styles.body}>Leave blank to use the default address.</Text>
       <TextInput
