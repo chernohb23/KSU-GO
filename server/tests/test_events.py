@@ -25,9 +25,10 @@ def test_cors_allows_an_app_origin(client):
     assert response.headers["access-control-allow-origin"] == "*"
 
 
-def test_events_default_to_today_and_week_includes_later_events(client):
-    today = client.get("/api/events").json()
-    week = client.get("/api/events?range=week").json()
+def test_events_default_to_today_and_week_includes_later_events(make_client):
+    with make_client(clock=Clock()) as client:
+        today = client.get("/api/events").json()
+        week = client.get("/api/events?range=week").json()
     assert len(today) == 12
     assert len(week) == 25
     assert [event["id"] for event in today] == [
@@ -50,10 +51,10 @@ def test_event_list_excludes_ended_events_and_respects_range(tmp_path, make_clie
         dict(seed, id="outside-week", startsInMin=10081),
         dict(seed, id="week", startsInMin=1441),
         dict(seed, id="ended", startsInMin=-121),
-        dict(seed, id="today", startsInMin=1439),
+        dict(seed, id="today", startsInMin=1410),
         dict(seed, id="live", startsInMin=-1),
     ]))
-    with make_client(fixtures_dir) as client:
+    with make_client(fixtures_dir, clock=Clock()) as client:
         assert [event["id"] for event in client.get("/api/events").json()] == [
             "live", "today",
         ]

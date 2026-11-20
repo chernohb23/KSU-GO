@@ -25,6 +25,7 @@ from pipeline.motion import SavedMotion
 from pipeline.verify import verify
 from profile_rules import profile_fields
 from rooms import serves_room
+from seed_times import seed_start
 
 
 # A route belongs to the event it was uploaded for. Bundled drafts have no upload
@@ -146,7 +147,7 @@ class Store:
             if override is not None:
                 self._events[seed.id] = override
                 continue
-            starts_at = now + timedelta(minutes=seed.startsInMin)
+            starts_at = seed_start(seed.startsInMin, now)
             self._events[seed.id] = Event(
                 **seed.model_dump(exclude={"startsInMin", "durationMin"}),
                 startsAt=starts_at, endsAt=starts_at + timedelta(minutes=seed.durationMin),

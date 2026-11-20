@@ -22,7 +22,7 @@ const viewerSource = { html: viewerHtml };
 export default function RouteScreen() {
   const router = useRouter();
   const safe = useSafeAreaInsets();
-  const { routeId } = useLocalSearchParams<{ routeId?: string }>();
+  const { routeId, eventId } = useLocalSearchParams<{ routeId?: string; eventId?: string }>();
   const { getRoute } = useAppData();
   const [route, setRoute] = useState<Route | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -155,6 +155,17 @@ export default function RouteScreen() {
               >
                 <Text style={styles.buttonText}>Back</Text>
               </PressScale>
+              {atEnd && stepCount > 0 ? <PressScale
+                accessibilityRole="button" feedback="success"
+                onPress={() => {
+                  act({ type: 'pause' });
+                  if (eventId) router.dismissTo({ pathname: '/event/[eventId]', params: { eventId } });
+                  else router.back();
+                }}
+                style={[styles.button, styles.playButton]}
+              >
+                <Text style={styles.playButtonText}>Finish</Text>
+              </PressScale> : <>
               <PressScale
                 accessibilityRole="button"
                 accessibilityLabel={stepper.playing ? 'Pause route playback' : 'Play route'}
@@ -175,6 +186,7 @@ export default function RouteScreen() {
               >
                 <Text style={styles.buttonText}>Next</Text>
               </PressScale>
+              </>}
             </View>
           </ScrollView>
         </>

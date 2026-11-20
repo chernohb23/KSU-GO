@@ -77,7 +77,7 @@ export default function ManageEvent() {
   }
 
   function openDirections() {
-    if (row?.action === 'view' && route) router.push({ pathname: '/route/[routeId]', params: { routeId: route.id } });
+    if (row?.action === 'view' && route) router.push({ pathname: '/route/[routeId]', params: { routeId: route.id, eventId } });
     if (row?.action === 'review' && route) router.push({ pathname: '/organization/event/[eventId]/directions/[routeId]', params: { eventId, routeId: route.id } });
     if (row?.action === 'upload' && editable) router.push({ pathname: '/organization/event/[eventId]/directions/new', params: { eventId } });
   }

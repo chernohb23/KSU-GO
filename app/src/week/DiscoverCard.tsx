@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -16,6 +16,7 @@ import { haptic } from '../ui/haptics';
 import { PressScale } from '../ui/PressScale';
 import { swipeDecision, type Decision } from './choices';
 import { needsDiscoverHint, rememberDiscoverSwipe } from './tutorial';
+import { DiscoverArtwork } from './DiscoverArtwork';
 
 export function DiscoverCard({ event, onOpen, onError }: { event: Event; onOpen(): void; onError(message: string): void }) {
   const { storage, weekChoices } = useAccount();
@@ -81,17 +82,24 @@ export function DiscoverCard({ event, onOpen, onError }: { event: Event; onOpen(
           haptic('selection');
           void choose(nativeEvent.actionName as Decision);
         }}>
-        <View style={styles.top}>
-          <Text style={styles.category}>{categoryLabel(event.category)}</Text>
-          <Text style={text.largeTitle} numberOfLines={4} adjustsFontSizeToFit minimumFontScale={0.7}>{event.title}</Text>
-          <Text style={text.subhead}>{event.organizer}</Text>
-        </View>
-        <Text style={styles.description} numberOfLines={6}>{event.description}</Text>
-        <View style={styles.facts}>
-          <Text style={[text.headline, text.figures]}>{et.dateTime(event.startsAt)}</Text>
-          <Text style={text.subhead}>{buildingName(event.location.buildingId)}, {roomLabel(event.location.room)}</Text>
-          {showHint ? <Text style={styles.hint}>Swipe right to save, left to skip</Text> : null}
-        </View>
+        <ScrollView style={styles.contentScroll} contentContainerStyle={styles.content} bounces={false}
+          showsVerticalScrollIndicator={false} directionalLockEnabled>
+          <View style={styles.top}>
+            <Text style={styles.category}>{categoryLabel(event.category)}</Text>
+            <Text style={text.largeTitle} numberOfLines={3} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.7}>{event.title}</Text>
+            <Text style={text.subhead} numberOfLines={1} ellipsizeMode="tail">{event.organizer}</Text>
+          </View>
+          <DiscoverArtwork category={event.category} />
+          <View style={styles.spacer} />
+          <View style={styles.bottom}>
+            <Text style={styles.description} numberOfLines={3} ellipsizeMode="tail">{event.description}</Text>
+            <View style={styles.facts}>
+              <Text style={[text.headline, text.figures]} numberOfLines={2}>{et.dateTime(event.startsAt)}</Text>
+              <Text style={text.subhead} numberOfLines={2} ellipsizeMode="tail">{buildingName(event.location.buildingId)}, {roomLabel(event.location.room)}</Text>
+              {showHint ? <Text style={styles.hint}>Swipe right to save, left to skip</Text> : null}
+            </View>
+          </View>
+        </ScrollView>
       </PressScale>
       <Animated.Text pointerEvents="none" style={[styles.stamp, styles.save, saveStamp]}>SAVE</Animated.Text>
       <Animated.Text pointerEvents="none" style={[styles.stamp, styles.skip, skipStamp]}>SKIP</Animated.Text>
@@ -102,10 +110,14 @@ export function DiscoverCard({ event, onOpen, onError }: { event: Event; onOpen(
 const styles = StyleSheet.create({
   frame: { flex: 1 },
   card: { flex: 1, minHeight: 0, backgroundColor: tone.surface, borderRadius: radius.sheet, padding: space.xl,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline, borderTopWidth: 4, borderTopColor: tone.gold, justifyContent: 'space-between', gap: space.l },
-  top: { gap: space.s, flexShrink: 1 },
+    borderWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline, borderTopWidth: 4, borderTopColor: tone.gold },
+  contentScroll: { flex: 1, minHeight: 0 },
+  content: { flexGrow: 1 },
+  top: { gap: space.s, marginBottom: space.l },
+  spacer: { flexGrow: 1, minHeight: space.l },
+  bottom: { gap: space.l },
   category: { ...text.footnote, color: tone.amber, fontWeight: '600' },
-  description: { ...text.body, flexShrink: 1 },
+  description: { ...text.body },
   facts: { gap: space.s, paddingTop: space.l, borderTopWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },
   hint: { ...text.footnote, textAlign: 'center', paddingTop: space.s },
   stamp: { position: 'absolute', top: space.xl, fontSize: 34, fontWeight: '800', letterSpacing: 2, borderWidth: 3,

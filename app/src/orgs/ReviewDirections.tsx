@@ -67,7 +67,7 @@ export default function ReviewDirections() {
       {route?.status === 'processing' ? <ProgressBar label={route.progress?.stage ?? 'Processing'} percent={route.progress?.pct ?? 0} /> : null}
       {route?.status === 'confirmed' ? <>
         <Text style={text.title}>Directions ready</Text>
-        <Button label="View directions" onPress={() => router.push({ pathname: '/route/[routeId]', params: { routeId } })} />
+        <Button label="View directions" onPress={() => router.push({ pathname: '/route/[routeId]', params: { routeId, eventId } })} />
       </> : route?.status === 'failed' ? <Notice message={route.error ?? 'Directions could not be drafted. Return to the event and try again.'} />
         : !route ? <Text style={text.subhead}>Loading directions…</Text> : null}
       <Button label="Back to event" kind="secondary" onPress={back} />

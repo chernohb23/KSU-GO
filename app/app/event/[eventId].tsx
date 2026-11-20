@@ -38,7 +38,7 @@ export default function EventScreen() {
       <Notice message={error} />
       {event ? (
         <EventDetails key={event.id} event={event}
-          onTakeMeThere={(routeId) => router.push({ pathname: '/route/[routeId]', params: { routeId } })} />
+          onTakeMeThere={(routeId) => router.push({ pathname: '/route/[routeId]', params: { routeId, eventId } })} />
       ) : (
         <View style={styles.missing}>
           <Text style={text.title}>{loading ? 'Loading event…' : 'This event is unavailable'}</Text>

@@ -70,7 +70,7 @@ export default function MapScreen() {
   };
 
   const takeMeThere = (routeId: string) => {
-    router.push({ pathname: '/route/[routeId]', params: { routeId } });
+    router.push({ pathname: '/route/[routeId]', params: { routeId, eventId: selectedEvent?.id } });
   };
 
   const timeLabel = (event: Event) => getEventFlagState(event, now) === 'live'

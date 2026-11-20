@@ -6,7 +6,8 @@ import { tone } from '../navigation/theme';
 import { PressScale } from './PressScale';
 
 export type IoniconName = 'calendar' | 'mail' | 'globe' | 'pencil' | 'map' | 'people' | 'person-circle'
-  | 'refresh' | 'information-circle' | 'close' | 'chevron-forward' | 'chevron-down' | 'checkmark' | 'bookmark' | 'star';
+  | 'refresh' | 'information-circle' | 'close' | 'chevron-forward' | 'chevron-down' | 'checkmark' | 'bookmark' | 'star'
+  | 'book' | 'briefcase' | 'basketball' | 'color-palette' | 'sparkles';
 
 export function Ionicon({ name, size = 22, color = tone.muted, outline = true }: { name: IoniconName; size?: number; color?: string; outline?: boolean }) {
   const glyph = (outline ? `${name}-outline` : name) as ComponentProps<typeof Ionicons>['name'];

@@ -1,4 +1,5 @@
 import type { Event, EventSeed } from '../../../shared/types.ts';
+import { seedStart } from '../../../shared/seedTimes.ts';
 
 export type EventRange = 'today' | 'week';
 export type EventFlagState = 'live' | 'soon' | 'later' | 'ended';
@@ -7,7 +8,7 @@ const MINUTE_MS = 60_000;
 
 export function loadFixtureEvents(seed: EventSeed[], now: Date, range: EventRange): Event[] {
   const events = seed.map((event): Event => {
-    const startsAt = new Date(now.getTime() + event.startsInMin * MINUTE_MS);
+    const startsAt = seedStart(event.startsInMin, now);
     const endsAt = new Date(startsAt.getTime() + event.durationMin * MINUTE_MS);
     const { startsInMin: _startsInMin, durationMin: _durationMin, ...details } = event;
     return { ...details, startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };

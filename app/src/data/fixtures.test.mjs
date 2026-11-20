@@ -28,7 +28,7 @@ function seedEvent(id, startsInMin, durationMin) {
   };
 }
 
-test('converts fixture offsets, omits ended/out-of-range events, and sorts by start', () => {
+test('rounds fixture offsets, omits ended/out-of-range events, and sorts by start', () => {
   const events = loadFixtureEvents(
     [seedEvent('later', 80, 30), seedEvent('live', -15, 60), seedEvent('ended', -60, 30), seedEvent('week-only', 24 * 60, 30)],
     now,
@@ -36,15 +36,37 @@ test('converts fixture offsets, omits ended/out-of-range events, and sorts by st
   );
 
   assert.deepEqual(events.map(({ id }) => id), ['live', 'later']);
-  assert.equal(events[0]?.startsAt, '2026-11-17T11:45:00.000Z');
-  assert.equal(events[0]?.endsAt, '2026-11-17T12:45:00.000Z');
+  assert.equal(events[0]?.startsAt, '2026-11-17T11:30:00.000Z');
+  assert.equal(events[0]?.endsAt, '2026-11-17T12:30:00.000Z');
+  assert.equal(events[1]?.startsAt, '2026-11-17T14:00:00.000Z'); // 9 AM ET
 });
 
 test('includes starts strictly inside today and week windows', () => {
   const seeds = [seedEvent('today-edge', 24 * 60 - 1, 60), seedEvent('at-24h', 24 * 60, 60), seedEvent('week-edge', 7 * 24 * 60 - 1, 60), seedEvent('at-week', 7 * 24 * 60, 60)];
+  // Exact API/created timestamps use the strict range boundaries, independently
+  // of the seed-only half-hour scheduling policy.
+  const events = seeds.map(({ startsInMin, durationMin, ...event }) => ({ ...event,
+    startsAt: new Date(now.getTime() + startsInMin * 60_000).toISOString(),
+    endsAt: new Date(now.getTime() + (startsInMin + durationMin) * 60_000).toISOString(),
+  }));
+  assert.deepEqual(eventsInRange(events, now, 'today').map(({ id }) => id), ['today-edge']);
+  assert.deepEqual(eventsInRange(events, now, 'week').map(({ id }) => id), ['today-edge', 'at-24h', 'week-edge']);
+});
 
-  assert.deepEqual(loadFixtureEvents(seeds, now, 'today').map(({ id }) => id), ['today-edge']);
-  assert.deepEqual(loadFixtureEvents(seeds, now, 'week').map(({ id }) => id), ['today-edge', 'at-24h', 'week-edge']);
+test('offline bundled events have half-hour times, two live flags, three soon flags and unchanged durations', async () => {
+  const seeds = JSON.parse(await readFile(new URL('../../../shared/fixtures/events.seed.json', import.meta.url), 'utf8'));
+  for (const time of ['2026-11-19T08:16:42.123Z', '2026-11-19T17:16:42.123Z', '2026-03-08T05:45:00Z', '2026-11-01T04:45:00Z']) {
+    const current = new Date(time);
+    const events = loadFixtureEvents(seeds, current, 'week');
+    assert.equal(events.length, seeds.length);
+    assert.equal(events.filter(event => getEventFlagState(event, current) === 'live').length, 2);
+    assert.equal(events.filter(event => getEventFlagState(event, current) === 'soon').length, 3);
+    for (const event of events) {
+      const seed = seeds.find(seed => seed.id === event.id);
+      assert.equal(Date.parse(event.startsAt) % (30 * 60_000), 0);
+      assert.equal(Date.parse(event.endsAt) - Date.parse(event.startsAt), seed.durationMin * 60_000);
+    }
+  }
 });
 
 test('classifies event flags at live, soon, and later boundaries', () => {

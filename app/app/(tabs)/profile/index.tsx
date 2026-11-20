@@ -82,7 +82,7 @@ export default function ProfileScreen() {
             <Group><EventListRow event={event} now={now} last onPress={() => openEvent(event.id)} /></Group>
             <Text style={[text.footnote, text.figures]}>{countdown(event, now)}</Text>
             {event.status === 'active' && event.routeId ? <Button label="Take me there" kind="ink"
-              onPress={() => router.push({ pathname: '/route/[routeId]', params: { routeId: event.routeId as string } })} /> : null}
+              onPress={() => router.push({ pathname: '/route/[routeId]', params: { routeId: event.routeId as string, eventId: event.id } })} /> : null}
           </View>) : <Text style={text.subhead}>No upcoming events.</Text>}
       </Section>
       <Section label="Saved">

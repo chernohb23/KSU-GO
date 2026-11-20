@@ -18,6 +18,7 @@ import { useWeekChoices } from '../week/useWeekChoices';
 import { Button } from '../ui/controls';
 import { haptic } from '../ui/haptics';
 import { Ionicon } from '../ui/Ionicon';
+import { DiscoverArtwork } from '../week/DiscoverArtwork';
 
 export { roomLabel } from '../../../shared/rooms';
 
@@ -83,6 +84,8 @@ export function EventDetails({ event, onTakeMeThere, showActions = true, compact
           <Ionicon name="chevron-forward" size={16} color={tone.amber} />
         </PressScale>
       </View>
+
+      {!compact ? <DiscoverArtwork category={event.category} /> : null}
 
       {compact ? <View style={styles.compactFacts}>
         <Text style={[text.body, text.figures]}>{et.range(event.startsAt, event.endsAt, now)}</Text>
