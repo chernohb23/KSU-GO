@@ -114,3 +114,43 @@ test('a stale read and duplicate tap cannot overwrite or resend a saved edit', a
   await oldRead;
   assert.equal(session.state.routes[draft.id], saved);
 });
+test('inserts an organizer turn between steps with a unique id', () => {
+  const steps = editSteps(draft.steps, 2, { kind: 'insert_turn', direction: 'left', position: 'after' });
+  assert.equal(steps.length, draft.steps.length + 1);
+  assert.deepEqual(steps[3], { id: 'organizer-1', type: 'turn', direction: 'left', source: 'organizer', confidence: null, tSec: null, note: null });
+  assert.equal(new Set(steps.map(step => step.id)).size, steps.length);
+});
+
+test('splits a walk of at least two metres into equal organizer walks with a turn', () => {
+  const steps = editSteps(draft.steps, 7, { kind: 'split_walk', direction: 'right' });
+  assert.equal(steps.length, draft.steps.length + 2);
+  assert.deepEqual(steps.slice(7, 10).map(({ id, ...step }) => step), [
+    { type: 'walk', lengthM: 1, source: 'organizer', confidence: null, tSec: null, note: null },
+    { type: 'turn', direction: 'right', source: 'organizer', confidence: null, tSec: null, note: null },
+    { type: 'walk', lengthM: 1, source: 'organizer', confidence: null, tSec: null, note: null },
+  ]);
+  assert.ok(steps.slice(7, 10).every(step => step.source === 'organizer'));
+  assert.equal(new Set(steps.map(step => step.id)).size, steps.length);
+  assert.deepEqual(editSteps(draft.steps, 8, { kind: 'split_walk', direction: 'left' }), draft.steps);
+});
+
+test('switches a stair flight direction and can insert an elevator before the destination door', () => {
+  const switched = editSteps(draft.steps, 4, { kind: 'stairs_direction', direction: 'down', startFloor: draft.startFloor });
+  assert.equal(switched[4].type, 'stairs');
+  if (switched[4].type === 'stairs') assert.equal(switched[4].direction, 'down');
+  const elevated = editSteps(draft.steps, 4, { kind: 'insert_elevator', toFloor: '3' });
+  assert.deepEqual(elevated.at(-2), { id: 'organizer-1', type: 'elevator', toFloor: '3', source: 'organizer', confidence: null, tSec: null, note: null });
+  assert.equal(elevated.at(-1)?.type, 'door');
+  assert.equal(new Set(elevated.map(step => step.id)).size, elevated.length);
+});
+
+test('switching a numbered stair flight updates its floor transition', () => {
+  const steps = draft.steps.map(step => step.id === 's7' ? { ...step, direction: 'down', toFloor: '1' } : step);
+  const switched = editSteps(steps, steps.findIndex(step => step.id === 's7'), { kind: 'stairs_direction', direction: 'up', startFloor: draft.startFloor });
+  const stair = switched.find(step => step.id === 's7');
+  assert.equal(stair?.type, 'stairs');
+  if (stair?.type === 'stairs') {
+    assert.equal(stair.direction, 'up');
+    assert.equal(stair.toFloor, '2');
+  }
+});

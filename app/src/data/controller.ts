@@ -6,9 +6,9 @@ export const HEALTH_TIMEOUT_MS = 2_000;
 export const HEALTH_POLL_INTERVAL_MS = 10_000;
 export const EVENTS_TIMEOUT_MS = 2_000;
 export const ROUTE_TIMEOUT_MS = 5_000;
-export const REGISTER_TIMEOUT_MS = 5_000;
 
-type DataApi = Pick<ApiClient, 'health' | 'listEvents' | 'getRoute' | 'register'>;
+// Open endpoints only; registering needs a token and lives in the account layer.
+type DataApi = Pick<ApiClient, 'health' | 'listEvents' | 'getRoute'>;
 type PollScheduler = (callback: () => Promise<void>, intervalMs: number) => unknown;
 type PollCanceler = (handle: unknown) => void;
 
@@ -30,7 +30,6 @@ export type AppDataControllerOptions = {
   healthTimeoutMs?: number;
   eventsTimeoutMs?: number;
   routeTimeoutMs?: number;
-  registerTimeoutMs?: number;
   pollIntervalMs?: number;
   schedulePoll?: PollScheduler;
   cancelPoll?: PollCanceler;
@@ -47,7 +46,6 @@ export class AppDataController {
   private readonly healthTimeoutMs: number;
   private readonly eventsTimeoutMs: number;
   private readonly routeTimeoutMs: number;
-  private readonly registerTimeoutMs: number;
   private readonly pollIntervalMs: number;
   private readonly schedulePoll: PollScheduler;
   private readonly cancelPoll: PollCanceler;
@@ -70,7 +68,6 @@ export class AppDataController {
     this.healthTimeoutMs = options.healthTimeoutMs ?? HEALTH_TIMEOUT_MS;
     this.eventsTimeoutMs = options.eventsTimeoutMs ?? EVENTS_TIMEOUT_MS;
     this.routeTimeoutMs = options.routeTimeoutMs ?? ROUTE_TIMEOUT_MS;
-    this.registerTimeoutMs = options.registerTimeoutMs ?? REGISTER_TIMEOUT_MS;
     this.pollIntervalMs = options.pollIntervalMs ?? HEALTH_POLL_INTERVAL_MS;
     this.schedulePoll = options.schedulePoll ?? ((callback, intervalMs) => setInterval(() => { void callback(); }, intervalMs));
     this.cancelPoll = options.cancelPoll ?? ((handle) => clearInterval(handle as ReturnType<typeof setInterval>));
@@ -158,34 +155,18 @@ export class AppDataController {
     }
   }
 
-  async registerEvent(eventId: string, deviceId: string): Promise<number> {
-    if (this.current.source === 'server' && this.current.serverUrl) {
-      try {
-        const client = this.clientFactory(this.current.serverUrl);
-        const response = await this.withTimeout(
-          (signal) => client.register(eventId, deviceId, signal), this.registerTimeoutMs, 'Registration request timed out.',
-        );
-        this.update({
-          ...this.current,
-          events: this.current.events.map((event) => event.id === eventId
-            ? { ...event, registeredCount: response.registeredCount }
-            : event),
-        });
-        return response.registeredCount;
-      } catch (error) {
-        if (error instanceof ApiRequestError) throw error;
-        this.useFixtures(this.generation, this.now());
-      }
-    }
-
-    const event = this.current.events.find((item) => item.id === eventId);
-    if (!event) throw new Error(`Event ${eventId} is not available.`);
-    const registeredCount = event.registeredCount + 1;
+  /** Show the count the server returned after a registration. */
+  setRegisteredCount(eventId: string, registeredCount: number): void {
+    if (!this.current.events.some((event) => event.id === eventId)) return;
     this.update({
       ...this.current,
-      events: this.current.events.map((item) => item.id === eventId ? { ...item, registeredCount } : item),
+      events: this.current.events.map((event) => event.id === eventId ? { ...event, registeredCount } : event),
     });
-    return registeredCount;
+  }
+
+  /** The server stopped answering a signed-in call: fall back to fixtures, as a failed refresh does. */
+  markOffline(): void {
+    this.useFixtures(this.generation, this.now());
   }
 
   private async withTimeout<T>(request: (signal: AbortSignal) => Promise<T>, timeoutMs: number, message: string): Promise<T> {

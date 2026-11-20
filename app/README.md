@@ -15,11 +15,40 @@ npx.cmd expo start --lan
 
 Keep the PC and iPhone on the same Wi-Fi network or connect both to a phone hotspot. Scan the Expo QR code with the iPhone camera and open it in Expo Go.
 
-### Offline demo on iPhone
+### Accounts and sign-in
 
-Load the Map tab over Wi-Fi, then turn on airplane mode and turn Wi-Fi off if iOS kept it enabled. With **Offline data** in the header, tap the Robotics Club Meeting flag or choose it in **Today’s events**. Tap **Register**, then **Take me there**. Follow **Next** or **Play** to the Room 204 door. Returning to the event should show **Registered**.
+The app opens on **Sign in**. Accounts are demo accounts checked by our own server: there is no university sign-in (SSO) and no connection to real university systems. These two accounts exist on every server start. Their passwords are public and for the demo only:
 
-To rehearse again, long-press **KSU-GO** in the header, choose **Reset demo**, and confirm. This clears this app’s device registrations, saved events and preferences, upload history, organizer mode, and server address override. It starts a new local device ID. Server records stay on the server.
+| Account | Email | Password | Tabs |
+|---|---|---|---|
+| Maya Chen, student | `student@ksu-go.example` | `StudentDemo!26` | Map, Events, Profile |
+| Noah Brooks, organizer (Robotics Club) | `organizer@ksu-go.example` | `OrganizerDemo!26` | Map, Events, Organizer, Profile |
+
+- **Create an account** always makes a student. Organizer accounts are set up by the university.
+- Signing in, signing up and registering need the server. Saved events, swipes, the "Registered" list in Profile and organizer upload history are kept on the phone per account, so each account starts fresh and keeps its own.
+- **Sign out** is in Profile. It ends the session only: the server address and every account’s data on the phone stay. A session lasts 7 days; if the server ends it, the app returns to Sign in with “Your session ended. Sign in again.”
+- **Demo mode.** With `EXPO_PUBLIC_DEMO_MODE=1`, Sign in shows **Use demo student** and **Use demo organizer**, which fill the form. Without the variable they are hidden. Start Expo with it like this:
+
+  ```bash
+  EXPO_PUBLIC_DEMO_MODE=1 npx expo start --tunnel        # WSL / macOS / Linux
+  ```
+  ```powershell
+  $env:EXPO_PUBLIC_DEMO_MODE = "1"; npx.cmd expo start --lan   # PowerShell
+  ```
+
+  The two passwords are in the app bundle either way, because they are public demo values.
+
+### Run against the server
+
+Start the server in mock mode (`server/README.md`), then point the app at it: long-press **KSU-GO** in the header, also on the Sign in screen, and enter the server address without `/api`, for example `http://192.168.1.20:8000` or the tunnel URL. `EXPO_PUBLIC_API_URL` sets the default. The header badge shows **Server data** when the server answers.
+
+### Offline demo on iPhone (guest)
+
+With no server, choose **Browse offline** on Sign in. The guest sees Map, Events and Profile from the bundled data, with **Offline data** in the header. Tap the Robotics Club Meeting flag or choose it in **Today’s events**, then **Take me there**, and follow **Next** or **Play** to the Room 204 door. Back returns to the same event on the map. **Register** asks you to sign in, because registering needs the server. The guest can still swipe and save in Events, on this phone only.
+
+A signed-in user whose server stops answering keeps the session, read-only, with **Offline data** showing; registering says it needs the server until the badge shows **Server data** again.
+
+To rehearse again, long-press **KSU-GO**, choose **Reset demo**, and confirm. This signs you out and clears every account’s registrations record, saved events, swipes and upload history on this phone, plus the server address override. Server records stay on the server. The same screen has **Dev: event with route**, which opens the details of an event that has directions.
 
 The student route follows the ID on the seed event. Confirmed JSON routes under `shared/fixtures/routes/` are bundled by Metro alongside the existing sample. Only drafts appear in the organizer review list.
 
@@ -53,9 +82,16 @@ Follow the APP-1 fallback in `SCOPE.md` risk 1 in order: first load the viewer f
 
 ## App shell
 
-The app now starts in Expo Router with **Map**, **This week**, **Route**, and **Organizer** tabs. The Map screen lists today’s events and labels each as live, starting soon, or later. A small header badge identifies whether data is from the server or fixtures.
+The app starts in Expo Router on **Sign in**. Students and guests get **Map**, **Events** and **Profile**; the organizer also gets **Organizer**. Protected routes enforce this, so a link to an organizer screen from another account lands on the map.
 
-If the app has no configured server URL, it starts in fixture mode. The title can be long-pressed on any screen to open hidden **Server settings**. Enter the server base URL without `/api`; the app saves it on the device and checks it immediately. Leaving the field blank clears the override and returns to `EXPO_PUBLIC_API_URL`, if configured. Health is rechecked every 10 seconds, with a 2-second timeout.
+- **Map** shows today’s flags. Tapping one opens the event card over the map.
+- **Events** has **All** (this week, by day), **Discover** (the swipe deck) and **Saved**. Saving is separate from registering.
+- **Profile** shows the account, the events registered for on this phone, and **Sign out**.
+- **Organizer** holds the route drafts flow: new route, drafts, review.
+
+Every event card is the same component, wherever it opens. Times are always campus time, labeled **ET**, whatever the phone’s time zone. Capacity shows as “34 / 50”, or “Full” once reached; it never blocks registering. **Take me there** opens the directions screen on top of the tabs, and Back returns to the same event.
+
+If the app has no configured server URL, it starts in fixture mode. The title can be long-pressed on any screen, including Sign in, to open hidden **Settings**. Enter the server base URL without `/api`; the app saves it on the device and checks it immediately. Leaving the field blank clears the override and returns to `EXPO_PUBLIC_API_URL`, if configured. Health is rechecked every 10 seconds, with a 2-second timeout.
 
 The typed API client lives in `src/api/client.ts`. Fixture conversion and fallback live in `src/data/`. `ViewerWebView` and the typed section 6 bridge live in `src/viewer/` and load HTML strings as required by the contract.
 

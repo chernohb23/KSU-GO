@@ -57,7 +57,8 @@ vi.mock("three/addons/controls/MapControls.js", async () => {
 const campus = campusJson as Campus;
 const now = "2026-11-17T12:00:00Z";
 const event: Event = {
-  id: "event-1", title: "Test event", description: "", organizer: "", category: "other",
+  id: "event-1", title: "Test event", description: "", organizationId: "org-test", organizer: "",
+  partnerOrganizationId: null, category: "other", tags: [],
   startsAt: "2026-11-17T13:00:00Z", endsAt: "2026-11-17T14:00:00Z",
   location: { buildingId: campus.buildings[0].id, room: "101" },
   routeId: null, capacity: null, registeredCount: 0,

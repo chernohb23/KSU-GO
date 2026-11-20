@@ -1,3 +1,4 @@
+import json
 from time import monotonic
 
 import pytest
@@ -126,12 +127,13 @@ def test_rejects_video_larger_than_upload_limit(client, monkeypatch):
 
 
 def test_budget_rejects_upload_before_creating_route(client, data_dir):
-    data_dir.mkdir()
+    data_dir.mkdir(exist_ok=True)  # signing in has already saved a session here
     (data_dir / "spend.jsonl").write_text('{"costUsd": 13.9}\n{"costUsd": 0.1}\n')
     response = upload(client)
     assert response.status_code == 402
     assert response.json()["error"]["code"] == "budget_exceeded"
-    assert not (data_dir / "state.json").exists()
+    assert json.loads((data_dir / "state.json").read_text())["uploads"] == {}
+    assert sorted(path.name for path in data_dir.iterdir()) == ["spend.jsonl", "state.json"]
 
 
 def test_processing_route_becomes_failed_on_restart(make_client):

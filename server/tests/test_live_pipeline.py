@@ -4,9 +4,8 @@ from threading import Event
 from time import monotonic, sleep
 
 import pytest
-from fastapi.testclient import TestClient
 
-from conftest import FIXTURES_DIR
+from conftest import FIXTURES_DIR, SignedInClient
 from main import create_app
 from models import Route
 from pipeline.ingest import IngestedVideo
@@ -35,7 +34,7 @@ class FakeClient:
 def live_client(data_dir, monkeypatch, fake, *, cap="14"):
     monkeypatch.setenv("PIPELINE_MODE", "live")
     monkeypatch.setenv("BUDGET_CAP_USD", cap)
-    return TestClient(create_app(data_dir=data_dir, timeline_client_factory=lambda: fake))
+    return SignedInClient(create_app(data_dir=data_dir, timeline_client_factory=lambda: fake))
 
 
 def terminal_route(client, route_id):
@@ -80,7 +79,7 @@ def test_live_upload_stages_steps_stats_and_cache_hit(data_dir, monkeypatch):
     def no_factory():
         pytest.fail("Cache hit constructed a client")
 
-    with TestClient(create_app(data_dir=data_dir, timeline_client_factory=no_factory)) as client:
+    with SignedInClient(create_app(data_dir=data_dir, timeline_client_factory=no_factory)) as client:
         hit, _ = wait_for_draft(client, upload(client, destinationFloor="1").json()["id"])
         assert hit["stats"]["costUsd"] == 0
         assert hit["steps"] == draft["steps"]
@@ -130,7 +129,10 @@ def test_zero_cap_upload_refused_before_client_or_route(data_dir, monkeypatch):
         assert response.status_code == 402
         assert response.json()["error"]["code"] == "budget_exceeded"
         assert "spend cap" in response.json()["error"]["message"]
-    assert not fake.calls and not data_dir.exists()
+    # Signing in saves a session, so state.json exists; it must record no upload.
+    assert not fake.calls
+    assert json.loads((data_dir / "state.json").read_text())["uploads"] == {}
+    assert sorted(path.name for path in data_dir.iterdir()) == ["state.json"]
 
 
 def test_worker_at_zero_cap_marks_accepted_route_failed(data_dir, tmp_path, monkeypatch):
@@ -193,7 +195,7 @@ def test_live_edit_recomputes_checks_and_confirmation_survives_mock_restart(data
 
     # Check mode is persisted per upload, independent of the server's next mode.
     monkeypatch.setenv("PIPELINE_MODE", "mock")
-    with TestClient(create_app(data_dir=data_dir)) as client:
+    with SignedInClient(create_app(data_dir=data_dir)) as client:
         steps = [step for step in steps if step["id"] != "short"]
         steps[1]["confidence"] = 0.1
         response = client.put(f"{url}/steps", json={"steps": steps})
