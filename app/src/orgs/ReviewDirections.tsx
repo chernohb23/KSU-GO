@@ -1,16 +1,19 @@
+import { ScreenScrollView as ScrollView } from '../ui/ScreenScrollView';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Text, View } from 'react-native';
 
 import { useAccount } from '../account/AccountProvider';
 import { useAppData } from '../data/AppDataContext';
-import { text } from '../navigation/theme';
+import { text, tone } from '../navigation/theme';
 import { useOrganizer } from '../organizer/context';
 import { DraftReview } from '../organizer/DraftReview';
 import { ROUTE_POLL_MS } from '../organizer/session';
 import { ProgressBar } from '../organizer/ui';
 import { Button, Notice, screenStyles } from '../ui/controls';
 import { useManagedEvent } from './useManagedEvent';
+import { useDockClearance } from '../navigation/DockSpace';
+import { haptic } from '../ui/haptics';
 
 export default function ReviewDirections() {
   const { eventId, routeId } = useLocalSearchParams<{ eventId: string; routeId: string }>();
@@ -21,6 +24,8 @@ export default function ReviewDirections() {
   const { refreshRegistrations } = useAccount();
   const [authorized, setAuthorized] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const clearance = useDockClearance();
+  const priorStatus = useRef<string | undefined>(undefined);
   useFocusEffect(useCallback(() => {
     let active = true;
     if (!api || !canManage) return;
@@ -38,6 +43,8 @@ export default function ReviewDirections() {
   }, [api, canManage, eventId, routeId, session]));
   const route = authorized === routeId ? routes[routeId] : null;
   useEffect(() => {
+    if (priorStatus.current === 'draft' && route?.status === 'confirmed') haptic('success');
+    priorStatus.current = route?.status;
     if (!canManage || route?.status !== 'processing') return;
     const timer = setInterval(() => void session.read(routeId), ROUTE_POLL_MS);
     return () => clearInterval(timer);
@@ -48,7 +55,9 @@ export default function ReviewDirections() {
   const back = () => router.dismissTo({ pathname: '/organization/event/[eventId]', params: { eventId } });
   if (route?.status === 'draft' && canManage && !error) return <>
     <Stack.Screen options={{ title: 'Review draft' }} />
-    <DraftReview route={route} back={back} />
+    <View style={{ flex: 1, paddingBottom: clearance, backgroundColor: tone.paper }}>
+      <DraftReview route={route} back={back} />
+    </View>
   </>;
   return (
     <ScrollView style={screenStyles.screen} contentContainerStyle={screenStyles.content}>

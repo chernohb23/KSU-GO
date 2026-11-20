@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 
 import { useAccount } from '../../../src/account/AccountProvider';
 import { useAuth } from '../../../src/auth/AuthProvider';
-import { headerStyles, useOfflineHeaderRight } from '../../../src/navigation/AppHeader';
+import { headerStyles, useOfflineHeaderRight, useOfflineNativeHeaderItems } from '../../../src/navigation/AppHeader';
 import { ownsOrganization } from '../../../src/navigation/access';
 import { tone } from '../../../src/navigation/theme';
 import { OrganizerContext } from '../../../src/organizer/context';
@@ -16,6 +16,7 @@ export const unstable_settings = { initialRouteName: 'index' };
 export default function OrganizationLayout() {
   const { state } = useAuth();
   const headerRight = useOfflineHeaderRight();
+  const headerItems = useOfflineNativeHeaderItems();
   const { api, storage } = useAccount();
   // Uploads and draft reviews run through OrganizerSession (APP-6b), scoped to this account.
   // No bundled drafts: the server's directions endpoint ties each draft to its event.
@@ -55,6 +56,7 @@ export default function OrganizationLayout() {
         {/* Screens set their own titles, so the declared order always matches the seeded one. */}
         <Stack screenOptions={{
           headerRight,
+          unstable_headerRightItems: headerItems,
           headerStyle: headerStyles.header,
           headerShadowVisible: false,
           headerTintColor: tone.amber,

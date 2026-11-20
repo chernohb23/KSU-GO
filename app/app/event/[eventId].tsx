@@ -1,6 +1,7 @@
+import { ScreenScrollView as ScrollView } from '../../src/ui/ScreenScrollView';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { Event } from '../../../shared/types';
 import { useAccount } from '../../src/account/AccountProvider';

@@ -5,22 +5,25 @@ import { StyleSheet, View } from 'react-native';
 import { AccountProvider } from '../src/account/AccountProvider';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
 import { AppDataProvider } from '../src/data/AppDataProvider';
-import { AppTitle, headerStyles, useOfflineHeaderRight } from '../src/navigation/AppHeader';
+import { AppTitle, headerStyles, useOfflineHeaderRight, useOfflineNativeHeaderItems } from '../src/navigation/AppHeader';
 import { LaunchScreen } from '../src/navigation/Brand';
 import { showsSignIn } from '../src/navigation/access';
 import { tone } from '../src/navigation/theme';
 import { OrganizationsProvider } from '../src/orgs/OrganizationsProvider';
 import { DemoSessionProvider } from '../src/settings/DemoSession';
+import { AccessibilityProvider } from '../src/ui/accessibility';
 
 function AppStack() {
   const { state } = useAuth();
   const signedOut = showsSignIn(state);
   const headerRight = useOfflineHeaderRight();
+  const headerItems = useOfflineNativeHeaderItems();
   return (
     <>
       <Stack screenOptions={{
         headerTitle: () => <AppTitle />,
         headerRight,
+        unstable_headerRightItems: headerItems,
         headerStyle: headerStyles.header,
         headerTintColor: tone.amber,
         headerBackButtonDisplayMode: 'minimal',
@@ -46,7 +49,7 @@ function AppStack() {
           <Stack.Screen name="new-organization" options={{ headerTitle: 'Create organization' }} />
           <Stack.Screen name="edit-profile" options={{ headerTitle: 'Edit profile' }} />
         </Stack.Protected>
-        <Stack.Screen name="settings" options={{ headerTitle: 'Settings', headerRight: undefined }} />
+        <Stack.Screen name="settings" options={{ headerTitle: 'Settings', headerRight: undefined, unstable_headerRightItems: undefined }} />
       </Stack>
       {state.status === 'restoring' ? (
         <View style={StyleSheet.absoluteFill}><LaunchScreen label="Opening KSU-GO…" /></View>
@@ -58,6 +61,7 @@ function AppStack() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <AccessibilityProvider>
       <DemoSessionProvider>
         <AppDataProvider>
           <AuthProvider>
@@ -67,6 +71,7 @@ export default function RootLayout() {
           </AuthProvider>
         </AppDataProvider>
       </DemoSessionProvider>
+      </AccessibilityProvider>
     </GestureHandlerRootView>
   );
 }

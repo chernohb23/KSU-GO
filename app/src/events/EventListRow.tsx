@@ -1,10 +1,12 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { PressScale } from '../ui/PressScale';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { Event } from '../../../shared/types.ts';
 import { space, text, tone } from '../navigation/theme';
 import { roomLabel } from '../../../shared/rooms.ts';
 import { buildingName } from '../organizer/ui';
 import { et } from './format';
+import { Ionicon } from '../ui/Ionicon';
 
 /** One event in a grouped list: title, campus time, place, and a Cancelled label when it is. */
 export function EventListRow({ event, now, onPress, last = false, trailing }: {
@@ -12,7 +14,7 @@ export function EventListRow({ event, now, onPress, last = false, trailing }: {
 }) {
   const cancelled = event.status === 'cancelled';
   return (
-    <Pressable accessibilityRole="button" onPress={onPress}
+    <PressScale accessibilityRole="button" onPress={onPress}
       style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed]}>
       <View style={styles.body}>
         <Text style={[text.headline, cancelled && styles.struck]} numberOfLines={2}>{event.title}</Text>
@@ -23,8 +25,8 @@ export function EventListRow({ event, now, onPress, last = false, trailing }: {
       </View>
       {cancelled ? <Text style={styles.cancelled}>Cancelled</Text>
         : trailing ? <Text style={[text.subhead, text.figures]}>{trailing}</Text> : null}
-      <Text style={styles.chevron}>›</Text>
-    </Pressable>
+      <Ionicon name="chevron-forward" size={18} />
+    </PressScale>
   );
 }
 
@@ -34,6 +36,5 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 2 },
   struck: { color: tone.muted },
   cancelled: { ...text.footnote, color: tone.danger, fontWeight: '600' },
-  chevron: { color: '#b3bbb9', fontSize: 22 },
   pressed: { opacity: 0.6 },
 });

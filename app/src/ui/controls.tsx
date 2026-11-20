@@ -1,10 +1,13 @@
+import { PressScale } from './PressScale';
 // Shared building blocks for the paper screens: grouped sections, fields, chips and
 // buttons on the phase C type scale and 8-point grid.
 
 import type { PropsWithChildren, ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { radius, space, text, tone } from '../navigation/theme';
+import type { HapticKind } from './haptics';
+import { Ionicon } from './Ionicon';
 
 /** A footnote label above an inset group, like iOS Settings. */
 export function Section({ label, footer, children }: PropsWithChildren<{ label?: string; footer?: string }>) {
@@ -30,11 +33,11 @@ export function Row({ label, value, onPress, last = false, accessory, destructiv
       <Text style={[text.body, styles.rowLabel, destructive && styles.destructive]} numberOfLines={1}>{label}</Text>
       {value ? <Text style={[text.subhead, styles.rowValue]} numberOfLines={1}>{value}</Text> : null}
       {accessory}
-      {onPress && !accessory ? <Text style={styles.chevron}>›</Text> : null}
+      {onPress && !accessory ? <Ionicon name="chevron-forward" size={18} /> : null}
     </View>
   );
   return onPress ? (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>{body}</Pressable>
+    <PressScale accessibilityRole="button" onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>{body}</PressScale>
   ) : body;
 }
 
@@ -52,10 +55,10 @@ export function Chip({ label, selected, onPress, disabled = false }: {
   label: string; selected: boolean; onPress(): void; disabled?: boolean;
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ selected, disabled }} disabled={disabled} onPress={onPress}
+    <PressScale feedback="selection" accessibilityRole="button" accessibilityState={{ selected, disabled }} disabled={disabled} onPress={onPress}
       style={({ pressed }) => [styles.chip, selected && styles.chipSelected, disabled && styles.dimmed, pressed && styles.pressed]}>
       <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -63,19 +66,19 @@ export function ChipRow({ children }: PropsWithChildren) {
   return <View style={styles.chips}>{children}</View>;
 }
 
-export function Button({ label, onPress, kind = 'primary', busy = false, disabled = false }: {
-  label: string; onPress(): void; kind?: 'primary' | 'secondary' | 'ink' | 'destructive' | 'gold' | 'outline'; busy?: boolean; disabled?: boolean;
+export function Button({ label, onPress, kind = 'primary', busy = false, disabled = false, feedback = 'light' }: {
+  label: string; onPress(): void; kind?: 'primary' | 'secondary' | 'ink' | 'destructive' | 'gold' | 'outline'; busy?: boolean; disabled?: boolean; feedback?: HapticKind | false;
 }) {
   const off = busy || disabled;
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: off, busy }} disabled={off} onPress={onPress}
+    <PressScale feedback={feedback} accessibilityRole="button" accessibilityState={{ disabled: off, busy }} disabled={off} onPress={onPress}
       style={({ pressed }) => [styles.button, containers[kind], off && styles.dimmed, pressed && styles.pressed]}>
       {busy ? <ActivityIndicator color={kind === 'secondary' || kind === 'destructive' || kind === 'gold' || kind === 'outline' ? tone.ink : tone.surface} /> : (
         <Text style={[text.headline, kind === 'secondary' || kind === 'gold' || kind === 'outline' ? styles.onPaper : kind === 'destructive' ? styles.destructive : styles.onFill]}>
           {label}
         </Text>
       )}
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -93,10 +96,10 @@ export function Segmented<T extends string>({ value, options, onChange }: {
       {options.map(({ key, label }) => {
         const selected = key === value;
         return (
-          <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => onChange(key)}
+          <PressScale key={key} feedback={selected ? false : 'selection'} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => onChange(key)}
             style={[styles.segment, selected && styles.segmentSelected]}>
             <Text style={[styles.segmentText, selected && styles.segmentTextSelected]}>{label}</Text>
-          </Pressable>
+          </PressScale>
         );
       })}
     </View>
@@ -145,13 +148,12 @@ const styles = StyleSheet.create({
   row: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.m, paddingRight: space.l, paddingVertical: space.s },
   rowLabel: { flexShrink: 1 },
   rowValue: { flex: 1, textAlign: 'right' },
-  chevron: { color: '#b3bbb9', fontSize: 22, marginTop: -2 },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },
   field: { paddingVertical: space.s, paddingRight: space.l, gap: 2 },
   input: { minHeight: 30, paddingVertical: 2 },
   multiline: { minHeight: 72, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s },
-  chip: { minHeight: 36, paddingHorizontal: space.m + 2, borderRadius: 18, justifyContent: 'center',
+  chip: { minHeight: 44, paddingHorizontal: space.l, borderRadius: 22, justifyContent: 'center',
     backgroundColor: tone.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },
   chipSelected: { backgroundColor: tone.ink, borderColor: tone.ink },
   chipText: { ...text.subhead, color: tone.ink, fontWeight: '500' },

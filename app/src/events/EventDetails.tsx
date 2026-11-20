@@ -1,5 +1,6 @@
+import { PressScale } from '../ui/PressScale';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { roomLabel } from '../../../shared/rooms';
@@ -15,6 +16,8 @@ import { useOrganizations } from '../orgs/OrganizationsProvider';
 import { capacityLabel, et } from './format';
 import { useWeekChoices } from '../week/useWeekChoices';
 import { Button } from '../ui/controls';
+import { haptic } from '../ui/haptics';
+import { Ionicon } from '../ui/Ionicon';
 
 export { roomLabel } from '../../../shared/rooms';
 
@@ -58,6 +61,7 @@ export function EventDetails({ event, onTakeMeThere, showActions = true, compact
     setBusy(true);
     try {
       await register(event.id);
+      haptic('success');
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : 'Registration failed. Try again.');
     } finally {
@@ -74,9 +78,10 @@ export function EventDetails({ event, onTakeMeThere, showActions = true, compact
       <View style={styles.heading}>
         {status ? <Text style={styles.status}>{status}</Text> : null}
         <Text accessibilityRole="header" style={text.title}>{event.title}</Text>
-        <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/org/[orgId]', params: { orgId: event.organizationId } })}>
-          <Text style={styles.organizer}>{partner ? `${event.organizer} with ${partner}` : event.organizer} ›</Text>
-        </Pressable>
+        <PressScale accessibilityRole="link" style={styles.organizerLink} onPress={() => router.push({ pathname: '/org/[orgId]', params: { orgId: event.organizationId } })}>
+          <Text style={styles.organizer}>{partner ? `${event.organizer} with ${partner}` : event.organizer}</Text>
+          <Ionicon name="chevron-forward" size={16} color={tone.amber} />
+        </PressScale>
       </View>
 
       {compact ? <View style={styles.compactFacts}>
@@ -100,7 +105,8 @@ export function EventDetails({ event, onTakeMeThere, showActions = true, compact
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
 
       {showActions && !cancelled ? <View style={styles.actions}>
-        <Pressable
+        <PressScale
+          feedback={false}
           accessibilityRole="button"
           accessibilityState={{ disabled, busy }}
           disabled={disabled}
@@ -112,15 +118,15 @@ export function EventDetails({ event, onTakeMeThere, showActions = true, compact
               {registered ? 'Registered' : 'Register'}
             </Text>
           )}
-        </Pressable>
+        </PressScale>
         {availability === 'needs-server' && !registered ? (
           <Text style={styles.note}>Connect to register.</Text>
         ) : null}
         {event.routeId ? (
-          <Pressable accessibilityRole="button" onPress={() => onTakeMeThere(event.routeId as string)}
+          <PressScale accessibilityRole="button" onPress={() => onTakeMeThere(event.routeId as string)}
             style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
             <Text style={styles.secondaryText}>Take me there</Text>
-          </Pressable>
+          </PressScale>
         ) : (
           <Text style={styles.note}>Directions to this room aren’t ready yet.</Text>
         )}
@@ -145,7 +151,8 @@ const styles = StyleSheet.create({
   heading: { gap: space.xs },
   compactFacts: { gap: space.xs },
   status: { ...text.footnote, color: tone.amber, fontWeight: '600' },
-  organizer: { ...text.subhead, color: tone.amber, paddingVertical: space.xs },
+  organizer: { ...text.subhead, color: tone.amber, flexShrink: 1 },
+  organizerLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: space.xs },
   cancelled: { ...text.headline, color: tone.danger, padding: space.l, borderRadius: radius.group, backgroundColor: tone.surface },
   facts: { borderRadius: radius.group, backgroundColor: tone.surface, paddingHorizontal: space.l },
   fact: { flexDirection: 'row', alignItems: 'baseline', gap: space.m, paddingVertical: space.m,

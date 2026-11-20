@@ -1,6 +1,7 @@
+import { ScreenScrollView as ScrollView } from '../../src/ui/ScreenScrollView';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { Event } from '../../../shared/types';
 import { useAccount } from '../../src/account/AccountProvider';
@@ -14,6 +15,7 @@ import { SELECTED_ORGANIZATION_KEY } from '../../src/orgs/OrganizationTab';
 import { useOrganizations } from '../../src/orgs/OrganizationsProvider';
 import { Button, Notice, Section, Segmented, screenStyles } from '../../src/ui/controls';
 import { HeaderIconButton } from '../../src/ui/Ionicon';
+import { haptic } from '../../src/ui/haptics';
 
 export default function PublicOrganization() {
   const { orgId } = useLocalSearchParams<{ orgId: string }>();
@@ -59,6 +61,7 @@ export default function PublicOrganization() {
       const result = await api.setFollowing(orgId, !following);
       upsert({ ...org, followerCount: result.followerCount });
       await controller.setUser(await api.me());
+      haptic('success');
       setError(null);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not update your follow.'); }
     finally { setBusy(false); }
@@ -72,7 +75,7 @@ export default function PublicOrganization() {
       {org ? <OrgHeader key={orgId} organization={org} action={owner
         ? <Button label="Create event" kind="gold" disabled={!canManage}
             onPress={() => void openOwnerScreen('/organization/create-event')} />
-        : <Button label={following ? 'Following ✓' : 'Follow'} kind={following ? 'outline' : 'gold'} busy={busy}
+        : <Button feedback={false} label={following ? 'Following ✓' : 'Follow'} kind={following ? 'outline' : 'gold'} busy={busy}
             disabled={!canFollow} onPress={() => void follow()} />
       } /> : <Text style={text.subhead}>Loading organization…</Text>}
       <Notice message={error} />

@@ -62,7 +62,8 @@ export function createRouteWorld(route: Route): RouteWorld {
   const start = layout.centerline[0] ?? [0, 0, 0];
   const destination = layout.steps.at(-1)?.end ?? start;
   addMarker(root, "entrance-marker", start, 0x58b894, "Entrance");
-  addMarker(root, "destination-marker", destination, palette.demo.accent, route.destination);
+  // The final door already labels the destination; keep just one room sign.
+  addMarker(root, "destination-marker", destination, palette.demo.accent);
 
   let disposed = false;
   return {
@@ -217,12 +218,12 @@ function addRouteLine(parent: Group, points: Vec3[]) {
   }
 }
 
-function addMarker(parent: Group, name: string, point: Vec3, color: number, label: string) {
+function addMarker(parent: Group, name: string, point: Vec3, color: number, label?: string) {
   const marker = new Mesh(new SphereGeometry(0.22, 12, 8), new MeshStandardMaterial({ color, roughness: 0.38, emissive: color, emissiveIntensity: 0.12 }));
   marker.name = name;
   marker.position.set(point[0], point[1] + 0.22, point[2]);
   parent.add(marker);
-  parent.add(createLabel(label, [point[0], point[1] + 0.75, point[2]], 1.4));
+  if (label) parent.add(createLabel(label, [point[0], point[1] + 0.75, point[2]], 1.4));
 }
 
 function createLabel(text: string, position: Vec3, size: number) {

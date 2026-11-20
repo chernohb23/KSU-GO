@@ -1,5 +1,6 @@
+import { PressScale } from '../ui/PressScale';
 import { useState, type ReactNode } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import type { Organization } from '../../../shared/types.ts';
 import { space, text, tone } from '../navigation/theme';
@@ -47,10 +48,10 @@ function InfoRow({ icon, label, value, onPress, last }: {
   const content = <View style={[styles.row, !last && styles.divider]}>
     <Ionicon name={icon} />
     <Text style={[text.subhead, styles.value]}>{value}</Text>
-    {onPress ? <Text style={styles.chevron}>›</Text> : null}
+    {onPress ? <Ionicon name="chevron-forward" size={18} /> : null}
   </View>;
-  return onPress ? <Pressable accessibilityRole="link" accessibilityLabel={`${label}: ${value}`} onPress={onPress}
-    style={({ pressed }) => pressed && styles.pressed}>{content}</Pressable>
+  return onPress ? <PressScale accessibilityRole="link" accessibilityLabel={`${label}: ${value}`} onPress={onPress}
+    style={({ pressed }) => pressed && styles.pressed}>{content}</PressScale>
     : <View accessible accessibilityLabel={`${label}: ${value}`}>{content}</View>;
 }
 
@@ -61,7 +62,6 @@ const styles = StyleSheet.create({
   description: { ...text.body, textAlign: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 52, gap: space.m, paddingRight: space.l, paddingVertical: space.m },
   value: { flex: 1, color: tone.ink },
-  chevron: { ...text.title, color: tone.muted },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },
   pressed: { opacity: 0.65 },
 });

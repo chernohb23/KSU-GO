@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { PressScale } from '../ui/PressScale';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { roomLabel } from '../../../shared/rooms';
 import type { Event } from '../../../shared/types';
@@ -9,7 +10,7 @@ import { buildingName } from '../organizer/ui';
 export function OrganizationEventCard({ event, onPress }: { event: Event; onPress(): void }) {
   const date = et.dateBlock(event.startsAt);
   const cancelled = event.status === 'cancelled';
-  return <Pressable accessibilityRole="button"
+  return <PressScale accessibilityRole="button"
     accessibilityLabel={`${event.title}, ${et.dateTime(event.startsAt)}, ${roomLabel(event.location.room)}${cancelled ? ', Cancelled' : ''}`}
     onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
     <View style={styles.date}>
@@ -21,7 +22,7 @@ export function OrganizationEventCard({ event, onPress }: { event: Event; onPres
       <Text style={[text.subhead, text.figures]}>{et.time(event.startsAt)} ET{cancelled ? ' · Cancelled' : ''}</Text>
       <Text style={text.footnote} numberOfLines={2}>{buildingName(event.location.buildingId)}, {roomLabel(event.location.room)}</Text>
     </View>
-  </Pressable>;
+  </PressScale>;
 }
 
 const styles = StyleSheet.create({

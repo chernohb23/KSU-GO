@@ -1,7 +1,7 @@
 // Campus map scene: renderer, camera, controls, OSM credit and the flags seam.
 // The geometry itself is built by ./build.ts.
 
-import { Color, Fog, MathUtils, PerspectiveCamera, Plane, Raycaster, Scene, Spherical, Vector2, Vector3, WebGLRenderer } from "three";
+import { Box3, Color, Fog, MathUtils, PerspectiveCamera, Plane, Raycaster, Scene, Spherical, Vector2, Vector3, WebGLRenderer, type Object3D, type Mesh } from "three";
 import { MapControls } from "three/addons/controls/MapControls.js";
 import type { CampusCommand, CampusLoad } from "../bridge";
 import { palette } from "../palette";
@@ -9,6 +9,7 @@ import type { ViewerScene } from "../scene";
 import { createCampusWorld, type BuildingData, type CampusInfo } from "./build";
 import { createFlags } from "./flags";
 import { createRenderLoop } from "./renderLoop";
+import { placeLabels, type Rect, type LabelCandidate } from "./labelPlacement";
 
 // Map "pitch": polar angle from straight down. Portrait looks a little more
 // steeply down, so less near ground fills the bottom of a tall screen.
@@ -48,8 +49,8 @@ export function createCampusScene(
   credit.setAttribute("role", "note");
   Object.assign(credit.style, {
     position: "absolute",
-    right: "6px",
-    top: "52px",
+    right: "20px",
+    bottom: "12px",
     padding: "1px 6px",
     borderRadius: "4px",
     background: css(palette.ui.surface, 0.75),
@@ -62,7 +63,7 @@ export function createCampusScene(
   container.append(credit);
   const legend = createFlagLegend();
   container.append(legend);
-  const labels: { element: HTMLElement; anchor: Vector3 }[] = [];
+  const labels: { id: string; element: HTMLElement; building: Mesh }[] = [];
 
   // ---- render on demand: frames run only while something moves --------------
   let userMoved = false;
@@ -82,18 +83,56 @@ export function createCampusScene(
     return true;
   }
 
+  function screenRect(object: Object3D, width: number, height: number): Rect | undefined {
+    const box = new Box3().setFromObject(object);
+    if (box.isEmpty()) return;
+    const rect = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+    let visible = false;
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      projected.set(x, y, z).project(camera);
+      if (Math.abs(projected.z) > 1) continue;
+      visible = true;
+      const sx = (projected.x + 1) * width / 2, sy = (1 - projected.y) * height / 2;
+      rect.left = Math.min(rect.left, sx); rect.right = Math.max(rect.right, sx);
+      rect.top = Math.min(rect.top, sy); rect.bottom = Math.max(rect.bottom, sy);
+    }
+    return visible ? rect : undefined;
+  }
+
   function render() {
     const d = camera.position.distanceTo(controls.target);
     fog.near = d * 1.1;
     fog.far = d * 2.5;
     renderer.render(scene, camera);
-    for (const { element, anchor } of labels) {
-      projected.copy(anchor).project(camera);
-      const visible = Math.max(Math.abs(projected.x), Math.abs(projected.y), Math.abs(projected.z)) <= 1;
-      element.hidden = !visible;
-      if (visible) {
-        element.style.left = `${(projected.x + 1) * 50}%`;
-        element.style.top = `${(1 - projected.y) * 50}%`;
+    const width = container.clientWidth, height = container.clientHeight;
+    const obstacles: Rect[] = [];
+    const candidates: LabelCandidate[] = [];
+    for (const { id, element, building } of labels) {
+      const rect = screenRect(building, width, height);
+      if (!rect) { element.hidden = true; continue; }
+      obstacles.push(rect);
+      const active = world.flagsLayer.children.some(flag => flag.userData.buildingId === id);
+      const selected = world.flagsLayer.children.some(flag => flag.userData.buildingId === id && flag.userData.selected);
+      candidates.push({ id, building: rect, width: Math.min(200, width - 40, 16 + (element.textContent?.length ?? 0) * 5.8),
+        height: 20, priority: selected ? 1000 : id === 'b-mathematics' ? 100 : active ? 20 : 1 });
+    }
+    for (const flag of world.flagsLayer.children) {
+      const rect = screenRect(flag, width, height);
+      if (rect) obstacles.push(rect);
+    }
+    const native = !!window.ReactNativeWebView;
+    // The app owns its toolbar and credit. Browser mode has its own collapsible legend.
+    if (!native) obstacles.push({ left: width - (legend.open ? 216 : 64), top: 12, right: width - 16, bottom: legend.open ? 180 : 60 });
+    const placements = placeLabels(candidates, obstacles, {
+      left: 20, top: native ? 80 : 16, right: width - 20, bottom: height - (native ? 156 : 40),
+    });
+    for (const { id, element } of labels) {
+      const rect = placements.get(id);
+      element.hidden = !rect;
+      if (rect) {
+        element.style.width = String(rect.right - rect.left) + 'px';
+        element.style.left = String(rect.left) + 'px';
+        element.style.top = String(rect.top) + 'px';
       }
     }
   }
@@ -103,6 +142,7 @@ export function createCampusScene(
     { updateCamera, render },
   );
   const requestRender = loop.requestRender;
+  legend.addEventListener("toggle", requestRender);
 
   controls.addEventListener("start", () => {
     focus = undefined;
@@ -260,14 +300,18 @@ export function createCampusScene(
       selectFlag(selectedId);
 
       if (first) {
-        for (const building of built.buildings.values()) {
-          const { name, heightM } = building.userData as BuildingData;
+        for (const [id, building] of built.buildings) {
+          const { name } = building.userData as BuildingData;
           const element = document.createElement("span");
           element.textContent = name;
           Object.assign(element.style, {
             position: "absolute",
-            transform: "translate(-50%, -100%)",
-            maxWidth: "104px",
+            boxSizing: "border-box",
+            height: "20px",
+            maxWidth: "200px",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
             padding: "2px 5px",
             borderRadius: "4px",
             background: css(palette.ui.surface, 0.9),
@@ -278,17 +322,17 @@ export function createCampusScene(
             userSelect: "none",
           });
           element.hidden = true;
-          labels.push({ element, anchor: building.position.clone().setY(heightM + 4) });
+          labels.push({ id, element, building });
           container.append(element);
         }
-        legend.hidden = false;
+        legend.hidden = !!window.ReactNativeWebView;
         info = built.info;
         const { bounds, center } = info;
         controls.cursor.set(center[0], 0, center[1]);
         controls.maxTargetRadius = 0.36 * Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
         controls.enabled = true;
         credit.textContent = info.attribution ?? "";
-        credit.style.display = info.attribution ? "block" : "none";
+        credit.style.display = info.attribution && !window.ReactNativeWebView ? "block" : "none";
         resize();
       }
       requestRender();
@@ -317,30 +361,36 @@ export function createCampusScene(
       renderer.dispose();
       renderer.domElement.remove();
       credit.remove();
+      legend.removeEventListener("toggle", requestRender);
       legend.remove();
       for (const { element } of labels) element.remove();
     },
   };
 }
 
-function createFlagLegend(): HTMLElement {
-  const legend = document.createElement("div");
+function createFlagLegend(): HTMLDetailsElement {
+  const legend = document.createElement("details");
   legend.setAttribute("role", "note");
   legend.hidden = true;
   Object.assign(legend.style, {
     position: "absolute",
-    top: "52px",
-    left: "8px",
+    top: "16px",
+    right: "20px",
     zIndex: "1",
     padding: "5px 8px",
     borderRadius: "6px",
     background: css(palette.ui.surface, 0.92),
     color: css(palette.ui.text),
     font: "11px/1.5 system-ui, sans-serif",
-    pointerEvents: "none",
+    pointerEvents: "auto",
     userSelect: "none",
   });
 
+  const summary = document.createElement("summary");
+  summary.textContent = "ⓘ";
+  summary.setAttribute("aria-label", "Map legend");
+  Object.assign(summary.style, { cursor: "pointer", font: "22px/32px system-ui", minWidth: "32px", textAlign: "center", listStyle: "none" });
+  legend.append(summary);
   const key = document.createElement("div");
   Object.assign(key.style, { display: "flex", gap: "8px" });
   for (const [state, label] of [["live", "Live"], ["soon", "Within 1 hr"], ["later", "Later"]] as const) {

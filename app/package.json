@@ -7,13 +7,17 @@
     "start": "expo start",
     "start:tunnel": "expo start --tunnel",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/data/fixtures.test.mjs src/api/client.test.mjs src/data/provider.test.mjs src/viewer/bridge.test.mjs src/route/stepper.test.mjs src/organizer/organizer.test.mjs src/organizer/picker.test.mjs src/organizer/review.test.mjs src/auth/controller.test.mjs src/account/register.test.mjs src/navigation/access.test.mjs src/settings/scopedStorage.test.mjs src/events/format.test.mjs src/events/form.test.mjs src/orgs/organizations.test.mjs src/account/preferences.test.mjs",
+    "test": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/data/fixtures.test.mjs src/api/client.test.mjs src/data/provider.test.mjs src/viewer/bridge.test.mjs src/route/stepper.test.mjs src/organizer/organizer.test.mjs src/organizer/picker.test.mjs src/organizer/review.test.mjs src/auth/controller.test.mjs src/account/register.test.mjs src/navigation/access.test.mjs src/settings/scopedStorage.test.mjs src/events/format.test.mjs src/events/form.test.mjs src/orgs/organizations.test.mjs src/account/preferences.test.mjs src/navigation/dockLayout.test.mjs src/week/tutorial.test.mjs",
     "postinstall": "node scripts/embed-three.mjs",
     "check:routes": "node scripts/check-route-order.cjs"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~58.0.25",
+    "expo-blur": "~58.0.6",
+    "expo-glass-effect": "~58.0.5",
+    "expo-haptics": "~58.0.8",
     "expo-image-picker": "~58.0.10",
     "expo-router": "~58.0.32",
     "expo-status-bar": "~58.0.5",

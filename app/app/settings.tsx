@@ -1,6 +1,9 @@
+import { radius, space } from '../src/navigation/theme';
+import { ScreenScrollView as ScrollView } from '../src/ui/ScreenScrollView';
+import { PressScale } from '../src/ui/PressScale';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput } from 'react-native';
 
 import { useAuth } from '../src/auth/AuthProvider';
 import { useAppData } from '../src/data/AppDataContext';
@@ -46,9 +49,9 @@ export default function SettingsScreen() {
         value={url}
         style={styles.input}
       />
-      <Pressable accessibilityRole="button" disabled={saving || resetting} onPress={() => void save()} style={styles.button}>
+      <PressScale accessibilityRole="button" disabled={saving || resetting} onPress={() => void save()} style={styles.button}>
         <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Save server address'}</Text>
-      </Pressable>
+      </PressScale>
       <Text accessibilityLiveRegion="polite" style={styles.message}>
         {saving && 'Checking server…'}
         {status === 'error' && 'Could not save the server address.'}
@@ -58,12 +61,12 @@ export default function SettingsScreen() {
           : 'Connected.')}
       </Text>
       {eventWithRoute ? (
-        <Pressable accessibilityRole="button" style={styles.reset} disabled={saving || resetting}
+        <PressScale accessibilityRole="button" style={styles.reset} disabled={saving || resetting}
           onPress={() => router.push({ pathname: '/event/[eventId]', params: { eventId: eventWithRoute.id } })}>
           <Text style={styles.buttonText}>Preview directions</Text>
-        </Pressable>
+        </PressScale>
       ) : null}
-      <Pressable accessibilityRole="button" style={styles.reset} disabled={saving || resetting}
+      <PressScale accessibilityRole="button" style={styles.reset} disabled={saving || resetting}
         onPress={() => Alert.alert('Reset app?', 'Clear all saved events, interests and preferences, and sign out?', [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Reset', style: 'destructive', onPress: () => {
@@ -75,19 +78,19 @@ export default function SettingsScreen() {
           } },
         ])}>
         <Text style={styles.buttonText}>{resetting ? 'Resetting…' : 'Reset app'}</Text>
-      </Pressable>
+      </PressScale>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.paper },
-  container: { padding: 24 },
-  title: { color: palette.ink, fontSize: 24, fontWeight: '700' },
+  container: { padding: space.gutter },
+  title: { color: palette.ink, fontSize: 22, fontWeight: '700' },
   body: { color: palette.muted, marginTop: 8, fontSize: 15, lineHeight: 21 },
-  input: { marginTop: 20, borderWidth: 1, borderColor: '#c5ced5', borderRadius: 8, backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 11, color: palette.ink },
-  button: { marginTop: 14, paddingVertical: 12, borderRadius: 8, backgroundColor: palette.gold, alignItems: 'center' },
+  input: { marginTop: 20, borderWidth: 1, borderColor: '#c5ced5', borderRadius: radius.control, backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 11, color: palette.ink },
+  button: { minHeight: 50, marginTop: space.l, paddingVertical: 12, borderRadius: radius.control, backgroundColor: palette.gold, alignItems: 'center' },
   buttonText: { color: palette.ink, fontWeight: '700' },
-  reset: { marginTop: 18, alignItems: 'center', padding: 12, borderRadius: 8, borderColor: '#8999a4', borderWidth: 1 },
+  reset: { minHeight: 50, marginTop: space.l, alignItems: 'center', padding: 12, borderRadius: radius.control, borderColor: '#8999a4', borderWidth: 1 },
   message: { color: palette.muted, marginTop: 12, minHeight: 20 },
 });

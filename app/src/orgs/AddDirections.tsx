@@ -1,7 +1,8 @@
+import { ScreenScrollView as ScrollView } from '../ui/ScreenScrollView';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { roomLabel } from '../../../shared/rooms';
 import type { UploadRouteInput } from '../api/client';

@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import type { Organization, OrganizationRequest } from '../../../shared/types.ts';
 import { space } from '../navigation/theme';
 import { Badge, Button, Chip, ChipRow, Field, Group, Notice, Section } from '../ui/controls';
+import { haptic } from '../ui/haptics';
 
 /** Suggested initials from a name: "Game Development Club" → "GDC" (capped at 4 letters). */
 export function suggestInitials(name: string): string {
@@ -39,6 +40,7 @@ export function OrganizationForm({ initial, submitLabel, onSubmit }: {
         memberCount: members.trim() ? Number(members.trim()) : 0,
         meets: meets.trim() ? meets : null, contactEmail: email.trim() ? email : null, website: website.trim() ? website : null,
       });
+      haptic('success');
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : 'Could not save the organization. Try again.');
     } finally {
@@ -80,7 +82,7 @@ export function OrganizationForm({ initial, submitLabel, onSubmit }: {
         </Group>
       </Section>
       <Notice message={error} />
-      <Button label={submitLabel} busy={busy} disabled={!name.trim() || !description.trim()} onPress={() => void submit()} />
+      <Button feedback={false} label={submitLabel} busy={busy} disabled={!name.trim() || !description.trim()} onPress={() => void submit()} />
     </View>
   );
 }

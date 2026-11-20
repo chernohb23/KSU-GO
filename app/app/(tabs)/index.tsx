@@ -1,6 +1,9 @@
+import { haptic } from '../../src/ui/haptics';
+import { ScreenScrollView as ScrollView } from '../../src/ui/ScreenScrollView';
+import { PressScale } from '../../src/ui/PressScale';
 import { useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 
 import campusFixture from '../../../shared/fixtures/campus.json';
 import type { Campus, Event } from '../../../shared/types.ts';
@@ -9,7 +12,10 @@ import { getEventFlagState } from '../../src/data/events';
 import { EventDetails, roomLabel } from '../../src/events/EventDetails';
 import { et } from '../../src/events/format';
 import { mapSheetVisible } from '../../src/navigation/access';
-import { text, tone } from '../../src/navigation/theme';
+import { radius, space, text, tone } from '../../src/navigation/theme';
+import { DockSpaceContext, useDockClearance } from '../../src/navigation/DockSpace';
+import { Ionicon } from '../../src/ui/Ionicon';
+import { useReduceMotion } from '../../src/ui/accessibility';
 import { ViewerWebView, type ViewerWebViewHandle } from '../../src/viewer/ViewerWebView';
 import type { ViewerToAppMessage } from '../../src/viewer/bridge';
 import { LaunchScreen, palette } from '../../src/navigation/Brand';
@@ -23,6 +29,10 @@ export default function MapScreen() {
   const viewer = useRef<ViewerWebViewHandle>(null);
   const focused = useIsFocused();
   const { events, now, refresh } = useAppData();
+  const clearance = useDockClearance();
+  const reduceMotion = useReduceMotion();
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -49,7 +59,7 @@ export default function MapScreen() {
   }, [events]);
 
   const handleViewerMessage = useCallback((message: ViewerToAppMessage) => {
-    if (message.type === 'campus:flagTapped') selectEvent(message.eventId);
+    if (message.type === 'campus:flagTapped') { haptic('light'); selectEvent(message.eventId); }
     if (message.type === 'error') setMapError('The campus map could not be loaded. Open today’s events to find a room.');
   }, [selectEvent]);
 
@@ -86,36 +96,60 @@ export default function MapScreen() {
           <LaunchScreen label="Opening campus map…" />
         </View>
       )}
-      <Pressable accessibilityRole="button" onPress={() => setListOpen(true)} style={styles.eventsButton}>
-        <Text style={styles.eventsButtonText}>Today’s events</Text>
-      </Pressable>
+      <View style={styles.toolbar}>
+        <PressScale accessibilityRole="button" onPress={() => setListOpen(true)} style={styles.eventsButton}>
+          <Text style={text.headline} numberOfLines={1}>Today’s events</Text>
+        </PressScale>
+        <PressScale accessibilityRole="button" accessibilityLabel="Refresh events" disabled={refreshing}
+          onPress={() => { setRefreshing(true); void refresh().finally(() => setRefreshing(false)); }} style={styles.iconButton}>
+          <Ionicon name="refresh" color={tone.ink} />
+        </PressScale>
+        <PressScale accessibilityRole="button" accessibilityLabel="Map legend" onPress={() => setLegendOpen(true)} style={styles.iconButton}>
+          <Ionicon name="information-circle" color={tone.ink} />
+        </PressScale>
+      </View>
+      {campus.attribution ? <Text pointerEvents="none" style={[styles.credit, { bottom: clearance }]}>{campus.attribution}</Text> : null}
 
-      <Pressable accessibilityRole="button" onPress={() => void refresh()} style={styles.refresh}>
-        <Text style={styles.refreshText}>Refresh events</Text>
-      </Pressable>
+      <Modal visible={legendOpen} transparent animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={() => setLegendOpen(false)}>
+        <DockSpaceContext.Provider value={0}>
+          <View style={styles.modalRoot}>
+            <PressScale accessibilityLabel="Close legend" onPress={() => setLegendOpen(false)} style={styles.backdrop} scaleEffect={false} feedback={false} />
+            <View style={[styles.sheet, styles.sheetContent]} accessibilityViewIsModal>
+              <Text style={text.title}>Map legend</Text>
+              <View style={styles.legend}>
+                {([['#ff8672', 'Live'], ['#f3c66e', 'Within 1 hour'], ['#9ab9e9', 'Later']] as const).map(([color, label]) =>
+                  <View key={label} style={styles.legendRow}><View style={[styles.dot, { backgroundColor: color }]} /><Text style={text.body}>{label}</Text></View>)}
+                <Text style={text.subhead}>Taller flags start sooner.</Text>
+                <Text style={text.subhead}>★ Saved event</Text>
+              </View>
+            </View>
+          </View>
+        </DockSpaceContext.Provider>
+      </Modal>
 
       <Modal
         visible={sheetVisible}
-        animationType="slide"
+        animationType={reduceMotion ? 'none' : 'slide'}
         transparent
         onRequestClose={closeSheet}
       >
+        <DockSpaceContext.Provider value={0}>
         <View style={styles.modalRoot}>
-          <Pressable accessibilityLabel="Close" onPress={closeSheet} style={styles.backdrop} />
+          <PressScale accessibilityLabel="Close" onPress={closeSheet} style={styles.backdrop} scaleEffect={false} />
           {listOpen ? (
             <View accessibilityViewIsModal style={[styles.sheet, styles.sheetContent]}>
               <View style={styles.grabber} />
               <Text accessibilityRole="header" style={text.title}>Today’s events</Text>
               <ScrollView>
                 {events.map(event => (
-                  <Pressable key={event.id} accessibilityRole="button" style={styles.listItem}
+                  <PressScale key={event.id} accessibilityRole="button" style={styles.listItem}
                     onPress={() => selectEvent(event.id)}>
                     <Text style={text.headline}>{event.title}</Text>
                     <Text style={[text.subhead, text.figures]}>{timeLabel(event)}</Text>
                     <Text style={text.subhead}>{roomLabel(event.location.room)}</Text>
-                  </Pressable>
+                  </PressScale>
                 ))}
-                {events.length === 0 && <Text style={text.subhead}>There are no events in the next 24 hours.</Text>}
+                {events.length === 0 && <Text style={text.subhead}>No events today.</Text>}
               </ScrollView>
             </View>
           ) : selectedEvent ? (
@@ -125,6 +159,7 @@ export default function MapScreen() {
             </ScrollView>
           ) : null}
         </View>
+        </DockSpaceContext.Provider>
       </Modal>
     </View>
   );
@@ -134,10 +169,15 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#101820' },
   map: { flex: 1 },
   mapError: { position: 'absolute', alignSelf: 'center', top: '45%', color: '#fff', backgroundColor: '#a52b22', padding: 10, borderRadius: 8 },
-  refresh: { position: 'absolute', top: 12, right: 12, borderRadius: 18, paddingHorizontal: 13, paddingVertical: 9, backgroundColor: '#ffffffed' },
-  refreshText: { color: palette.ink, fontWeight: '700', fontSize: 12 },
-  eventsButton: { position: 'absolute', top: 12, left: 12, borderRadius: 18, paddingHorizontal: 13, paddingVertical: 9, backgroundColor: palette.gold },
-  eventsButtonText: { color: palette.ink, fontWeight: '700', fontSize: 12 },
+  toolbar: { position: 'absolute', top: space.l, left: space.gutter, right: space.gutter, flexDirection: 'row', gap: space.s },
+  eventsButton: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.l,
+    borderRadius: radius.group, backgroundColor: tone.gold },
+  iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radius.group, backgroundColor: tone.paper },
+  credit: { position: 'absolute', left: space.gutter, ...text.footnote, color: tone.ink, backgroundColor: '#f8f7f2e6',
+    paddingHorizontal: space.s, paddingVertical: space.xs, borderRadius: 4 },
+  legend: { paddingTop: space.l, gap: space.m },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: space.m },
+  dot: { width: 12, height: 12, borderRadius: 6 },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: '#0008' },
   listItem: { paddingVertical: 12, gap: 2, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: tone.hairline },

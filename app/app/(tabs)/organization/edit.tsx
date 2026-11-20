@@ -1,5 +1,6 @@
+import { ScreenScrollView as ScrollView } from '../../../src/ui/ScreenScrollView';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, Text } from 'react-native';
+import { Text } from 'react-native';
 
 import { useAccount } from '../../../src/account/AccountProvider';
 import { useAuth } from '../../../src/auth/AuthProvider';

@@ -1,6 +1,7 @@
+import { ScreenScrollView as ScrollView } from '../../../src/ui/ScreenScrollView';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActionSheetIOS, Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { useAccount } from '../../../src/account/AccountProvider';
 import { countdown, insights, interests, upcomingRegistrations } from '../../../src/account/insights';

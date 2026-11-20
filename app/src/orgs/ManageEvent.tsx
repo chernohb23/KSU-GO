@@ -1,6 +1,8 @@
+import { ScreenScrollView as ScrollView } from '../ui/ScreenScrollView';
+import { PressScale } from '../ui/PressScale';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActionSheetIOS, Alert, Modal, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActionSheetIOS, Alert, Modal, Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 import { roomLabel } from '../../../shared/rooms';
 import type { EventDirections, EventRegistrations } from '../../../shared/types';
@@ -13,6 +15,7 @@ import { ProgressBar } from '../organizer/ui';
 import { Button, Group, Notice, Row, Section, screenStyles } from '../ui/controls';
 import { directionsRow } from './directions';
 import { useManagedEvent } from './useManagedEvent';
+import { Ionicon } from '../ui/Ionicon';
 
 export default function ManageEvent() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -88,15 +91,15 @@ export default function ManageEvent() {
         <EventDetails event={event} compact showActions={false} onTakeMeThere={() => {}} />
         <Section label="Directions">
           {current && row ? <Group>
-            <Pressable accessibilityRole="button" disabled={!row.action || row.action === 'upload' && !editable}
+            <PressScale accessibilityRole="button" disabled={!row.action || row.action === 'upload' && !editable}
               accessibilityState={{ disabled: !row.action || row.action === 'upload' && !editable }}
               onPress={openDirections} style={({ pressed }) => [styles.directions, pressed && styles.pressed]}>
               <View style={styles.directionsBody}>
                 <Text style={text.headline}>{row.label}</Text>
                 <Text style={text.footnote}>Shared with every event in {roomLabel(event.location.room)}</Text>
               </View>
-              {row.action && (row.action !== 'upload' || editable) ? <Text style={styles.chevron}>›</Text> : null}
-            </Pressable>
+              {row.action && (row.action !== 'upload' || editable) ? <Ionicon name="chevron-forward" size={18} /> : null}
+            </PressScale>
           </Group> : <Text style={text.subhead}>Loading directions…</Text>}
           {current?.directions.state === 'processing' && route ? <ProgressBar label={route.progress?.stage ?? 'Processing'} percent={route.progress?.pct ?? 0} /> : null}
           {current?.directions.state === 'failed' ? <Notice message={route?.error ?? 'Directions could not be drafted. Choose another video and try again.'} /> : null}
@@ -130,7 +133,6 @@ const styles = StyleSheet.create({
   action: { flex: 1 },
   directions: { minHeight: 80, flexDirection: 'row', alignItems: 'center', gap: space.m, paddingRight: space.l, paddingVertical: space.l },
   directionsBody: { flex: 1, gap: space.xs },
-  chevron: { ...text.title, color: tone.muted },
   pressed: { opacity: 0.65 },
   sheetHeader: { padding: space.gutter, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.l },
 });

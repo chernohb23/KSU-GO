@@ -20,6 +20,9 @@ describe("createRouteWorld", () => {
     expect(world.root.getObjectsByProperty("name", "stair-step")).toHaveLength(18);
     expect(named("entrance-marker")).toBeDefined();
     expect(named("destination-marker")).toBeDefined();
+    const destinationSigns: string[] = [];
+    world.root.traverse(object => { if (object.userData.text === sample.destination) destinationSigns.push(object.uuid); });
+    expect(destinationSigns).toHaveLength(1);
 
     const routePoints = world.root.getObjectsByProperty("name", "route-line");
     expect(routePoints.length).toBe(layout.centerline.length - 1);

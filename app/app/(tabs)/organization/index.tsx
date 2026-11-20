@@ -1,6 +1,8 @@
+import { ScreenScrollView as ScrollView } from '../../../src/ui/ScreenScrollView';
+import { PressScale } from '../../../src/ui/PressScale';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActionSheetIOS, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
 import type { Event } from '../../../../shared/types';
 import { useAccount } from '../../../src/account/AccountProvider';
@@ -8,7 +10,7 @@ import { useAuth } from '../../../src/auth/AuthProvider';
 import { useAppData } from '../../../src/data/AppDataContext';
 import { OrganizationEventCard } from '../../../src/orgs/OrganizationEventCard';
 import { useOfflineHeaderRight } from '../../../src/navigation/AppHeader';
-import { HeaderIconButton } from '../../../src/ui/Ionicon';
+import { HeaderIconButton, Ionicon } from '../../../src/ui/Ionicon';
 import { space, text, tone } from '../../../src/navigation/theme';
 import { OrgHeader } from '../../../src/orgs/OrgHeader';
 import { useOrganizationTab } from '../../../src/orgs/OrganizationTab';
@@ -63,10 +65,10 @@ export default function OrganizationHome() {
     <ScrollView style={screenStyles.screen} contentContainerStyle={screenStyles.content}>
       <Stack.Screen options={{
         title: 'Organization',
-        headerTitle: owned.length > 1 ? () => <Pressable accessibilityRole="button" accessibilityLabel="Switch organization"
+        headerTitle: owned.length > 1 ? () => <PressScale accessibilityRole="button" accessibilityLabel="Switch organization"
           onPress={switchOrganization} style={styles.switcher}>
-          <Text style={text.headline}>Organization</Text><Text style={styles.chevron}>⌄</Text>
-        </Pressable> : undefined,
+          <Text style={text.headline}>Organization</Text><Ionicon name="chevron-down" size={18} color={tone.amber} />
+        </PressScale> : undefined,
         headerRight: canEdit ? () => <HeaderIconButton name="pencil" label="Edit organization"
           onPress={() => router.push('/organization/edit')} /> : offlineHeaderRight,
       }} />
@@ -93,7 +95,6 @@ export default function OrganizationHome() {
 
 const styles = StyleSheet.create({
   switcher: { flexDirection: 'row', alignItems: 'center', gap: space.xs, justifyContent: 'center' },
-  chevron: { color: tone.amber, fontSize: 18, marginTop: -6 },
   cards: { gap: space.s },
   pad: { paddingHorizontal: space.l },
 });

@@ -1,5 +1,7 @@
+import { ScreenScrollView as ScrollView } from '../ui/ScreenScrollView';
+import { PressScale } from '../ui/PressScale';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 import campusJson from '../../../shared/fixtures/campus.json';
 import type { Campus, Event, Organization } from '../../../shared/types.ts';
@@ -7,6 +9,7 @@ import { categoryLabel } from '../account/insights';
 import { radius, space, text, tone } from '../navigation/theme';
 import { Button, Chip, ChipRow, Field, Group, Notice, Row, Section, screenStyles } from '../ui/controls';
 import { et } from './format';
+import { haptic } from '../ui/haptics';
 import {
   addTag, dayChipLabel, DURATIONS, eventRequestFields, formProblem, nextDays, timeSlots,
   type CampusDay, type EventFormValues,
@@ -46,6 +49,7 @@ export function EventForm({ initial, host, organizations, now, submitLabel, onSu
     setBusy(true);
     try {
       await onSubmit(eventRequestFields(values, initial?.startsAt ?? null));
+      haptic('success');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save the event. Try again.');
     } finally {
@@ -90,12 +94,12 @@ export function EventForm({ initial, host, organizations, now, submitLabel, onSu
             const label = dayChipLabel(day, index);
             const selected = dayIndex === index;
             return (
-              <Pressable key={index} accessibilityRole="button" accessibilityState={{ selected }}
+              <PressScale key={index} feedback="selection" accessibilityRole="button" accessibilityState={{ selected }}
                 onPress={() => { setDayIndex(index); set({ startsAt: null }); }}
                 style={[styles.day, selected && styles.daySelected]}>
                 <Text style={[styles.dayTop, selected && styles.onInk]}>{label.top}</Text>
                 <Text style={[styles.dayBottom, selected && styles.onInk]}>{label.bottom}</Text>
-              </Pressable>
+              </PressScale>
             );
           })}
         </ScrollView>
@@ -161,7 +165,7 @@ export function EventForm({ initial, host, organizations, now, submitLabel, onSu
       </Section>
 
       <Notice message={error} />
-      <Button label={submitLabel} busy={busy} onPress={() => void submit()} />
+      <Button label={submitLabel} busy={busy} feedback={false} onPress={() => void submit()} />
     </View>
   );
 }

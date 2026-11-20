@@ -1,5 +1,6 @@
+import { PressScale } from '../ui/PressScale';
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { radius, space, text, tone } from '../navigation/theme';
@@ -21,13 +22,13 @@ export function SavedEventRow({ title, startsAt, now, onPress, onRemove, last = 
     <ReanimatedSwipeable ref={swipeable} overshootRight={false} rightThreshold={40}
       onSwipeableOpen={() => setOpen(true)} onSwipeableClose={() => setOpen(false)}
       renderRightActions={() => (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${title} from Saved`}
+        <PressScale accessibilityRole="button" accessibilityLabel={`Remove ${title} from Saved`}
           accessibilityElementsHidden={!open} importantForAccessibility={open ? 'yes' : 'no-hide-descendants'}
           disabled={busy} onPress={() => void remove()} style={styles.remove}>
           <Text style={styles.removeText}>Remove</Text>
-        </Pressable>
+        </PressScale>
       )}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${title}, ${et.when(startsAt, now)}`}
+      <PressScale accessibilityRole="button" accessibilityLabel={`${title}, ${et.when(startsAt, now)}`}
         accessibilityActions={[{ name: 'remove', label: 'Remove from Saved' }]}
         onAccessibilityAction={({ nativeEvent }) => { if (nativeEvent.actionName === 'remove') void remove(); }}
         onPress={onPress} style={({ pressed }) => [styles.main, pressed && styles.pressed]}>
@@ -35,7 +36,7 @@ export function SavedEventRow({ title, startsAt, now, onPress, onRemove, last = 
           <Text style={text.headline} numberOfLines={2}>{title}</Text>
           <Text style={[text.subhead, text.figures]}>{et.when(startsAt, now)}</Text>
         </View>
-      </Pressable>
+      </PressScale>
     </ReanimatedSwipeable>
   );
 }

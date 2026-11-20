@@ -124,6 +124,14 @@ EXPO_NO_DOTENV=1 CI=1 npx expo export --platform ios --output-dir /tmp/ksugo-ios
 
 `check:routes` discovers the full tree using the installed Expo Router. It checks that seeded and declared tabs match (`index, events, organization, profile/index`) and root screens stay outside tabs, preserving the phase C ROUTE_NAMES_CHANGED fix.
 
+## Phase E presentation
+
+The floating dock uses `expo-glass-effect` when both iOS Liquid Glass availability checks pass, `expo-blur` otherwise, and opaque paper with Reduce Transparency. Shared scroll containers and list/deck padding reserve the dock and safe-area space. Tabs and app icons use `@expo/vector-icons` Ionicons; the previous local icon copies are removed.
+
+`PressScale` shares a 0.96 native-driver press spring. Reduce Motion disables that scale, Discover's teaching wiggle and flight, and sheet transitions. `expo-haptics` supplies selection feedback, light button feedback and successful account/event/directions actions. Discover has swipe-only cards with accessible Save/Skip actions; the teaching hint is remembered separately for each account.
+
+Phase E needs a physical iPhone check in Expo Go: Liquid Glass on iOS 26+, the blur fallback, both accessibility preferences, tab visibility after ownership changes, home-indicator clearance and keyboard behavior, Discover taps/swipes and hint persistence, Saved swipe removal, and haptic strength/timing. Check every screen at narrow widths and larger text sizes. The rebuilt viewer's roof flags, collision-managed labels and single destination sign also need a visual check on the device. Automated checks and an iOS Metro export do not verify these native behaviors.
+
 Phase D still needs a real iPhone check in Expo Go:
 
 - As Maya, edit the profile and Interests, follow/unfollow a public club, create an organization, and check the new tab appears while mounted without LogBox. Create a second and try the switcher.

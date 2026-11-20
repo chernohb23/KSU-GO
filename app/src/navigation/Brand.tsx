@@ -20,7 +20,7 @@ export function LaunchScreen({ label }: { label: string }) {
 }
 
 const styles = StyleSheet.create({
-  launch: { flex: 1, backgroundColor: palette.ink, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  name: { fontSize: 30, fontWeight: '800', letterSpacing: 1, color: palette.paper },
+  launch: { flex: 1, backgroundColor: palette.ink, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  name: { fontSize: 34, fontWeight: '800', letterSpacing: 1, color: palette.paper },
   status: { color: palette.gold, fontSize: 15, fontWeight: '600' },
 });

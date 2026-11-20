@@ -12,6 +12,7 @@ import {
 } from "three";
 import type { Campus } from "../../../shared/types";
 import { palette } from "../palette";
+import { ROOF_DECK_OFFSET_M } from "./roof";
 import {
   UP, addGeometry, annulus, box, disc, distToRing, distToSeg, fillet, lift, longestEdgeAngle, makeBuilder,
   mix, mulberry32, normalizeRing, offsetRing, pointInRing, rgb, ringBounds, scale, smoothstep,
@@ -49,7 +50,6 @@ const WALL_BOOST = 1.2; // vertical faces get less light; brighten their albedo
 const FLOOR_M = 4; // one floor per 4 m of height
 const ROOF_OVERHANG = 0.45;
 const PARAPET_TOP = 1.0; // parapet height above the wall top
-const DECK_DROP = 0.35; // roof deck height above the wall top, below the parapet
 const OUTLINE_WIDTH = 1.0;
 
 export type BuildingData = {
@@ -448,7 +448,7 @@ function buildBuilding(world: Builder, b: Campus["buildings"][number], bi: numbe
   // The demo building's parapet is in its accent color: a crisp outline seen from above.
   const outer = offsetRing(ring, ROOF_OVERHANG);
   const inner = offsetRing(ring, -0.3);
-  const yTop = h + PARAPET_TOP, yDeck = h + DECK_DROP;
+  const yTop = h + PARAPET_TOP, yDeck = h + ROOF_DECK_OFFSET_M;
   const cap = demo ? P.demoAccent : trim;
   const face = demo ? scale(P.demoAccent, 0.92) : trim;
   const innerFace = scale(trim, 0.86);

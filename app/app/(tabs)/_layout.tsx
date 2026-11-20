@@ -1,37 +1,32 @@
-import { Image } from 'react-native';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../src/auth/AuthProvider';
 import { AppTitle, headerStyles, useOfflineHeaderRight } from '../../src/navigation/AppHeader';
 import { ownsOrganization } from '../../src/navigation/access';
 import { tone } from '../../src/navigation/theme';
+import { Dock } from '../../src/navigation/Dock';
+import { DockSpaceContext } from '../../src/navigation/DockSpace';
+import { dockLayout } from '../../src/navigation/dockLayout';
+import { dock } from '../../src/navigation/theme';
 
-const icons = {
-  index: require('../../assets/map.png'),
-  events: require('../../assets/week.png'),
-  organization: require('../../assets/organizer.png'),
-  profile: require('../../assets/profile.png'),
-};
 
 export default function TabsLayout() {
   const { state } = useAuth();
   const headerRight = useOfflineHeaderRight();
+  const safe = useSafeAreaInsets();
   return (
-    <Tabs screenOptions={({ route }) => ({
+    <DockSpaceContext.Provider value={dockLayout(safe.bottom).clearance}>
+    <Tabs tabBar={(props) => <Dock {...props} />} screenOptions={{
       headerTitle: () => <AppTitle />,
       headerRight,
       headerStyle: headerStyles.header,
       headerShadowVisible: false,
       tabBarActiveTintColor: tone.amber,
       tabBarInactiveTintColor: tone.muted,
-      tabBarStyle: { backgroundColor: tone.paper },
+      tabBarStyle: { position: 'absolute', height: dock.height, backgroundColor: 'transparent' },
       tabBarLabelStyle: { fontWeight: '600' },
-      tabBarIcon: ({ color, size }) => (
-        // Profile lives at profile/index (see the note on the screen list below).
-        <Image accessible={false} source={icons[route.name.replace(/\/index$/, '') as keyof typeof icons]}
-          style={{ width: size, height: size, tintColor: color }} />
-      ),
-    })}>
+    }}>
       {/* Declared in the same order expo-router seeds the tab state (index first, then
           shorter route names first), so mounting the tabs on sign-in queues no
           ROUTE_NAMES_CHANGED. That is why Profile is profile/index (13 characters)
@@ -43,5 +38,6 @@ export default function TabsLayout() {
       </Tabs.Protected>
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
+    </DockSpaceContext.Provider>
   );
 }

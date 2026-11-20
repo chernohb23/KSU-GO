@@ -1,5 +1,6 @@
+import { ScreenScrollView as ScrollView } from '../ui/ScreenScrollView';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView } from 'react-native';
+import {  } from 'react-native';
 
 import { useAppData } from '../data/AppDataContext';
 import { EventForm } from '../events/EventForm';
