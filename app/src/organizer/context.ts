@@ -5,7 +5,7 @@ export const OrganizerContext = createContext<{ session: OrganizerSession } | nu
 
 export function useOrganizer() {
   const context = useContext(OrganizerContext);
-  if (!context) throw new Error('Open the Organizer tab to view route drafts.');
+  if (!context) throw new Error('Open the event’s Directions in the Organization tab.');
   const { session } = context;
   const state = useSyncExternalStore(session.subscribe, session.snapshot);
   return { ...context, ...state };

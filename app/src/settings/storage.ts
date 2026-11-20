@@ -8,6 +8,11 @@ const SERVER_URL_KEY = 'ksu-go.server-url';
 // Stored through scopedStorage, so each account keeps its own record.
 const REGISTERED_EVENT_IDS_KEY = 'ksu-go.registered-event-ids';
 
+/** Phase D replaces the legacy phone record with the server's /me/registrations. */
+export function discardLegacyRegistrations(storage: KeyValueStorage): Promise<void> {
+  return storage.removeItem(REGISTERED_EVENT_IDS_KEY);
+}
+
 export function normalizeServerUrl(value: string | null | undefined): string | null {
   const normalized = value?.trim();
   return normalized ? normalized : null;

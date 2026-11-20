@@ -1,4 +1,7 @@
-import type { AuthResponse, Event, LoginRequest, Route, SignupRequest, Step, User } from '../../../shared/types.ts';
+import type {
+  AuthResponse, CreateEventRequest, EditEventRequest, Event, EventDirections, EventRegistrations, FollowResponse,
+  LoginRequest, MyRegistration, Organization, OrganizationRequest, ProfileRequest, Route, SignupRequest, Step, User,
+} from '../../../shared/types.ts';
 
 export type HealthResponse = { ok: true; pipelineMode: 'mock' | 'live' };
 export type RegisterResponse = { registered: true; registeredCount: number };
@@ -8,6 +11,8 @@ export type ApiErrorCode =
   | 'invalid_request'
   | 'unauthenticated'
   | 'forbidden'
+  | 'room_has_route'
+  | 'event_cancelled'
   | 'wrong_status'
   | 'route_has_failed_checks'
   | 'video_rejected'
@@ -31,6 +36,19 @@ export type ApiClient = {
   login(body: LoginRequest, signal?: AbortSignal): Promise<AuthResponse>;
   logout(signal?: AbortSignal): Promise<void>;
   me(signal?: AbortSignal): Promise<User>;
+  updateProfile(body: ProfileRequest): Promise<User>;
+  myRegistrations(signal?: AbortSignal): Promise<MyRegistration[]>;
+  listOrganizations(signal?: AbortSignal): Promise<Organization[]>;
+  getOrganization(id: string, signal?: AbortSignal): Promise<Organization>;
+  organizationEvents(id: string, when: 'upcoming' | 'past', signal?: AbortSignal): Promise<Event[]>;
+  createOrganization(body: OrganizationRequest): Promise<Organization>;
+  updateOrganization(id: string, body: OrganizationRequest): Promise<Organization>;
+  setFollowing(id: string, following: boolean): Promise<FollowResponse>;
+  createEvent(body: CreateEventRequest): Promise<Event>;
+  editEvent(id: string, body: EditEventRequest): Promise<Event>;
+  cancelEvent(id: string): Promise<Event>;
+  eventRegistrations(id: string, signal?: AbortSignal): Promise<EventRegistrations>;
+  eventDirections(id: string, signal?: AbortSignal): Promise<EventDirections>;
   uploadRoute(input: UploadRouteInput, onProgress?: (percent: number) => void): Promise<Route>;
   getRoute(id: string, signal?: AbortSignal): Promise<Route>;
   updateRouteSteps(id: string, steps: Step[], signal?: AbortSignal): Promise<Route>;
@@ -63,6 +81,8 @@ const API_ERROR_CODES: ApiErrorCode[] = [
   'invalid_request',
   'unauthenticated',
   'forbidden',
+  'room_has_route',
+  'event_cancelled',
   'wrong_status',
   'route_has_failed_checks',
   'video_rejected',
@@ -139,21 +159,42 @@ export function createApiClient(
     login: (body, signal) => request<AuthResponse>('/auth/login', { ...json('POST', body), ...(signal && { signal }) }),
     logout: (signal) => request<void>('/auth/logout', { method: 'POST', ...(signal && { signal }) }),
     me: (signal) => request<User>('/me', signal ? { signal } : undefined),
+    updateProfile: (body) => request<User>('/me/profile', json('PUT', body)),
+    myRegistrations: (signal) => request<MyRegistration[]>('/me/registrations', signal ? { signal } : undefined),
+    listOrganizations: (signal) => request<Organization[]>('/organizations', signal ? { signal } : undefined),
+    getOrganization: (id, signal) => request<Organization>(`/organizations/${encodeURIComponent(id)}`, signal ? { signal } : undefined),
+    organizationEvents: (id, when, signal) => request<Event[]>(
+      `/organizations/${encodeURIComponent(id)}/events?when=${when}`, signal ? { signal } : undefined,
+    ),
+    createOrganization: (body) => request<Organization>('/organizations', json('POST', body)),
+    updateOrganization: (id, body) => request<Organization>(`/organizations/${encodeURIComponent(id)}`, json('PUT', body)),
+    setFollowing: (id, following) => request<FollowResponse>(
+      `/organizations/${encodeURIComponent(id)}/follow`, { method: following ? 'POST' : 'DELETE' },
+    ),
+    createEvent: (body) => request<Event>('/events', json('POST', body)),
+    editEvent: (id, body) => request<Event>(`/events/${encodeURIComponent(id)}`, json('PUT', body)),
+    cancelEvent: (id) => request<Event>(`/events/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
+    eventRegistrations: (id, signal) => request<EventRegistrations>(
+      `/events/${encodeURIComponent(id)}/registrations`, signal ? { signal } : undefined,
+    ),
+    eventDirections: (id, signal) => request<EventDirections>(
+      `/events/${encodeURIComponent(id)}/directions`, signal ? { signal } : undefined,
+    ),
     uploadRoute: (input, onProgress) => {
+      // Directions are recorded for an event; the server takes the room from it (CONTRACTS.md section 5).
+      if (!input.eventId) return Promise.reject(new Error('Choose the event to record directions for.'));
+      const path = `/routes?eventId=${encodeURIComponent(input.eventId)}`;
       const body = formDataFactory();
       body.append('video', input.video as unknown as Blob);
-      body.append('buildingId', input.buildingId);
-      body.append('destination', input.destination);
       body.append('startFloor', input.startFloor);
       body.append('destinationFloor', input.destinationFloor);
-      if (input.eventId) body.append('eventId', input.eventId);
-      if (!onProgress) return request<Route>('/routes', { method: 'POST', body });
+      if (!onProgress) return request<Route>(path, { method: 'POST', body });
       // React Native exposes multipart byte counts on XMLHttpRequest.upload.
       let idleTimer: ReturnType<typeof setTimeout>;
       return new Promise<Route>((resolve, reject) => {
         const xhr = createXHR();
         const sentToken = auth?.token() ?? null;
-        xhr.open('POST', `${base}/api/routes`);
+        xhr.open('POST', `${base}/api${path}`);
         if (sentToken !== null) xhr.setRequestHeader('Authorization', `Bearer ${sentToken}`);
         function resetDeadline() {
           clearTimeout(idleTimer);

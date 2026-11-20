@@ -100,6 +100,13 @@ for (const [name, clock] of clocks) {
       ['Today', ['a', 'b']], ['Tomorrow', ['c']], ['Sunday, Nov 22', ['d']],
     ]);
   });
+
+  test(`${name}: organization cards use the ET date across midnight and month boundaries`, () => {
+    assert.deepEqual(et.dateBlock('2026-12-01T04:30:00Z'), { day: '30', month: 'Nov' });
+    assert.deepEqual(et.dateBlock('2026-12-01T05:00:00Z'), { day: '1', month: 'Dec' });
+    assert.deepEqual(et.dateBlock('2026-07-01T03:30:00Z'), { day: '30', month: 'Jun' });
+    assert.deepEqual(et.dateBlock('2026-11-01T05:30:00Z'), et.dateBlock('2026-11-01T06:30:00Z'));
+  });
 }
 
 test('capacity is display only: "34 / 50", "Full" at or past capacity, or a plain count', () => {

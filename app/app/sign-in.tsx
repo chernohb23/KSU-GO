@@ -1,6 +1,7 @@
+import { PressScale } from '../src/ui/PressScale';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AuthScreen, Field, FieldGroup, FormMessage, PrimaryButton, TextButton, type FieldHandle } from '../src/auth/AuthScreen';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -44,13 +45,13 @@ export default function SignInScreen() {
       <PrimaryButton label="Sign in" busy={busy} disabled={!email.trim() || !password} onPress={() => void signIn()} />
 
       {DEMO_MODE ? (
-        <View style={styles.demo} accessibilityLabel="Demo accounts">
+        <View style={styles.demo} accessibilityLabel="Accounts">
           {DEMO_ACCOUNTS.map((account) => (
-            <Pressable key={account.email} accessibilityRole="button" disabled={busy}
+            <PressScale key={account.email} accessibilityRole="button" disabled={busy}
               onPress={() => { setEmail(account.email); setPassword(account.password); setError(null); }}
               style={({ pressed }) => [styles.demoButton, pressed && styles.pressed]}>
               <Text style={styles.demoText}>{account.label}</Text>
-            </Pressable>
+            </PressScale>
           ))}
         </View>
       ) : null}

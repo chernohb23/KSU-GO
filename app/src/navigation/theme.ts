@@ -19,6 +19,14 @@ export const tone = {
 export const space = { xs: 4, s: 8, m: 12, l: 16, gutter: 20, xl: 24, xxl: 32 };
 export const radius = { control: 10, group: 12, sheet: 20 };
 
+export const dock = { height: 72, sideInset: 20, bottomInset: 16, gap: 24, iconSize: 24, labelSize: 13 };
+export const blur = { intensity: 40, tint: 'light' as const, fill: 'rgba(247,245,237,0.62)' };
+export const motion = {
+  pressedScale: 0.96,
+  pressIn: { stiffness: 400, damping: 40, mass: 1 },
+  release: { stiffness: 300, damping: 22, mass: 1 },
+};
+
 export const text = StyleSheet.create({
   largeTitle: { color: tone.ink, fontSize: 34, lineHeight: 41, fontWeight: '700', letterSpacing: 0.37 },
   title: { color: tone.ink, fontSize: 22, lineHeight: 28, fontWeight: '600', letterSpacing: 0.35 },

@@ -3,7 +3,7 @@ import { BufferGeometry, Material, Mesh } from "three";
 import flawedJson from "../../../shared/fixtures/route.draft-flawed.json";
 import sampleJson from "../../../shared/fixtures/route.sample.json";
 import room215HandJson from "../../../shared/fixtures/routes/room-215.hand.json";
-import room113HandJson from "../../../shared/fixtures/routes/room-113.hand.json";
+import room113HandJson from "../../../shared/fixtures/fallbacks/room-113.hand.json";
 import type { Route, Step } from "../../../shared/types";
 import { layoutRoute } from "./layout";
 import { createRouteWorld } from "./world";
@@ -22,6 +22,9 @@ describe("createRouteWorld", () => {
     expect(world.root.getObjectsByProperty("name", "stair-step")).toHaveLength(18);
     expect(named("entrance-marker")).toBeDefined();
     expect(named("destination-marker")).toBeDefined();
+    const destinationSigns: string[] = [];
+    world.root.traverse(object => { if (object.userData.text === sample.destination) destinationSigns.push(object.uuid); });
+    expect(destinationSigns).toHaveLength(1);
 
     const routePoints = world.root.getObjectsByProperty("name", "route-line");
     expect(routePoints.length).toBe(layout.centerline.length - 1);
@@ -62,7 +65,7 @@ describe("createRouteWorld", () => {
     expect(() => createRouteWorld(flawedJson as Route).dispose()).not.toThrow();
   });
 
-  it("renders both confirmed hand routes with their doors and floors", () => {
+  it("renders the Room 215 hand route and unlinked Room 113 fallback with one destination sign each", () => {
     const cases: { route: Route; floors: string[]; stairs: number }[] = [
       { route: room215HandJson as Route, floors: ["floor-1", "floor-2"], stairs: 18 },
       { route: room113HandJson as Route, floors: ["floor-1"], stairs: 0 },
@@ -74,6 +77,9 @@ describe("createRouteWorld", () => {
       expect(world.root.getObjectsByProperty("name", "door-frame")).toHaveLength(2);
       expect(world.root.getObjectsByProperty("name", "stair-step")).toHaveLength(stairs);
       expect(named("destination-marker")).toBeDefined();
+      const destinationSigns: string[] = [];
+      world.root.traverse(object => { if (object.userData.text === route.destination) destinationSigns.push(object.uuid); });
+      expect(destinationSigns).toHaveLength(1);
       expect(layoutRoute(route).steps.at(-1)?.floorEnd).toBe(floors.length - 1);
       world.dispose();
     }

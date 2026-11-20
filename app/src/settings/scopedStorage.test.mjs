@@ -5,7 +5,7 @@ import { OrganizerSession } from '../organizer/session.ts';
 import { WeekChoices } from '../week/choices.ts';
 import { DemoStorage } from './demoStorage.ts';
 import { accountPrefix, GUEST_ACCOUNT, scopedStorage } from './scopedStorage.ts';
-import { loadRegisteredEventIds, saveRegisteredEventIds, saveServerUrlOverride } from './storage.ts';
+import { discardLegacyRegistrations, loadRegisteredEventIds, saveRegisteredEventIds, saveServerUrlOverride } from './storage.ts';
 
 function deviceStorage(initial = {}) {
   const values = new Map(Object.entries(initial));
@@ -32,6 +32,22 @@ test('keys map to ksu-go.account.<id>.* and back', async () => {
   assert.equal(device.values.size, 0);
   assert.equal(accountPrefix(GUEST_ACCOUNT), 'ksu-go.account.guest.');
   assert.throws(() => noah.getItem('other.key'), /ksu-go\./);
+});
+
+test('dropping legacy registration ids only clears the current account’s old record', async () => {
+  const device = deviceStorage({
+    'ksu-go.account.maya.registered-event-ids': '["ev-01"]',
+    'ksu-go.account.noah.registered-event-ids': '["ev-04"]',
+    'ksu-go.account.maya.weekly-event-choices': '[]',
+    'ksu-go.account.maya.interests': '["arts"]',
+    'ksu-go.server-url': 'http://server.test',
+  });
+  await discardLegacyRegistrations(scopedStorage(device, 'maya'));
+  assert.equal(device.values.has('ksu-go.account.maya.registered-event-ids'), false);
+  assert.equal(device.values.get('ksu-go.account.noah.registered-event-ids'), '["ev-04"]');
+  assert.equal(device.values.get('ksu-go.account.maya.weekly-event-choices'), '[]');
+  assert.equal(device.values.get('ksu-go.account.maya.interests'), '["arts"]');
+  assert.equal(device.values.get('ksu-go.server-url'), 'http://server.test');
 });
 
 test('accounts never see each other’s registrations, choices or uploads; the server address stays device-wide', async () => {

@@ -13,7 +13,8 @@
     "location": { "buildingId": "b-library", "room": "Commons 1" },
     "routeId": null,
     "capacity": 40,
-    "registeredCount": 22
+    "registeredCount": 22,
+    "status": "active"
   },
   {
     "id": "ev-02",
@@ -29,7 +30,8 @@
     "location": { "buildingId": "b-student-center", "room": "Gym B" },
     "routeId": null,
     "capacity": null,
-    "registeredCount": 18
+    "registeredCount": 18,
+    "status": "active"
   },
   {
     "id": "ev-03",
@@ -45,7 +47,8 @@
     "location": { "buildingId": "b-administration", "room": "120" },
     "routeId": null,
     "capacity": 25,
-    "registeredCount": 25
+    "registeredCount": 25,
+    "status": "active"
   },
   {
     "id": "ev-04",
@@ -61,7 +64,8 @@
     "location": { "buildingId": "b-mathematics", "room": "215" },
     "routeId": "route-room-215-hand",
     "capacity": 30,
-    "registeredCount": 12
+    "registeredCount": 12,
+    "status": "active"
   },
   {
     "id": "ev-05",
@@ -77,7 +81,8 @@
     "location": { "buildingId": "b-east-building", "room": "Black Box Theater" },
     "routeId": null,
     "capacity": 60,
-    "registeredCount": 31
+    "registeredCount": 31,
+    "status": "active"
   },
   {
     "id": "ev-06",
@@ -93,7 +98,8 @@
     "location": { "buildingId": "b-crawford", "room": "Atrium" },
     "routeId": null,
     "capacity": null,
-    "registeredCount": 9
+    "registeredCount": 9,
+    "status": "active"
   },
   {
     "id": "ev-07",
@@ -109,7 +115,8 @@
     "location": { "buildingId": "b-library", "room": "310" },
     "routeId": null,
     "capacity": 20,
-    "registeredCount": 7
+    "registeredCount": 7,
+    "status": "active"
   },
   {
     "id": "ev-08",
@@ -125,7 +132,8 @@
     "location": { "buildingId": "b-mathematics", "room": "215" },
     "routeId": "route-room-215-hand",
     "capacity": 50,
-    "registeredCount": 34
+    "registeredCount": 34,
+    "status": "active"
   },
   {
     "id": "ev-09",
@@ -141,7 +149,8 @@
     "location": { "buildingId": "b-student-center", "room": "Studio 105" },
     "routeId": null,
     "capacity": 15,
-    "registeredCount": 15
+    "registeredCount": 15,
+    "status": "active"
   },
   {
     "id": "ev-10",
@@ -154,10 +163,11 @@
     "tags": ["drones", "building", "hands-on"],
     "startsInMin": 480,
     "durationMin": 120,
-    "location": { "buildingId": "b-mathematics", "room": "113" },
-    "routeId": null,
+    "location": { "buildingId": "b-mathematics", "room": "204" },
+    "routeId": "route-sample",
     "capacity": 20,
-    "registeredCount": 4
+    "registeredCount": 4,
+    "status": "active"
   },
   {
     "id": "ev-11",
@@ -173,7 +183,8 @@
     "location": { "buildingId": "b-norton", "room": "Ballroom" },
     "routeId": null,
     "capacity": null,
-    "registeredCount": 46
+    "registeredCount": 46,
+    "status": "active"
   },
   {
     "id": "ev-12",
@@ -189,7 +200,8 @@
     "location": { "buildingId": "b-library", "room": "Lobby" },
     "routeId": null,
     "capacity": null,
-    "registeredCount": 3
+    "registeredCount": 3,
+    "status": "active"
   },
   {
     "id": "ev-13",
@@ -205,7 +217,8 @@
     "location": { "buildingId": "b-student-center", "room": "Ballroom" },
     "routeId": null,
     "capacity": 400,
-    "registeredCount": 212
+    "registeredCount": 212,
+    "status": "active"
   },
   {
     "id": "ev-14",
@@ -221,7 +234,8 @@
     "location": { "buildingId": "b-student-center", "room": "Studio 105" },
     "routeId": null,
     "capacity": 18,
-    "registeredCount": 11
+    "registeredCount": 11,
+    "status": "active"
   },
   {
     "id": "ev-15",
@@ -237,7 +251,8 @@
     "location": { "buildingId": "b-mathematics", "room": "210" },
     "routeId": null,
     "capacity": 35,
-    "registeredCount": 20
+    "registeredCount": 20,
+    "status": "active"
   },
   {
     "id": "ev-16",
@@ -253,7 +268,8 @@
     "location": { "buildingId": "b-student-center", "room": "Lounge" },
     "routeId": null,
     "capacity": null,
-    "registeredCount": 57
+    "registeredCount": 57,
+    "status": "active"
   },
   {
     "id": "ev-17",
@@ -269,7 +285,8 @@
     "location": { "buildingId": "b-administration", "room": "118" },
     "routeId": null,
     "capacity": 24,
-    "registeredCount": 19
+    "registeredCount": 19,
+    "status": "active"
   },
   {
     "id": "ev-18",
@@ -285,7 +302,8 @@
     "location": { "buildingId": "b-student-center", "room": "Plaza Room" },
     "routeId": null,
     "capacity": null,
-    "registeredCount": 88
+    "registeredCount": 88,
+    "status": "active"
   },
   {
     "id": "ev-19",
@@ -301,7 +319,8 @@
     "location": { "buildingId": "b-crawford", "room": "Atrium" },
     "routeId": null,
     "capacity": null,
-    "registeredCount": 41
+    "registeredCount": 41,
+    "status": "active"
   },
   {
     "id": "ev-20",
@@ -317,7 +336,8 @@
     "location": { "buildingId": "b-student-center", "room": "Black Box Theater" },
     "routeId": null,
     "capacity": 80,
-    "registeredCount": 26
+    "registeredCount": 26,
+    "status": "active"
   },
   {
     "id": "ev-21",
@@ -333,7 +353,8 @@
     "location": { "buildingId": "b-student-center", "room": "Gym B" },
     "routeId": null,
     "capacity": 30,
-    "registeredCount": 30
+    "registeredCount": 30,
+    "status": "active"
   },
   {
     "id": "ev-22",
@@ -349,7 +370,8 @@
     "location": { "buildingId": "b-library", "room": "310" },
     "routeId": null,
     "capacity": 25,
-    "registeredCount": 8
+    "registeredCount": 8,
+    "status": "active"
   },
   {
     "id": "ev-23",
@@ -362,10 +384,11 @@
     "tags": ["game-dev", "game-jam", "info-session"],
     "startsInMin": 8200,
     "durationMin": 90,
-    "location": { "buildingId": "b-mathematics", "room": "118" },
+    "location": { "buildingId": "b-mathematics", "room": "113" },
     "routeId": null,
     "capacity": 40,
-    "registeredCount": 13
+    "registeredCount": 13,
+    "status": "active"
   },
   {
     "id": "ev-24",
@@ -381,6 +404,24 @@
     "location": { "buildingId": "b-norton", "room": "Lobby" },
     "routeId": null,
     "capacity": null,
-    "registeredCount": 5
+    "registeredCount": 5,
+    "status": "active"
+  },
+  {
+    "id": "ev-25",
+    "title": "Robotics Build Night",
+    "description": "Bring a laptop: we wire the new drive base and test the line follower. No experience needed.",
+    "organizationId": "org-robotics-club",
+    "organizer": "Robotics Club",
+    "partnerOrganizationId": null,
+    "category": "academic",
+    "tags": ["robotics", "building", "hands-on"],
+    "startsInMin": 1700,
+    "durationMin": 120,
+    "location": { "buildingId": "b-mathematics", "room": "113" },
+    "routeId": null,
+    "capacity": 24,
+    "registeredCount": 9,
+    "status": "active"
   }
 ]

@@ -5,13 +5,14 @@ import {
 import type { Event } from "../../../shared/types";
 import { palette } from "../palette";
 import type { CreateFlags } from "./flagsSeam";
+import { ROOF_DECK_OFFSET_M, roofPositions } from "./roof";
 
 type State = "live" | "soon" | "later";
 
 function appearance(event: Event, nowMs: number): { state: State; heightM: number } | undefined {
   const startMs = Date.parse(event.startsAt);
   const endMs = Date.parse(event.endsAt);
-  if (!Number.isFinite(nowMs) || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= nowMs) return;
+  if (event.status === "cancelled" || !Number.isFinite(nowMs) || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= nowMs) return;
   const minutes = (startMs - nowMs) / 60_000;
   if (minutes <= 0) return { state: "live", heightM: 30 };
   return { state: minutes <= 60 ? "soon" : "later", heightM: 12 + 18 * (1 - Math.min(minutes / 240, 1)) };
@@ -71,12 +72,12 @@ export const createFlags: CreateFlags = (flagsLayer, campus, events, now, savedE
   let elapsedSeconds = 0;
   for (const building of campus.buildings) {
     const active = activeByBuilding.get(building.id) ?? [];
-    const [x, z] = building.entrance;
+    const positions = roofPositions(building.footprint, active.length);
     active.forEach(({ event, state, heightM }, index) => {
-      const offset = (index - (active.length - 1) / 2) * 22;
       const flag = new Group();
       flag.name = event.id;
-      flag.position.set(x + offset * 0.4, 0, z + offset * 0.92);
+      flag.position.set(positions[index][0], building.heightM + ROOF_DECK_OFFSET_M, positions[index][1]);
+      flag.userData.buildingId = building.id;
 
       const hardware = new MeshBasicMaterial({ color: palette.ui.text });
       const pole = new Mesh(new CylinderGeometry(0.65, 0.85, heightM, 8), hardware);

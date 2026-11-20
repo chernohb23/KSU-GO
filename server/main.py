@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 from threading import Event as StopEvent
-from typing import Annotated, Callable
+from typing import Annotated, Callable, Literal
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
@@ -18,13 +18,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from access import AccessFirstRoute, Organizer, SignedIn, bearer_token
+from access import (
+    AccessFirstRoute, EventOwner, OrganizationOwner, RouteOwner, SignedIn, UploadTarget, bearer_token,
+)
 from errors import APIError
 from mock_pipeline import check_budget, run_pipeline
 from models import (
-    AuthResponse, CreateEventRequest, Event, EventRange, Health, LoginRequest, Progress,
-    Registration, Route, SignupRequest, StepsRequest, User,
+    AuthResponse, CreateEventRequest, EditEventRequest, Event, EventDirections, EventRange,
+    EventRegistrations, FollowResponse, Health, LoginRequest, MyRegistration, Organization,
+    OrganizationRequest, ProfileRequest, Progress, Registration, Route, SignupRequest, StepsRequest, User,
 )
+from rooms import room_label
 from store import Store
 from video import video_duration
 
@@ -102,8 +106,60 @@ def create_app(
         return app.state.store.get_event(event_id)
 
     @app.post("/api/events", status_code=201)
-    def create_event(body: CreateEventRequest, user: Organizer) -> Event:
+    def create_event(body: CreateEventRequest, user: SignedIn) -> Event:
         return app.state.store.create_event(body, user)
+
+    @app.put("/api/events/{event_id}")
+    def edit_event(event_id: str, body: EditEventRequest, _user: EventOwner) -> Event:
+        return app.state.store.edit_event(event_id, body)
+
+    @app.post("/api/events/{event_id}/cancel")
+    def cancel_event(event_id: str, _user: EventOwner) -> Event:
+        return app.state.store.cancel_event(event_id)
+
+    @app.get("/api/events/{event_id}/registrations")
+    def event_registrations(event_id: str, _user: EventOwner) -> EventRegistrations:
+        return app.state.store.event_registrations(event_id)
+
+    @app.get("/api/events/{event_id}/directions")
+    def event_directions(event_id: str, _user: EventOwner) -> EventDirections:
+        return app.state.store.event_directions(event_id)
+
+    @app.get("/api/organizations")
+    def organizations() -> list[Organization]:
+        return app.state.store.list_organizations()
+
+    @app.get("/api/organizations/{organization_id}")
+    def organization(organization_id: str) -> Organization:
+        return app.state.store.get_organization(organization_id)
+
+    @app.get("/api/organizations/{organization_id}/events")
+    def organization_events(organization_id: str, when: Literal["upcoming", "past"] = "upcoming") -> list[Event]:
+        return app.state.store.organization_events(organization_id, when)
+
+    @app.post("/api/organizations", status_code=201)
+    def create_organization(body: OrganizationRequest, user: SignedIn) -> Organization:
+        return app.state.store.create_organization(body, user)
+
+    @app.put("/api/organizations/{organization_id}")
+    def update_organization(organization_id: str, body: OrganizationRequest, _user: OrganizationOwner) -> Organization:
+        return app.state.store.update_organization(organization_id, body)
+
+    @app.post("/api/organizations/{organization_id}/follow")
+    def follow(organization_id: str, user: SignedIn) -> FollowResponse:
+        return app.state.store.set_following(user.id, organization_id, True)
+
+    @app.delete("/api/organizations/{organization_id}/follow")
+    def unfollow(organization_id: str, user: SignedIn) -> FollowResponse:
+        return app.state.store.set_following(user.id, organization_id, False)
+
+    @app.put("/api/me/profile")
+    def update_profile(body: ProfileRequest, user: SignedIn) -> User:
+        return app.state.store.update_profile(user.id, body)
+
+    @app.get("/api/me/registrations")
+    def my_registrations(user: SignedIn) -> list[MyRegistration]:
+        return app.state.store.my_registrations(user.id)
 
     @app.post("/api/events/{event_id}/register")
     def register(event_id: str, user: SignedIn) -> Registration:
@@ -129,21 +185,18 @@ def create_app(
 
     @app.get("/api/me")
     def me(user: SignedIn) -> User:
-        return user
+        return app.state.store.get_user(user.id)
 
     @app.post("/api/routes", status_code=202)
     def upload_route(
-        _user: Organizer,
+        event: UploadTarget,
         video: Annotated[UploadFile, File()],
-        building_id: Annotated[str, Form(alias="buildingId")],
-        destination: Annotated[str, Form()],
         start_floor: Annotated[str, Form(alias="startFloor")],
         destination_floor: Annotated[str, Form(alias="destinationFloor")],
-        event_id: Annotated[str | None, Form(alias="eventId")] = None,
     ) -> Route:
+        # The event (from ?eventId) was checked before the video was read: owner,
+        # active, not ended, and its room has no confirmed route.
         store = app.state.store
-        if event_id is not None:
-            store.get_event(event_id)
         video_sec = video_duration(video.file)
         check_budget(data_dir, app.state.budget_cap)
         upload_id = f"route-{uuid4()}"
@@ -158,12 +211,12 @@ def create_app(
         pending = Route(
             id=upload_id, status="processing",
             progress=Progress(stage="ingest", pct=0), error=None,
-            buildingId=building_id, destination=destination,
+            buildingId=event.location.buildingId, destination=room_label(event.location.room),
             startFloor=start_floor, destinationFloor=destination_floor,
             steps=[], checks=[], stats=None,
             createdAt=datetime.now(UTC), confirmedAt=None,
         )
-        store.add_upload(pending, event_id, app.state.pipeline_mode)
+        store.add_upload(pending, event.id, app.state.pipeline_mode)
         live_options = (
             dict(data_dir=data_dir, cap=app.state.budget_cap, client_factory=timeline_client_factory)
             if app.state.pipeline_mode == "live" else {}
@@ -180,11 +233,11 @@ def create_app(
         return app.state.store.get_route(route_id)
 
     @app.put("/api/routes/{route_id}/steps")
-    def replace_steps(route_id: str, request: StepsRequest, _user: Organizer) -> Route:
+    def replace_steps(route_id: str, request: StepsRequest, _user: RouteOwner) -> Route:
         return app.state.store.replace_steps(route_id, request.steps)
 
     @app.post("/api/routes/{route_id}/confirm")
-    def confirm(route_id: str, _user: Organizer) -> Route:
+    def confirm(route_id: str, _user: RouteOwner) -> Route:
         return app.state.store.confirm(route_id)
 
     return app

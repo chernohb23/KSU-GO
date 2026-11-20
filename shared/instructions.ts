@@ -1,4 +1,5 @@
 import type { Route } from "./types";
+import { roomLabel } from "./rooms.ts";
 
 function assertNever(value: never): never {
   throw new Error(`Unknown route step: ${JSON.stringify(value)}`);
@@ -11,7 +12,7 @@ export function stepInstruction(route: Route, stepIndex: number): string {
 
   switch (step.type) {
     case "door": {
-      if (stepIndex === route.steps.length - 1) return `${route.destination} is here`;
+      if (stepIndex === route.steps.length - 1) return `You made it! ${roomLabel(route.destination)} is right here.`;
       const label = step.label?.trim().toLowerCase();
       return `Go through the ${label || "door"}`;
     }

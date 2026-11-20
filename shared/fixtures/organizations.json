@@ -4,146 +4,230 @@
     "name": "Tutoring Center",
     "description": "Peer tutors for most first- and second-year courses. Drop in with your own work; no appointment needed.",
     "memberCount": 18,
-    "logo": { "initials": "TC", "color": "ink" }
+    "logo": { "initials": "TC", "color": "ink" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-campus-recreation",
     "name": "Campus Recreation",
     "description": "Runs intramurals, fitness classes and open gym hours for every skill level.",
     "memberCount": 45,
-    "logo": { "initials": "CR", "color": "gold" }
+    "logo": { "initials": "CR", "color": "gold" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-career-services",
     "name": "Career Services",
     "description": "Helps students with resumes, interviews and internship searches, and hosts the campus career fairs.",
     "memberCount": 12,
-    "logo": { "initials": "CS", "color": "ink" }
+    "logo": { "initials": "CS", "color": "ink" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-robotics-club",
     "name": "Robotics Club",
     "description": "Students who design, build and program robots for campus showcases and regional competitions. New members learn on club kits.",
     "memberCount": 32,
-    "logo": { "initials": "RC", "color": "gold" }
+    "logo": { "initials": "RC", "color": "gold" },
+    "meets": "Tuesdays 6 PM, Mathematics 215",
+    "contactEmail": "robotics@ksu-go.example",
+    "website": "https://ksu-go.example/robotics",
+    "ownerId": "user-demo-organizer"
   },
   {
     "id": "org-spoken-word-society",
     "name": "Spoken Word Society",
     "description": "Poets and storytellers who write, workshop and perform together at monthly open mics.",
     "memberCount": 15,
-    "logo": { "initials": "SW", "color": "ink" }
+    "logo": { "initials": "SW", "color": "ink" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-acm-student-chapter",
     "name": "ACM Student Chapter",
     "description": "The student computing chapter: coding nights, tech talks and programming contest practice.",
     "memberCount": 58,
-    "logo": { "initials": "ACM", "color": "gold" }
+    "logo": { "initials": "ACM", "color": "gold" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-university-library",
     "name": "University Library",
     "description": "Research help, study spaces and workshops on finding and citing sources.",
     "memberCount": 26,
-    "logo": { "initials": "UL", "color": "ink" }
+    "logo": { "initials": "UL", "color": "ink" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-society-of-women-engineers",
     "name": "Society of Women Engineers",
     "description": "Supports women in engineering and computing through mentoring, panels and industry visits.",
     "memberCount": 40,
-    "logo": { "initials": "SWE", "color": "gold" }
+    "logo": { "initials": "SWE", "color": "gold" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-ceramics-guild",
     "name": "Ceramics Guild",
     "description": "Hand-building and wheel-throwing sessions in the student center studio. Clay and glazes provided.",
     "memberCount": 14,
-    "logo": { "initials": "CG", "color": "ink" }
+    "logo": { "initials": "CG", "color": "ink" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-drone-club",
     "name": "Drone Club",
     "description": "Builds, repairs and flies small drones, with safety training before the first flight.",
     "memberCount": 21,
-    "logo": { "initials": "DC", "color": "gold" }
+    "logo": { "initials": "DC", "color": "gold" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-student-activities-board",
     "name": "Student Activities Board",
     "description": "Plans free weekly events on campus, from game nights to concerts.",
     "memberCount": 30,
-    "logo": { "initials": "SAB", "color": "ink" }
+    "logo": { "initials": "SAB", "color": "ink" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-art-club",
     "name": "Art Club",
     "description": "A relaxed studio night for painting and drawing. Beginners welcome; supplies on hand.",
     "memberCount": 27,
-    "logo": { "initials": "AC", "color": "gold" }
+    "logo": { "initials": "AC", "color": "gold" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-math-tutoring-lab",
     "name": "Math Tutoring Lab",
     "description": "Walk-in help for algebra through calculus and review sessions before exams.",
     "memberCount": 16,
-    "logo": { "initials": "MTL", "color": "ink" }
+    "logo": { "initials": "MTL", "color": "ink" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-student-government-association",
     "name": "Student Government Association",
     "description": "Elected students who represent the student body and host community events.",
     "memberCount": 36,
-    "logo": { "initials": "SGA", "color": "gold" }
+    "logo": { "initials": "SGA", "color": "gold" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-society-of-hispanic-professional-engineers",
     "name": "Society of Hispanic Professional Engineers",
     "description": "Builds community for Hispanic students in STEM through career prep, mentoring and service.",
     "memberCount": 33,
-    "logo": { "initials": "SHPE", "color": "ink" }
+    "logo": { "initials": "SHPE", "color": "ink" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-international-student-association",
     "name": "International Student Association",
     "description": "Brings students from every country together through cultural nights, food and conversation.",
     "memberCount": 52,
-    "logo": { "initials": "ISA", "color": "gold" }
+    "logo": { "initials": "ISA", "color": "gold" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-college-of-engineering",
     "name": "College of Engineering",
     "description": "The college office for engineering programs, advising and senior design showcases.",
     "memberCount": 20,
-    "logo": { "initials": "CE", "color": "ink" }
+    "logo": { "initials": "CE", "color": "ink" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-film-society",
     "name": "Film Society",
     "description": "Screens student films and classics, followed by discussion with the filmmakers when they can come.",
     "memberCount": 19,
-    "logo": { "initials": "FS", "color": "gold" }
+    "logo": { "initials": "FS", "color": "gold" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-green-owls",
     "name": "Green Owls",
     "description": "Students working on campus sustainability: recycling drives, garden days and energy projects.",
     "memberCount": 23,
-    "logo": { "initials": "GO", "color": "ink" }
+    "logo": { "initials": "GO", "color": "ink" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   },
   {
     "id": "org-game-development-club",
     "name": "Game Development Club",
     "description": "Makes small games together, from first prototypes to finished jam entries. All skill levels and roles welcome.",
     "memberCount": 24,
-    "logo": { "initials": "GD", "color": "ink" }
+    "logo": { "initials": "GD", "color": "ink" },
+    "meets": "Thursdays 7 PM, Mathematics 113",
+    "contactEmail": "gamedev@ksu-go.example",
+    "website": "https://ksu-go.example/gamedev",
+    "ownerId": null
   },
   {
     "id": "org-residence-life",
     "name": "Residence Life",
     "description": "Supports students living on campus with housing information and hall events.",
     "memberCount": 11,
-    "logo": { "initials": "RL", "color": "gold" }
+    "logo": { "initials": "RL", "color": "gold" },
+    "meets": null,
+    "contactEmail": null,
+    "website": null,
+    "ownerId": null
   }
 ]

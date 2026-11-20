@@ -150,7 +150,12 @@ export function createEasternFormat(clock: EasternClock) {
     return result;
   }
 
-  return { time, when, dayLabel, dateTime, range, sections };
+  /** A compact calendar block using the same campus day as every event time. */
+  const dateBlock = (iso: string) => {
+    const target = at(iso);
+    return { day: String(target.day), month: MONTHS[target.month - 1] };
+  };
+  return { time, when, dayLabel, dateTime, range, sections, dateBlock };
 }
 
 export const easternClock = selectEasternClock();

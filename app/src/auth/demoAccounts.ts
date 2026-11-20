@@ -6,8 +6,8 @@
 export type DemoAccount = { label: string; email: string; password: string };
 
 export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
-  { label: 'Use demo student', email: 'student@ksu-go.example', password: 'StudentDemo!26' },
-  { label: 'Use demo organizer', email: 'organizer@ksu-go.example', password: 'OrganizerDemo!26' },
+  { label: 'Maya Chen', email: 'student@ksu-go.example', password: 'StudentDemo!26' },
+  { label: 'Noah Brooks', email: 'organizer@ksu-go.example', password: 'OrganizerDemo!26' },
 ];
 
 export function isDemoMode(value: string | undefined): boolean {

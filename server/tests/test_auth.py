@@ -9,7 +9,8 @@ import pytest
 from conftest import Clock, demo_account
 
 
-USER_KEYS = {"id", "name", "email", "role", "organizationId"}
+USER_KEYS = {"id", "name", "email", "profile", "ownedOrganizationIds", "followingOrganizationIds"}
+EMPTY_PROFILE = {"major": None, "classYear": None, "bio": None, "avatarColor": "gold"}
 WRONG_LOGIN = {"code": "unauthenticated", "message": "Email or password is wrong."}
 
 
@@ -25,7 +26,7 @@ def me(client, token):
     return client.get("/api/me", headers={"Authorization": f"Bearer {token}"})
 
 
-def test_signup_creates_a_student_and_signs_in(make_client):
+def test_signup_creates_an_account_that_owns_nothing_and_signs_in(make_client):
     with make_client(as_user=None) as client:
         response = signup(client, name="  Ana Ruiz ", email="  Ana@Example.COM ")
         assert response.status_code == 201
@@ -34,7 +35,7 @@ def test_signup_creates_a_student_and_signs_in(make_client):
         assert set(body["user"]) == USER_KEYS
         assert body["user"] | {"id": None} == {
             "id": None, "name": "Ana Ruiz", "email": "ana@example.com",
-            "role": "student", "organizationId": None,
+            "profile": EMPTY_PROFILE, "ownedOrganizationIds": [], "followingOrganizationIds": [],
         }
         mine = me(client, body["token"])
         assert mine.status_code == 200
@@ -88,8 +89,8 @@ def test_demo_accounts_log_in(make_client, role):
         assert set(user) == USER_KEYS
         assert me(client, response.json()["token"]).json() == user
     assert user["name"] == account["name"]
-    assert user["role"] == role
-    assert user["organizationId"] == ("org-robotics-club" if role == "organizer" else None)
+    # An organizer is a user who owns an organization: Noah owns the Robotics Club.
+    assert user["ownedOrganizationIds"] == (["org-robotics-club"] if role == "organizer" else [])
 
 
 def test_wrong_password_and_unknown_email_get_the_same_401(make_client):

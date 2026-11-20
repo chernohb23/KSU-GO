@@ -1,9 +1,9 @@
+import { ScreenScrollView as ScrollView } from '../ui/ScreenScrollView';
+import { PressScale } from '../ui/PressScale';
 import { StatusBar } from 'expo-status-bar';
 import { forwardRef, type ComponentRef, type PropsWithChildren, type ReactNode } from 'react';
-import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput,
-  View, type TextInputProps,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput,
+  View, type TextInputProps } from 'react-native';
 
 import { radius, space, text, tone } from '../navigation/theme';
 
@@ -49,21 +49,21 @@ export function PrimaryButton({ label, busy = false, disabled = false, onPress }
   label: string; busy?: boolean; disabled?: boolean; onPress(): void;
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: disabled || busy, busy }}
+    <PressScale accessibilityRole="button" accessibilityState={{ disabled: disabled || busy, busy }}
       disabled={disabled || busy} onPress={onPress}
       style={({ pressed }) => [styles.primary, (disabled || busy) && styles.dimmed, pressed && styles.pressed]}>
       {busy ? <ActivityIndicator color={tone.surface} /> : <Text style={styles.primaryText}>{label}</Text>}
-    </Pressable>
+    </PressScale>
   );
 }
 
 export function TextButton({ label, onPress, accessory }: { label: string; onPress(): void; accessory?: ReactNode }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={8}
+    <PressScale accessibilityRole="button" onPress={onPress} hitSlop={8}
       style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}>
       <Text style={styles.textButtonLabel}>{label}</Text>
       {accessory}
-    </Pressable>
+    </PressScale>
   );
 }
 

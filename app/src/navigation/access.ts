@@ -9,16 +9,17 @@ export type AuthState =
   | { status: 'guest' }
   | { status: 'signedIn'; token: string; user: User; verified: boolean };
 
-export type TabName = 'index' | 'events' | 'organizer' | 'profile';
+export type TabName = 'index' | 'events' | 'organization' | 'profile';
 
 /** Sign-in screens are reachable; the app screens are not. */
 export const showsSignIn = (state: AuthState) => state.status === 'restoring' || state.status === 'signedOut';
 
-export const isOrganizer = (state: AuthState) => state.status === 'signedIn' && state.user.role === 'organizer';
+/** An organizer is a user who owns at least one organization; they get the Organization tab. */
+export const ownsOrganization = (state: AuthState) => state.status === 'signedIn' && state.user.ownedOrganizationIds.length > 0;
 
 export function tabsFor(state: AuthState): TabName[] {
   if (showsSignIn(state)) return [];
-  return isOrganizer(state) ? ['index', 'events', 'organizer', 'profile'] : ['index', 'events', 'profile'];
+  return ownsOrganization(state) ? ['index', 'events', 'organization', 'profile'] : ['index', 'events', 'profile'];
 }
 
 /** The account whose local data is in use, or null while signed out. */

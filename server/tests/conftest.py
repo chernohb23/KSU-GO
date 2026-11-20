@@ -10,10 +10,14 @@ from fastapi.testclient import TestClient
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "shared" / "fixtures"
 
 
-def demo_account(role):
+DEMO_IDS = {"student": "user-demo-student", "organizer": "user-demo-organizer"}
+
+
+def demo_account(who):
+    """Maya ("student") or Noah ("organizer", owner of the Robotics Club)."""
     from demo_accounts import DEMO_ACCOUNTS
 
-    return next(account for account in DEMO_ACCOUNTS if account["role"] == role)
+    return next(account for account in DEMO_ACCOUNTS if account["id"] == DEMO_IDS[who])
 
 
 def sign_in(client, role):

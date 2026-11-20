@@ -111,7 +111,7 @@
     },
     {
       "id": "b-east-building",
-      "name": "East Building (OSM unnamed)",
+      "name": "East Building",
       "footprint": [
         [62.39, 32.64],
         [59.36, 27.47],

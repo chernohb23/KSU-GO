@@ -12,17 +12,17 @@
   "ceilingHeightM": 2.7,
   "steps": [
     { "id": "s1", "type": "door", "label": "Main entrance", "source": "organizer", "confidence": null, "tSec": null, "note": null },
-    { "id": "s2", "type": "walk", "lengthM": 8, "source": "organizer", "confidence": null, "tSec": null, "note": "Paced estimate; verify with a building contact." },
+    { "id": "s2", "type": "walk", "lengthM": 8, "source": "organizer", "confidence": null, "tSec": null, "note": null },
     { "id": "s3", "type": "turn", "direction": "right", "source": "organizer", "confidence": null, "tSec": null, "note": null },
-    { "id": "s4", "type": "walk", "lengthM": 2, "source": "organizer", "confidence": null, "tSec": null, "note": "Paced estimate; verify with a building contact." },
+    { "id": "s4", "type": "walk", "lengthM": 2, "source": "organizer", "confidence": null, "tSec": null, "note": null },
     { "id": "s5", "type": "stairs", "direction": "up", "riseM": 1.8, "runM": 3, "toFloor": null, "source": "organizer", "confidence": null, "tSec": null, "note": null },
     { "id": "s6", "type": "turn", "direction": "u_left", "source": "organizer", "confidence": null, "tSec": null, "note": "U-turn on the stair landing." },
     { "id": "s7", "type": "stairs", "direction": "up", "riseM": 1.8, "runM": 3, "toFloor": "2", "source": "organizer", "confidence": null, "tSec": null, "note": null },
-    { "id": "s8", "type": "walk", "lengthM": 2, "source": "organizer", "confidence": null, "tSec": null, "note": "Paced estimate; verify with a building contact." },
+    { "id": "s8", "type": "walk", "lengthM": 2, "source": "organizer", "confidence": null, "tSec": null, "note": null },
     { "id": "s9", "type": "turn", "direction": "right", "source": "organizer", "confidence": null, "tSec": null, "note": null },
-    { "id": "s10", "type": "walk", "lengthM": 7, "source": "organizer", "confidence": null, "tSec": null, "note": "Paced estimate; verify with a building contact." },
+    { "id": "s10", "type": "walk", "lengthM": 7, "source": "organizer", "confidence": null, "tSec": null, "note": null },
     { "id": "s11", "type": "turn", "direction": "left", "source": "organizer", "confidence": null, "tSec": null, "note": null },
-    { "id": "s12", "type": "walk", "lengthM": 1, "source": "organizer", "confidence": null, "tSec": null, "note": "Paced estimate; verify with a building contact." },
+    { "id": "s12", "type": "walk", "lengthM": 1, "source": "organizer", "confidence": null, "tSec": null, "note": null },
     { "id": "s13", "type": "door", "label": "Room 215", "source": "organizer", "confidence": null, "tSec": null, "note": "Door sign reads D215." }
   ],
   "checks": [

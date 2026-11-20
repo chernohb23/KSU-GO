@@ -6,8 +6,8 @@ import { DemoStorage } from '../settings/demoStorage.ts';
 import { scopedStorage } from '../settings/scopedStorage.ts';
 import { AuthController, AuthFormError, NO_SERVER, SESSION_ENDED, SESSION_KEY, UNREACHABLE } from './controller.ts';
 
-const maya = { id: 'user-demo-student', name: 'Maya Chen', email: 'student@ksu-go.example', role: 'student', organizationId: null };
-const noah = { id: 'user-demo-organizer', name: 'Noah Brooks', email: 'organizer@ksu-go.example', role: 'organizer', organizationId: 'org-robotics-club' };
+const maya = { id: 'user-demo-student', name: 'Maya Chen', email: 'student@ksu-go.example', profile: { major: null, classYear: null, bio: null, avatarColor: 'gold' }, ownedOrganizationIds: [], followingOrganizationIds: [] };
+const noah = { id: 'user-demo-organizer', name: 'Noah Brooks', email: 'organizer@ksu-go.example', profile: { major: null, classYear: null, bio: null, avatarColor: 'gold' }, ownedOrganizationIds: ['org-robotics-club'], followingOrganizationIds: [] };
 
 function deviceStorage(initial = {}) {
   const values = new Map(Object.entries(initial));
@@ -47,6 +47,35 @@ function setup({ initial = {}, server = 'http://server.test', api = {} } = {}) {
 }
 
 const saved = (user, token) => ({ [SESSION_KEY]: JSON.stringify({ token, user }) });
+
+test('a phase C session retains its token but drops old role claims until /me verifies ownership', async () => {
+  const old = { id: noah.id, name: noah.name, email: noah.email, role: 'organizer', organizationId: 'org-robotics-club' };
+  const { controller } = setup({ initial: saved(old, 'old-token'), api: { me: () => noah } });
+  await controller.restore();
+  assert.equal(controller.token(), 'old-token');
+  assert.equal(controller.state.verified, false);
+  assert.deepEqual(controller.state.user.ownedOrganizationIds, []);
+  assert.deepEqual(controller.state.user.followingOrganizationIds, []);
+  assert.deepEqual(controller.state.user.profile, { major: null, classYear: null, bio: null, avatarColor: 'gold' });
+  assert.equal('role' in controller.state.user, false);
+  await controller.recheck();
+  assert.equal(controller.state.verified, true);
+  assert.deepEqual(controller.state.user, noah);
+});
+
+test('fresh server users update ownership and profile without replacing the session', async () => {
+  const { controller, storage } = setup({ initial: saved(maya, 'maya-token') });
+  await controller.restore();
+  await controller.recheck();
+  const updated = { ...maya, ownedOrganizationIds: ['org-new'], followingOrganizationIds: ['org-robotics-club'],
+    profile: { major: 'Computer Science', classYear: 2028, bio: 'Building things.', avatarColor: 'ink' } };
+  await controller.setUser(updated);
+  assert.equal(controller.token(), 'maya-token');
+  assert.deepEqual(controller.state.user, updated);
+  assert.deepEqual(JSON.parse(storage.values.get(SESSION_KEY)).user, updated);
+  await controller.setUser(noah);
+  assert.deepEqual(controller.state.user, updated);
+});
 
 test('restore with nothing saved goes to sign-in', async () => {
   const { controller } = setup();
@@ -118,7 +147,7 @@ test('restore with an expired token signs out with the session-ended message and
 });
 
 test('a corrupt saved session is treated as none', async () => {
-  for (const raw of ['{bad', '{"token":1}', JSON.stringify({ token: 't', user: { ...maya, role: 'admin' } })]) {
+  for (const raw of ['{bad', '{"token":1}', JSON.stringify({ token: 't', user: { ...maya, name: 42 } })]) {
     const { controller } = setup({ initial: { [SESSION_KEY]: raw } });
     await controller.restore();
     assert.deepEqual(controller.state, { status: 'signedOut', message: null }, raw);
@@ -155,12 +184,13 @@ test('sign-in and sign-up show the server message, or say the server is needed',
   await assert.rejects(none.controller.signIn('a@b.c', 'pw'), (error) => error.message === NO_SERVER);
 });
 
-test('sign up always arrives signed in as the new student', async () => {
+test('sign up arrives signed in without organization ownership', async () => {
   const { controller, calls } = setup();
   await controller.restore();
   await controller.signUp('Ana Ruiz', 'ana@example.com', 'correct horse');
   assert.deepEqual(calls[0], ['signup', { name: 'Ana Ruiz', email: 'ana@example.com', password: 'correct horse' }]);
-  assert.equal(controller.state.user.role, 'student');
+  assert.deepEqual(controller.state.user.ownedOrganizationIds, []);
+  assert.equal('role' in controller.state.user, false);
 });
 
 test('logout clears only the session, keeps server address and every account’s data, and never resets the demo', async () => {

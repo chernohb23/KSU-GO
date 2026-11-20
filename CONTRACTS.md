@@ -34,8 +34,8 @@ Fixtures in `shared/fixtures/`:
 | `campus.json` | Logical layout of the campus section (section 3) |
 | `route.sample.json` | The hand-written sample route in section 4 |
 | `route.draft-flawed.json` | The sample route as a `draft` with planted problems and their checks. Mock mode returns it, so the confirm screen is always built against a bad draft. |
-| `routes/*.json` | Routes for the demo building: confirmed routes, and `*.draft.json` drafts waiting for the organizer |
-| `organizations.json` | The demo organizations (section 2, `Organization`). Static: the app bundles it and the server reads it at startup. |
+| `routes/*.json` | Routes for the demo building: confirmed routes, and `*.draft.json` drafts waiting for the organizer. `room-113.draft.json` is the prepared stage draft, baked by `server/scripts/bake_stage_draft.py` from the recorded route2 run. |
+| `organizations.json` | Seed organizations (section 2, organization seed form). The server loads them at startup and stores every change and new organization in `server/data/state.json`. The app bundles the file for offline use. |
 
 Every part must work from fixtures alone, with no server and no network.
 
@@ -56,15 +56,16 @@ type Event = {
   startsAt: string;
   endsAt: string;
   location: { buildingId: string; room: string };  // buildingId from campus.json
-  routeId: string | null;               // confirmed route to the room; several events may share one
+  routeId: string | null;               // derived by the server: the room's most recently confirmed route, else null
   capacity: number | null;              // display only; see Capacity
   registeredCount: number;
+  status: "active" | "cancelled";       // see Cancelled events
 };
 ```
 
 **Seed form.** `events.seed.json` holds the same objects, but with `startsInMin` (negative means already started) and `durationMin` in place of `startsAt` and `endsAt`. The server at startup, and the app when it falls back to fixtures, convert them using the current time. The demo therefore always has live and upcoming events. Events created through `POST /api/events` are stored by the server with their exact `startsAt` and `endsAt`; they never go into the seed file.
 
-**Ranges.** Both the server and the app in fixture mode use these. Ended events are always left out, and results are sorted by `startsAt`.
+**Ranges.** Both the server and the app in fixture mode use these. Ended and cancelled events are always left out, and results are sorted by `startsAt`.
 
 | Range | Events included |
 |---|---|
@@ -88,20 +89,49 @@ For `soon` and `later`, `heightM = 12 + 18 * (1 - clamp(minutesUntilStart / 240,
 
 **Times in the app.** The app shows every time in campus time (America/New_York), labeled "ET", whatever the phone's time zone.
 
-**Organizations.** `organizations.json` holds the demo organizations as `Organization[]`. Every event's `organizationId`, and its `partnerOrganizationId` when not null, names one of them. Logos are original initials badges, never real logos. Organizations are static: the app bundles the file, and there is no organizations endpoint.
+**Room label.** One function names a room everywhere: in the app, on route doors, and in the same-room rule. A room that starts with a digit is "Room " plus the room ("Room 204"). Any other room is the name as entered, trimmed ("Atrium").
+
+**Room directions.** A route belongs to a room: its `buildingId` plus its `destination`. An event is in a route's room when `location.buildingId` equals the route's `buildingId` and the room label of `location.room` equals the route's `destination`, ignoring case and surrounding spaces.
+
+- Every event uses its room's most recently confirmed route, so `routeId` is never stored per event: the server derives it whenever it returns an event.
+- Moving an event to another room, or confirming a route, changes `routeId` for every event in the affected rooms at once.
+- Seed events carry `routeId` too. It must equal the derived value for bundled routes, so the app's offline fixtures agree with the server.
+
+**Cancelled events.**
+
+- `GET /api/events` never returns them, so they leave the map, Events and Discover.
+- `GET /api/events/{id}` still returns them, with `status: "cancelled"`.
+- A registered user sees them labeled "Cancelled" in Profile, with no "Take me there".
+- The host organization's owner sees them in the organization's events.
+- Registering for or editing a cancelled event is `409 event_cancelled`. Cancelling can't be undone.
+
+**Organizations.** Organizations are stored by the server.
+
+- Any signed-in user can create one and becomes its owner. One user can own several.
+- Only the owner edits an organization and manages its events and their directions.
+- The seed organizations in `organizations.json` have no owner, except `org-robotics-club`, which Noah Brooks owns.
+- Logos are original initials badges, never real logos. Real-world approval of new organizations is out of scope.
+- Every event's `organizationId`, and its `partnerOrganizationId` when not null, names an existing organization. The server writes `organizer` from the host's current name, so renaming an organization renames it on its events.
 
 ```ts
 type Organization = {
-  id: string;                  // e.g. "org-robotics-club"
-  name: string;
-  description: string;         // one or two sentences
-  memberCount: number;         // display only
+  id: string;                   // "org-" + slug of the name at creation, plus a suffix if taken; never changes
+  name: string;                 // 2 to 60 characters after trimming; unique, ignoring case
+  description: string;          // 1 to 280 characters after trimming
   logo: {
-    initials: string;          // 1 to 4 capital letters, e.g. "RC"
-    color: "gold" | "ink";     // badge background: "gold" is ink initials on gold, "ink" is paper initials on ink
+    initials: string;           // 1 to 4 capital letters, e.g. "RC"
+    color: "gold" | "ink";      // badge background: "gold" is ink initials on gold, "ink" is paper initials on ink
   };
+  memberCount: number;          // "members": entered by the organization, a whole number from 0 to 100000
+  meets: string | null;         // e.g. "Tuesdays 6 PM, Mathematics 215"; 1 to 80 characters
+  contactEmail: string | null;  // trimmed and lowercased; one "@" with text on both sides; at most 254 characters
+  website: string | null;       // an https:// URL, at most 200 characters
+  ownerId: string | null;       // the owning user's id; null for unowned seed organizations
+  followerCount: number;        // "followers": set by the server from real follows
 };
 ```
+
+**Organization seed form.** `organizations.json` holds `Organization` objects without `followerCount`. The app shows 0 followers until the server answers.
 
 ## 3. Campus
 
@@ -236,39 +266,52 @@ Base URL comes from `EXPO_PUBLIC_API_URL`. All paths start with `/api`. Bodies a
 
 **Accounts.** Sign-in uses demo accounts checked by this server. It is not university sign-in and is not connected to any university system.
 
-- `POST /api/auth/signup` always creates a `student`. No endpoint creates organizers.
-- The server seeds two demo accounts at startup: Maya Chen (`student@ksu-go.example`, student) and Noah Brooks (`organizer@ksu-go.example`, organizer for `org-robotics-club`). Their demo-only passwords are in `app/README.md`.
+- `POST /api/auth/signup` creates an account that owns no organizations. Creating an organization is how anyone becomes an organizer: an organizer is a user who owns at least one.
+- The server seeds two demo accounts at startup: Maya Chen (`student@ksu-go.example`) and Noah Brooks (`organizer@ksu-go.example`), who owns `org-robotics-club`. Their demo-only passwords are in `app/README.md`.
 - Passwords are stored only as `scrypt` hashes, each with its own salt. A token is a random string from `secrets.token_urlsafe`. The server stores only its SHA-256 hash, and the token expires 7 days after it was issued.
-- Accounts, sessions, registrations and created events persist in `server/data/state.json`.
+- Accounts, sessions, profiles, follows, registrations, organizations and created or edited events persist in `server/data/state.json`.
 - The server never logs a password or a token.
 
 **Auth header.** A signed-in request sends `Authorization: Bearer <token>`. Open endpoints ignore the header.
 
 - An endpoint that needs sign-in answers `401 unauthenticated` when the header is missing or the token is unknown or expired.
-- It answers `403 forbidden` when the user's role or organization doesn't allow the call.
-- Sign-in is checked before the body, so a request with no token is `401` even when its body is invalid.
+- It answers `403 forbidden` when the signed-in user doesn't own the organization the call needs.
+- Sign-in and ownership are checked before the body for every endpoint whose ids are in the path or query, so a request with no token is `401`, and a non-owner is `403`, even when the body is invalid. The one exception is `POST /api/events`, whose `organizationId` is in the body.
 
 ```ts
 type User = {
   id: string;
-  name: string;
-  email: string;                  // stored trimmed and lowercased
-  role: "student" | "organizer";
-  organizationId: string | null;  // set exactly when role is "organizer"
+  name: string;                         // 1 to 80 characters after trimming
+  email: string;                        // stored trimmed and lowercased
+  profile: {
+    major: string | null;               // 1 to 60 characters
+    classYear: number | null;           // graduation year, from the current year - 1 to the current year + 7
+    bio: string | null;                 // 1 to 160 characters
+    avatarColor: "gold" | "ink" | "amber";
+  };
+  ownedOrganizationIds: string[];       // organizations whose ownerId is this user
+  followingOrganizationIds: string[];   // in follow order
 };
 
 type AuthResponse = { token: string; user: User };
+
+/** A registration of the signed-in user, for Profile. */
+type MyRegistration = { event: Event; registeredAt: string };
 ```
 
 **Who may call what.**
 
 | Access | Endpoints |
 |---|---|
-| Open | `GET /api/health`, `GET /api/events`, `GET /api/events/{id}`, `GET /api/routes/{id}`, `POST /api/auth/signup`, `POST /api/auth/login` |
-| Signed in, any role | `GET /api/me`, `POST /api/auth/logout`, `POST /api/events/{id}/register` |
-| Organizer only | `POST /api/events`, `POST /api/routes`, `PUT /api/routes/{id}/steps`, `POST /api/routes/{id}/confirm` |
+| Open | `GET /api/health`, `GET /api/events`, `GET /api/events/{id}`, `GET /api/routes/{id}`, `GET /api/organizations`, `GET /api/organizations/{id}`, `GET /api/organizations/{id}/events`, `POST /api/auth/signup`, `POST /api/auth/login` |
+| Signed in | `GET /api/me`, `PUT /api/me/profile`, `GET /api/me/registrations`, `POST /api/auth/logout`, `POST /api/events/{id}/register`, `POST /api/organizations`, `POST /api/organizations/{id}/follow`, `DELETE /api/organizations/{id}/follow`, `POST /api/events` (then owner of its `organizationId`) |
+| Owner of the organization | `PUT /api/organizations/{id}` |
+| Owner of the event's host organization | `PUT /api/events/{id}`, `POST /api/events/{id}/cancel`, `GET /api/events/{id}/registrations`, `GET /api/events/{id}/directions`, `POST /api/routes?eventId={id}` |
+| Owner of the host organization of the route's event | `PUT /api/routes/{id}/steps`, `POST /api/routes/{id}/confirm` |
 
-**Offline.** Signing in, signing up and creating events need the server. With no server, the sign-in screen offers "Browse offline": a read-only guest who can browse events, open event details and walk confirmed routes, all from fixtures. Registering and organizer actions need a sign-in. If a signed-in user's server stops answering, the app falls back to fixtures as before, and anything that needs the server says so. The "Offline data" badge rule in section 7 is unchanged.
+A route belongs to the event it was uploaded for. The bundled stage draft `route-math-113-draft` belongs to `ev-25`.
+
+**Offline.** Signing in, signing up and creating events need the server. With no server, the sign-in screen offers "Browse offline": a read-only guest who can browse events, open event details and walk confirmed routes, all from fixtures. Registering and organizer actions need a sign-in. Organizations, profiles, follows and event management need the server too; offline, the bundled organizations show read-only. If a signed-in user's server stops answering, the app falls back to fixtures as before, and anything that needs the server says so. The "Offline data" badge rule in section 7 is unchanged.
 
 | Method and path | Request | Response |
 |---|---|---|
@@ -276,15 +319,28 @@ type AuthResponse = { token: string; user: User };
 | `GET /api/events` | optional query `range=today` (default) or `range=week` | `Event[]` in that range (section 2) |
 | `GET /api/events/{id}` | | `Event` |
 | `POST /api/events` | `CreateEventRequest` | `201` with the new `Event`. See **Creating events** below. |
-| `POST /api/events/{id}/register` | no body | `{ "registered": true, "registeredCount": number }`. Recorded per signed-in user. Repeating it for the same user changes nothing. |
+| `PUT /api/events/{id}` | `EditEventRequest` | `Event`. The rules of **Creating events**, except `startsAt` may also stay exactly what it was. A cancelled event is `409 event_cancelled`; an ended one is `invalid_request`. |
+| `POST /api/events/{id}/cancel` | | `Event` with `status: "cancelled"`. Repeating it changes nothing. An ended event is `invalid_request`. |
+| `POST /api/events/{id}/register` | no body | `{ "registered": true, "registeredCount": number }`. Recorded per signed-in user, with the time. Repeating it for the same user changes nothing. A cancelled event is `409 event_cancelled`. |
+| `GET /api/events/{id}/registrations` | | `{ "registeredCount": number, "people": { "userId": string, "name": string, "registeredAt": string }[] }`, newest first. `registeredCount` also counts seeded and device registrations, which have no name. |
+| `GET /api/events/{id}/directions` | | `{ "state": "confirmed" \| "processing" \| "draft" \| "failed" \| "none", "route": Route \| null }`: the room's confirmed route if there is one; else the newest unconfirmed route uploaded for this event while it was in this room; else `none`. |
+| `GET /api/organizations` | | `Organization[]` sorted by name |
+| `GET /api/organizations/{id}` | | `Organization` |
+| `GET /api/organizations/{id}/events` | optional query `when=upcoming` (default: not ended) or `when=past` (ended, newest first) | `Event[]` hosted by the organization, cancelled included |
+| `POST /api/organizations` | `OrganizationRequest` | `201` with the `Organization`; the caller owns it. A name already in use, ignoring case, is `invalid_request` with the message "An organization with this name already exists." |
+| `PUT /api/organizations/{id}` | `OrganizationRequest` | `Organization`. Same rules; the `id` never changes. |
+| `POST /api/organizations/{id}/follow` | | `{ "following": true, "followerCount": number }`. Repeating it changes nothing. |
+| `DELETE /api/organizations/{id}/follow` | | `{ "following": false, "followerCount": number }`. Repeating it changes nothing. |
+| `PUT /api/me/profile` | `ProfileRequest` | `User` |
+| `GET /api/me/registrations` | | `MyRegistration[]`: every account registration of the caller, ended and cancelled included, sorted by the event's `startsAt`. |
 | `POST /api/auth/signup` | `{ "name": string, "email": string, "password": string }` | `201` with `AuthResponse`, role `student`. `name` is 1 to 80 characters after trimming. `email` is trimmed and lowercased, at most 254 characters, has one `@` with text on both sides, and is not already in use. `password` is 8 to 128 characters. Anything else is `invalid_request`; an email already in use is `invalid_request` with the message "An account with this email already exists." |
 | `POST /api/auth/login` | `{ "email": string, "password": string }` | `AuthResponse` with a new token. The email is matched trimmed and lowercased. A wrong email or a wrong password is `401 unauthenticated`, with the same message for both. |
 | `POST /api/auth/logout` | | `204`, no body. The presented token stops working. |
 | `GET /api/me` | | `User` |
-| `POST /api/routes` | multipart: `video` (file), `buildingId`, `destination`, `startFloor`, `destinationFloor`, optional `eventId` | `202` with a `Route` in `processing` |
+| `POST /api/routes?eventId={id}` | query `eventId`; multipart: `video` (file), `startFloor`, `destinationFloor` | `202` with a `Route` in `processing`, whose `buildingId` and `destination` (the room label) come from the event. The caller must own the event's host organization; the event must be active and not ended. If its room already has a confirmed route, the answer is `409 room_has_route`. These checks run before any of the video is read. |
 | `GET /api/routes/{id}` | | `Route`. The app polls this every 3 s while `processing`. |
 | `PUT /api/routes/{id}/steps` | `{ "steps": Step[] }` | `Route` with the new steps and fresh `checks`. Only allowed in `draft`. The steps must begin and end with a `door`, or the call is an `invalid_request`. |
-| `POST /api/routes/{id}/confirm` | | `Route` in `confirmed`. The route is then set as `routeId` on the upload's `eventId`, if there was one, and on every event in the same room that has no route. An event is in the same room when its `location.buildingId` equals the route's `buildingId` and `"Room " + location.room` equals the route's `destination`, ignoring case and surrounding spaces. A route belongs to a room and serves every event there. |
+| `POST /api/routes/{id}/confirm` | | `Route` in `confirmed`. It becomes its room's route, so every event in the room uses it at once (**Room directions**, section 2). If the room got a confirmed route in the meantime, the answer is `409 room_has_route`. |
 
 **Creating events.**
 
@@ -292,8 +348,8 @@ type AuthResponse = { token: string; user: User };
 type CreateEventRequest = {
   title: string;                        // 1 to 120 characters after trimming
   description: string;                  // 1 to 2000 characters after trimming
-  organizationId: string;               // the signed-in organizer's organizationId
-  partnerOrganizationId: string | null; // null, or a different organization from organizations.json
+  organizationId: string;               // an organization the caller owns
+  partnerOrganizationId: string | null; // null, or another existing organization
   category: Event["category"];          // required; no default
   tags: string[];                       // may be empty; normalized as below
   startsAt: string;                     // ISO 8601 with an explicit offset
@@ -304,13 +360,37 @@ type CreateEventRequest = {
 ```
 
 - Every key is required. `partnerOrganizationId` and `capacity` use `null` for none; `tags` uses `[]`.
-- An `organizationId` that isn't the signed-in organizer's is `403 forbidden`.
+- An `organizationId` the caller doesn't own is `403 forbidden`.
 - Text fields are stored trimmed. Tags are trimmed, lowercased and deduplicated, keeping the first occurrence; after that there must be at most 8, each 1 to 24 characters.
 - `startsAt` needs an explicit offset (`Z` or `±hh:mm`) and must satisfy `now < startsAt < now + 7 days`, on date and time, so a new event always falls in the `week` range.
-- The server sets the remaining fields: a new unique `id`; `organizer`, the host organization's name; `endsAt = startsAt + durationMin`; `registeredCount: 0`; and `routeId`, the most recently confirmed route that serves the room under the same-room rule of `POST /api/routes/{id}/confirm`, otherwise `null`.
+- The server sets the remaining fields: a new unique `id`; `organizer`, the host organization's name; `endsAt = startsAt + durationMin`; `registeredCount: 0`; `status: "active"`; and the derived `routeId`.
 - The response's `startsAt` is the same instant that was sent; its offset may differ.
 - Any other violation is `invalid_request`.
-- The event is saved in `state.json`. `GET /api/events` and `GET /api/events/{id}` return it from then on, also after restarts. A later confirm gives it a route by the same rule as seeded events.
+- The event is saved in `state.json`. `GET /api/events` and `GET /api/events/{id}` return it from then on, also after restarts. An edited seed event is saved the same way and keeps its exact times from then on.
+
+```ts
+/** Body of PUT /api/events/{id}. The host organization can't change. */
+type EditEventRequest = Omit<CreateEventRequest, "organizationId">;
+
+type OrganizationRequest = {
+  name: string;
+  description: string;
+  logo: { initials: string; color: "gold" | "ink" };
+  memberCount: number;
+  meets: string | null;
+  contactEmail: string | null;
+  website: string | null;
+};
+
+/** Body of PUT /api/me/profile. Every key is required; null clears an optional field. */
+type ProfileRequest = {
+  name: string;
+  major: string | null;
+  classYear: number | null;
+  bio: string | null;
+  avatarColor: "gold" | "ink" | "amber";
+};
+```
 
 Errors use the right HTTP status and this body:
 
@@ -320,10 +400,12 @@ Errors use the right HTTP status and this body:
 
 | Code | Status | When |
 |---|---|---|
-| `not_found` | 404 | unknown event or route |
+| `not_found` | 404 | unknown event, route or organization |
 | `invalid_request` | 422 | body does not match this file |
 | `unauthenticated` | 401 | no token, or an unknown or expired one, on an endpoint that needs sign-in; or a wrong email or password at login |
-| `forbidden` | 403 | the signed-in user's role or organization doesn't allow this call |
+| `forbidden` | 403 | the signed-in user doesn't own the organization this call needs |
+| `room_has_route` | 409 | uploading or confirming directions for a room that already has a confirmed route: "This room already has directions. Events here use them." |
+| `event_cancelled` | 409 | registering for, or editing, a cancelled event |
 | `wrong_status` | 409 | editing or confirming a route that is not a `draft` |
 | `route_has_failed_checks` | 409 | confirming while any check is `fail` |
 | `video_rejected` | 422 | video longer than 3 minutes, larger than 100 MB, or unreadable |

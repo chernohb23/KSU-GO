@@ -1,28 +1,35 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { accountIdFor, isOrganizer, mapSheetVisible, registerAvailability, showsSignIn, tabsFor } from './access.ts';
+import { accountIdFor, ownsOrganization, mapSheetVisible, registerAvailability, showsSignIn, tabsFor } from './access.ts';
 
 const student = { status: 'signedIn', token: 't1', verified: true,
-  user: { id: 'user-demo-student', name: 'Maya Chen', email: 'student@ksu-go.example', role: 'student', organizationId: null } };
+  user: { id: 'user-demo-student', name: 'Maya Chen', email: 'student@ksu-go.example', ownedOrganizationIds: [], followingOrganizationIds: [] } };
 const organizer = { status: 'signedIn', token: 't2', verified: true,
-  user: { id: 'user-demo-organizer', name: 'Noah Brooks', email: 'organizer@ksu-go.example', role: 'organizer', organizationId: 'org-robotics-club' } };
+  user: { id: 'user-demo-organizer', name: 'Noah Brooks', email: 'organizer@ksu-go.example', ownedOrganizationIds: ['org-robotics-club'], followingOrganizationIds: [] } };
 const guest = { status: 'guest' };
 const signedOut = { status: 'signedOut', message: null };
 const restoring = { status: 'restoring' };
 
-test('each role sees exactly its tabs', () => {
+test('ownership determines the exact tabs', () => {
   assert.deepEqual(tabsFor(student), ['index', 'events', 'profile']);
   assert.deepEqual(tabsFor(guest), ['index', 'events', 'profile']);
-  assert.deepEqual(tabsFor(organizer), ['index', 'events', 'organizer', 'profile']);
+  assert.deepEqual(tabsFor(organizer), ['index', 'events', 'organization', 'profile']);
   assert.deepEqual(tabsFor(signedOut), []);
   assert.deepEqual(tabsFor(restoring), []);
 });
 
-test('only an organizer passes the organizer guard (Tabs.Protected and the layout redirect)', () => {
-  assert.equal(isOrganizer(organizer), true);
-  assert.equal(isOrganizer({ ...organizer, verified: false }), true); // offline: drafts still open read-only
-  for (const state of [student, guest, signedOut, restoring]) assert.equal(isOrganizer(state), false, state.status);
+test('any account gaining its first organization gets the tab; several organizations keep a single tab', () => {
+  const owner = { ...student, user: { ...student.user, ownedOrganizationIds: ['org-one', 'org-two'] } };
+  assert.equal(ownsOrganization(owner), true);
+  assert.deepEqual(tabsFor(owner), ['index', 'events', 'organization', 'profile']);
+  assert.deepEqual(tabsFor({ ...owner, user: { ...owner.user, ownedOrganizationIds: [] } }), ['index', 'events', 'profile']);
+});
+
+test('only an organization owner passes the organization guard (Tabs.Protected and the layout redirect)', () => {
+  assert.equal(ownsOrganization(organizer), true);
+  assert.equal(ownsOrganization({ ...organizer, verified: false }), true); // offline: drafts still open read-only
+  for (const state of [student, guest, signedOut, restoring]) assert.equal(ownsOrganization(state), false, state.status);
 });
 
 test('signed-out and restoring states show sign-in; everyone else gets the app screens', () => {

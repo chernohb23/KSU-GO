@@ -1,12 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 
+import type { MyRegistration } from '../../../shared/types.ts';
 import { createApiClient, type ApiClient } from '../api/client.ts';
 import { useAuth } from '../auth/AuthProvider';
 import { useAppData } from '../data/AppDataContext';
 import { accountIdFor } from '../navigation/access.ts';
 import { useDemoSession } from '../settings/DemoSession';
 import { scopedStorage, type ScopableStorage } from '../settings/scopedStorage.ts';
-import { loadRegisteredEventIds, saveRegisteredEventIds } from '../settings/storage.ts';
+import { discardLegacyRegistrations } from '../settings/storage.ts';
 import { WeekChoices } from '../week/choices.ts';
 import { registerForEvent } from './register.ts';
 
@@ -17,6 +18,9 @@ type AccountValue = {
   weekChoices: WeekChoices;
   registeredEventIds: string[];
   registrationsReady: boolean;
+  /** This account's registrations from the server, cancelled and ended included; null until loaded. */
+  registrations: MyRegistration[] | null;
+  refreshRegistrations(): Promise<void>;
   /** Registers the signed-in user; throws an Error worded for the event card. */
   register(eventId: string): Promise<void>;
   /** A client that sends this account's token, or null without a server address. */
@@ -42,15 +46,28 @@ export function AccountProvider({ children }: PropsWithChildren) {
   );
 
   const [registered, setRegistered] = useState<{ scope: string; ids: string[] } | null>(null);
+  // Phase C's phone record is no longer authoritative. Account registrations come from /me.
   useEffect(() => {
-    let active = true;
-    void loadRegisteredEventIds(storage).catch(() => [] as string[]).then((ids) => {
-      if (active) setRegistered({ scope, ids });
-    });
-    return () => { active = false; };
-  }, [scope, storage]);
+    void discardLegacyRegistrations(storage).catch(() => {});
+  }, [storage]);
   const ready = registered?.scope === scope;
   const registeredEventIds = useMemo(() => ready ? registered.ids : [], [ready, registered]);
+
+  // Keep the last server response in memory while offline; never count phone records as activity.
+  const [registrations, setRegistrations] = useState<{ scope: string; list: MyRegistration[] } | null>(null);
+  const verified = state.status === 'signedIn' && state.verified;
+  const refreshRegistrations = useCallback(async () => {
+    if (!api || !verified || offline) return;
+    try {
+      const list = await api.myRegistrations();
+      setRegistrations({ scope, list });
+      const ids = list.map((registration) => registration.event.id);
+      setRegistered({ scope, ids });
+    } catch {
+      // Keep what we have; a 401 is handled by the client and signs out.
+    }
+  }, [api, offline, scope, storage, verified]);
+  useEffect(() => { void refreshRegistrations(); }, [refreshRegistrations]);
 
   const register = useCallback(async (eventId: string) => {
     const ids = await registerForEvent({
@@ -58,14 +75,16 @@ export function AccountProvider({ children }: PropsWithChildren) {
       registeredIds: ready ? registeredEventIds : null,
       onCount: setRegisteredCount,
       markOffline,
-      save: (next) => saveRegisteredEventIds(storage, next),
+      save: async () => {},
     });
     setRegistered({ scope, ids });
-  }, [api, markOffline, offline, ready, registeredEventIds, scope, setRegisteredCount, state, storage]);
+    void refreshRegistrations();
+  }, [api, markOffline, offline, ready, refreshRegistrations, registeredEventIds, scope, setRegisteredCount, state, storage]);
 
   const value = useMemo(() => ({
     accountId, storage, weekChoices, registeredEventIds, registrationsReady: ready, register, api,
-  }), [accountId, api, ready, register, registeredEventIds, storage, weekChoices]);
+    registrations: registrations?.scope === scope ? registrations.list : null, refreshRegistrations,
+  }), [accountId, api, ready, refreshRegistrations, register, registeredEventIds, registrations, scope, storage, weekChoices]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

@@ -1,0 +1,71 @@
+{
+  "id": "route-math-113-draft",
+  "version": 1,
+  "status": "draft",
+  "progress": null,
+  "error": null,
+  "buildingId": "b-mathematics",
+  "destination": "Room 113",
+  "startFloor": "1",
+  "destinationFloor": "1",
+  "corridorWidthM": 2.0,
+  "ceilingHeightM": 2.7,
+  "steps": [
+    {
+      "id": "s1",
+      "source": "ai",
+      "confidence": 0.96,
+      "tSec": 0.0,
+      "note": "glass entrance door with Door Access Reminder sign",
+      "type": "door",
+      "label": "Main entrance"
+    },
+    {
+      "id": "s2",
+      "source": "ai",
+      "confidence": 0.98,
+      "tSec": 3.5,
+      "note": "long glass-walled hallway with brick wall and bulletin boards on right",
+      "type": "walk",
+      "lengthM": 17.64
+    },
+    {
+      "id": "s3",
+      "source": "ai",
+      "confidence": 0.95,
+      "tSec": 28.7,
+      "note": "turn right into brick alcove past water fountain",
+      "type": "turn",
+      "direction": "right"
+    },
+    {
+      "id": "s4",
+      "source": "ai",
+      "confidence": 0.94,
+      "tSec": 30.2,
+      "note": "approach wooden door",
+      "type": "walk",
+      "lengthM": 2.688
+    },
+    {
+      "id": "s5",
+      "source": "ai",
+      "confidence": null,
+      "tSec": 37.54,
+      "note": null,
+      "type": "door",
+      "label": "Room 113"
+    }
+  ],
+  "checks": [
+    {
+      "id": "leg_length_range",
+      "level": "pass",
+      "message": "No walk is shorter than 0.5 m.",
+      "stepId": null
+    }
+  ],
+  "stats": null,
+  "createdAt": "2026-11-20T09:00:00-05:00",
+  "confirmedAt": null
+}

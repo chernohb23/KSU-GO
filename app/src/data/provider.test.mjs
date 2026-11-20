@@ -256,6 +256,55 @@ test('a failed preference write leaves the card available for retry', async () =
   assert.equal(store.snapshot()[0].id, 'a');
 });
 
+test('saving from event details replaces a previous skip and persists one fresh saved entry', async () => {
+  const storage = memoryStorage();
+  const choices = new WeekChoices(storage);
+  const event = { id: 'a', title: 'Build night', startsAt: '2026-11-20T10:00:00Z', organizer: 'Robotics Club', category: 'academic' };
+  await choices.choose(event, 'skip');
+  const updated = { ...event, title: 'New build night', startsAt: '2026-11-20T12:00:00Z' };
+  await choices.setSaved(updated, true);
+  await choices.setSaved(updated, true);
+  const restored = new WeekChoices(storage);
+  await restored.load();
+  assert.equal(restored.snapshot().length, 1);
+  assert.deepEqual(restored.snapshot()[0].saved, { title: updated.title, startsAt: updated.startsAt });
+});
+
+test('Save and swipe removal share the same record and survive reopening', async () => {
+  const storage = memoryStorage();
+  const choices = new WeekChoices(storage);
+  const event = { id: 'a', title: 'Studio', startsAt: '2026-11-20T10:00:00Z', organizer: 'Arts', category: 'arts' };
+  await choices.setSaved(event, true);
+  await choices.remove(event.id);
+  const restored = new WeekChoices(storage);
+  await restored.load();
+  assert.deepEqual(restored.snapshot(), []);
+  await restored.setSaved(event, true);
+  await restored.setSaved(event, false);
+  await restored.setSaved(event, false);
+  assert.deepEqual(restored.snapshot(), []);
+});
+
+test('a failed Save toggle keeps the prior choice and can be retried', async () => {
+  const storage = memoryStorage();
+  const choices = new WeekChoices(storage);
+  const event = { id: 'a', title: 'Studio', startsAt: '2026-11-20T10:00:00Z', organizer: 'Arts', category: 'arts' };
+  await choices.choose(event, 'skip');
+  const write = storage.setItem;
+  storage.setItem = async () => { throw new Error('disk full'); };
+  await assert.rejects(choices.setSaved(event, true), /disk full/);
+  assert.equal(choices.snapshot()[0].saved, null);
+  storage.setItem = write;
+  await choices.setSaved(event, true);
+  const remove = storage.removeItem;
+  storage.removeItem = async () => { throw new Error('disk full'); };
+  await assert.rejects(choices.setSaved(event, false), /disk full/);
+  assert.equal(choices.snapshot()[0].saved.title, event.title);
+  storage.removeItem = remove;
+  await choices.setSaved(event, false);
+  assert.deepEqual(choices.snapshot(), []);
+});
+
 test('demo reset clears KSU-GO data, orders pending writes, and isolates the next session', async () => {
   const keys = new Map([['expo.preference', 'keep'], ['ksu-go.device-id', 'old'], ['ksu-go.organizer-mode', 'on']]);
   const backing = {

@@ -22,7 +22,7 @@ export type FlagsHandle = {
 
 /**
  * Adds the flags for `events` to `flagsLayer` (an empty group the scene owns),
- * placing them at building entrances from `campus`. `now` is the ISO time sent
+ * clustering them inside building roofs from `campus`. `now` is the ISO time sent
  * with campus:load; flag state and height follow CONTRACTS.md §2.
  */
 export type CreateFlags = (

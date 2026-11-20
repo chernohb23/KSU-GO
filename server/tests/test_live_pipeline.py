@@ -64,7 +64,7 @@ def test_live_upload_stages_steps_stats_and_cache_hit(data_dir, monkeypatch):
         draft, _ = wait_for_draft(client, pending.json()["id"])
         assert stages == ["timeline", "assemble", "verify"]
         assert draft["steps"][0]["type"] == draft["steps"][-1]["type"] == "door"
-        assert draft["steps"][-1]["label"] == "Room 204"
+        assert draft["steps"][-1]["label"] == draft["destination"] == "Room 310"  # the event's room
         assert draft["checks"] and not any(c["level"] == "fail" for c in draft["checks"])
         assert draft["corridorWidthM"] == 2.0 and draft["ceilingHeightM"] == 2.7
         assert draft["stats"]["videoSec"] == 1 and draft["stats"]["processingSec"] > 0

@@ -4,7 +4,7 @@ import test from 'node:test';
 import { editSteps, nextIssue, canConfirm } from './review.ts';
 import { OrganizerSession } from './session.ts';
 
-const draft = JSON.parse(readFileSync(new URL('../../../shared/fixtures/routes/placeholder.draft.json', import.meta.url)));
+const draft = JSON.parse(readFileSync(new URL('../../../shared/fixtures/route.draft-flawed.json', import.meta.url)));
 const shortWalk = draft.steps.findIndex(step => step.id === 's12');
 const storage = { getAllKeys: async () => [], setItem: async () => {} };
 

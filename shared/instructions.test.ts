@@ -28,9 +28,14 @@ function step(type: Step["type"], fields: Record<string, unknown> = {}): Step {
 
 describe("stepInstruction", () => {
   it("describes doors and always names the route destination on its last step", () => {
-    expect(stepInstruction(oneStep(step("door", { label: "Main entrance" })), 0)).toBe("Room 204 is here");
+    expect(stepInstruction(oneStep(step("door", { label: "Main entrance" })), 0)).toBe("You made it! Room 204 is right here.");
     expect(stepInstruction(oneStep(step("door", { label: "Main entrance" }), { steps: [step("door", { label: "Main entrance" }), step("door", { label: "Side door" })] }), 0)).toBe("Go through the main entrance");
-    expect(stepInstruction(oneStep(step("door", { label: "Wrong label" })), 0)).toBe("Room 204 is here");
+    expect(stepInstruction(oneStep(step("door", { label: "Wrong label" })), 0)).toBe("You made it! Room 204 is right here.");
+  });
+
+  it("welcomes arrivals using numbered and named room labels", () => {
+    expect(stepInstruction(oneStep(step("door"), { destination: " 113 " }), 0)).toBe("You made it! Room 113 is right here.");
+    expect(stepInstruction(oneStep(step("door"), { destination: " Atrium " }), 0)).toBe("You made it! Atrium is right here.");
   });
 
   it("rounds walk lengths and includes a trimmed landmark note", () => {
@@ -73,7 +78,7 @@ describe("stepInstruction", () => {
       "Walk 2 m, out of the stairwell",
       "Turn left",
       "Walk 14 m, past the water fountain",
-      "Room 204 is here",
+      "You made it! Room 204 is right here.",
     ]);
   });
 });

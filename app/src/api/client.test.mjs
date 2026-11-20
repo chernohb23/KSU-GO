@@ -8,6 +8,64 @@ const jsonFetcher = (result, calls) => async (input, init = {}) => {
   return new Response(JSON.stringify(result), { status: 200, headers: { 'content-type': 'application/json' } });
 };
 
+test('organization, follow, profile, registration and event-management calls use the contract paths and bodies', async () => {
+  const calls = [];
+  const client = createApiClient('http://campus.example/', jsonFetcher({}, calls), undefined, undefined,
+    { token: () => 'owner-token', onUnauthorized() {} });
+  const profile = { name: 'Maya', major: null, classYear: 2028, bio: 'Hello', avatarColor: 'amber' };
+  const org = { name: 'Chess', description: 'Play chess', logo: { initials: 'CH', color: 'gold' },
+    memberCount: 12, meets: null, contactEmail: null, website: null };
+  const fields = { title: 'Meetup', description: 'Build', category: 'academic', partnerOrganizationId: null, tags: [],
+    startsAt: '2026-11-21T18:00:00-05:00', durationMin: 60, location: { buildingId: 'b-mathematics', room: '113' }, capacity: null };
+  const signal = new AbortController().signal;
+  await client.updateProfile(profile);
+  await client.myRegistrations(signal);
+  await client.listOrganizations(signal);
+  await client.getOrganization('org/one', signal);
+  await client.organizationEvents('org/one', 'past', signal);
+  await client.createOrganization(org);
+  await client.updateOrganization('org/one', org);
+  await client.setFollowing('org/one', true);
+  await client.setFollowing('org/one', false);
+  await client.createEvent({ ...fields, organizationId: 'org/one' });
+  await client.editEvent('ev/one', fields);
+  await client.cancelEvent('ev/one');
+  await client.eventRegistrations('ev/one', signal);
+  await client.eventDirections('ev/one', signal);
+  assert.deepEqual(calls.map(({ input, init }) => [input.replace('http://campus.example/api', ''), init.method ?? 'GET']), [
+    ['/me/profile', 'PUT'], ['/me/registrations', 'GET'], ['/organizations', 'GET'], ['/organizations/org%2Fone', 'GET'],
+    ['/organizations/org%2Fone/events?when=past', 'GET'], ['/organizations', 'POST'], ['/organizations/org%2Fone', 'PUT'],
+    ['/organizations/org%2Fone/follow', 'POST'], ['/organizations/org%2Fone/follow', 'DELETE'],
+    ['/events', 'POST'], ['/events/ev%2Fone', 'PUT'], ['/events/ev%2Fone/cancel', 'POST'],
+    ['/events/ev%2Fone/registrations', 'GET'], ['/events/ev%2Fone/directions', 'GET'],
+  ]);
+  for (const { init } of calls) assert.equal(new Headers(init.headers).get('authorization'), 'Bearer owner-token');
+  for (const index of [1, 2, 3, 4, 12, 13]) assert.equal(calls[index].init.signal, signal);
+  for (const [index, body] of [[0, profile], [5, org], [6, org], [9, { ...fields, organizationId: 'org/one' }], [10, fields]]) {
+    assert.deepEqual(JSON.parse(calls[index].init.body), body);
+    assert.equal(new Headers(calls[index].init.headers).get('content-type'), 'application/json');
+  }
+  for (const index of [7, 8, 11]) assert.equal(calls[index].init.body, undefined);
+});
+
+test('an upload needs an event before creating multipart data or opening the network', async () => {
+  const unexpected = () => { throw new Error('Unexpected transport'); };
+  const client = createApiClient('http://campus.example', unexpected, unexpected, unexpected);
+  await assert.rejects(client.uploadRoute({ video: {}, startFloor: '1', destinationFloor: '1' }), /Choose the event/);
+});
+
+test('ownership and directions conflicts preserve their codes without expiring the session', async () => {
+  for (const [status, code] of [[403, 'forbidden'], [409, 'room_has_route'], [409, 'event_cancelled']]) {
+    let expired = false;
+    const client = createApiClient('http://campus.example',
+      async () => new Response(JSON.stringify({ error: { code, message: 'Server field message.' } }), { status }),
+      undefined, undefined, { token: () => 'owner-token', onUnauthorized: () => { expired = true; } });
+    await assert.rejects(client.editEvent('ev/one', {}), (error) =>
+      error instanceof ApiRequestError && error.status === status && error.code === code && error.message === 'Server field message.');
+    assert.equal(expired, false);
+  }
+});
+
 test('uses the contract method, path, query, and JSON body for event and route endpoints', async () => {
   const calls = [];
   const client = createApiClient('https://campus.example/', jsonFetcher({ ok: true, pipelineMode: 'mock' }, calls));
@@ -48,11 +106,11 @@ test('sends route upload fields as multipart form data without forcing a content
     eventId: 'event-1',
   });
 
-  assert.equal(calls[0].input, 'http://campus.example/api/routes');
+  assert.equal(calls[0].input, 'http://campus.example/api/routes?eventId=event-1');
   assert.equal(calls[0].init.method, 'POST');
   assert.equal(calls[0].init.body, form);
   assert.equal(calls[0].init.headers, undefined);
-  assert.deepEqual(form.entries.map(([name]) => name), ['video', 'buildingId', 'destination', 'startFloor', 'destinationFloor', 'eventId']);
+  assert.deepEqual(form.entries.map(([name]) => name), ['video', 'startFloor', 'destinationFloor']);
   assert.deepEqual(form.entries[0][1], { uri: 'file:///room.mp4', name: 'room.mp4', type: 'video/mp4' });
 });
 
@@ -97,7 +155,7 @@ test('sends actual byte progress and preserves server errors on the multipart tr
   const first = client.uploadRoute(input, (pct) => progress.push(pct));
   const xhr = requests[0];
   assert.equal(xhr.method, 'POST');
-  assert.equal(xhr.url, 'http://campus.example/api/routes');
+  assert.equal(xhr.url, 'http://campus.example/api/routes?eventId=ev-04');
   assert.equal(xhr.body, form);
   xhr.upload.onprogress({ lengthComputable: true, loaded: 40, total: 100 });
   assert.deepEqual(progress, [40]);
@@ -120,7 +178,7 @@ test('an active upload can keep going, but a stalled transfer or response releas
   let aborted = false;
   const xhr = { upload: {}, open() {}, send() {}, abort() { aborted = true; this.onabort(); } };
   const client = createApiClient('http://campus.example', fetch, () => ({ append() {} }), () => xhr);
-  const upload = client.uploadRoute({ video: {}, buildingId: '', destination: '', startFloor: '1', destinationFloor: '1' }, () => {});
+  const upload = client.uploadRoute({ video: {}, eventId: 'ev-04', buildingId: '', destination: '', startFloor: '1', destinationFloor: '1' }, () => {});
   const rejected = assert.rejects(upload, /connection/i);
   t.mock.timers.tick(80_000);
   xhr.upload.onprogress({ lengthComputable: true, loaded: 100, total: 100 });
@@ -200,7 +258,7 @@ test('the multipart upload carries the Bearer token and a 401 signs out that tok
   const expired = [];
   const client = createApiClient('http://campus.example', () => { throw Error('Unexpected fetch'); }, () => ({ append() {} }), createXHR,
     { token: () => 'tok-noah', onUnauthorized: (sent) => expired.push(sent) });
-  const input = { video: { uri: 'file:///a.mov', name: 'a.mov', type: 'video/quicktime' }, buildingId: 'b', destination: 'Room 1', startFloor: '1', destinationFloor: '1' };
+  const input = { eventId: 'ev/04', video: { uri: 'file:///a.mov', name: 'a.mov', type: 'video/quicktime' }, buildingId: 'b', destination: 'Room 1', startFloor: '1', destinationFloor: '1' };
   const pending = client.uploadRoute(input, () => {});
   assert.equal(requests[0].headers.Authorization, 'Bearer tok-noah');
   requests[0].status = 401;

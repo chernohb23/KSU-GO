@@ -12,9 +12,9 @@
   "ceilingHeightM": 2.7,
   "steps": [
     { "id": "s1", "type": "door", "label": "Main entrance", "source": "organizer", "confidence": null, "tSec": null, "note": null },
-    { "id": "s2", "type": "walk", "lengthM": 18, "source": "organizer", "confidence": null, "tSec": null, "note": "Approximate distance from the recording." },
+    { "id": "s2", "type": "walk", "lengthM": 18, "source": "organizer", "confidence": null, "tSec": null, "note": null },
     { "id": "s3", "type": "turn", "direction": "right", "source": "organizer", "confidence": null, "tSec": null, "note": null },
-    { "id": "s4", "type": "walk", "lengthM": 3, "source": "organizer", "confidence": null, "tSec": null, "note": "Approximate distance from the recording." },
+    { "id": "s4", "type": "walk", "lengthM": 3, "source": "organizer", "confidence": null, "tSec": null, "note": null },
     { "id": "s5", "type": "door", "label": "Room 113", "source": "organizer", "confidence": null, "tSec": null, "note": null }
   ],
   "checks": [

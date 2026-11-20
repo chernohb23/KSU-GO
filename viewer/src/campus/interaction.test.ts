@@ -61,7 +61,7 @@ const event: Event = {
   partnerOrganizationId: null, category: "other", tags: [],
   startsAt: "2026-11-17T13:00:00Z", endsAt: "2026-11-17T14:00:00Z",
   location: { buildingId: campus.buildings[0].id, room: "101" },
-  routeId: null, capacity: null, registeredCount: 0,
+  routeId: null, capacity: null, registeredCount: 0, status: "active",
 };
 
 describe("campus scene tap and selection", () => {
@@ -114,7 +114,7 @@ describe("campus scene tap and selection", () => {
     vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
     vi.stubGlobal("window", { devicePixelRatio: 1, matchMedia: () => ({ matches: false }) });
     vi.stubGlobal("document", {
-      createElement: () => ({ style: {}, setAttribute() {}, append() {}, remove() {} }),
+      createElement: () => Object.assign(new EventTarget(), { style: {}, setAttribute() {}, append() {}, remove() {} }),
     });
     vi.stubGlobal("ResizeObserver", class {
       observe() {}
@@ -176,8 +176,10 @@ describe("campus scene tap and selection", () => {
   it("adds non-interactive building labels and positions them on the map", () => {
     const labels = overlays.filter(element => campus.buildings.some(building => building.name === element.textContent));
     expect(labels.map(label => label.textContent)).toEqual(campus.buildings.map(building => building.name));
-    expect(labels.some(label => label.style.left?.endsWith("%"))).toBe(true);
+    expect(labels.some(label => label.style.left?.endsWith("px"))).toBe(true);
     expect(labels.every(label => label.style.pointerEvents === "none")).toBe(true);
+    expect(labels.every(label => label.style.whiteSpace === "nowrap")).toBe(true);
+    expect(labels.every(label => label.style.textOverflow === "ellipsis")).toBe(true);
   });
 
   it("campus:select highlights its flag and eases the camera to its ground position", () => {

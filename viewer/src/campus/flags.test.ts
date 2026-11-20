@@ -4,6 +4,8 @@ import fixture from "../../../shared/fixtures/campus.json";
 import type { Campus, Event } from "../../../shared/types";
 import { createFlags } from "./flags";
 import { palette } from "../palette";
+import { pointInRing, distToRing } from "./geometry";
+import { ROOF_DECK_OFFSET_M, roofCenter } from "./roof";
 
 const now = Date.UTC(2026, 10, 17, 12);
 const minutes = (offset: number) => new Date(now + offset * 60_000).toISOString();
@@ -16,7 +18,7 @@ function event(id: string, start: number, end: number, buildingId = building.id)
     partnerOrganizationId: null, category: "academic", tags: [],
     startsAt: minutes(start), endsAt: minutes(end),
     location: { buildingId, room: "101" },
-    routeId: null, capacity: null, registeredCount: 0,
+    routeId: null, capacity: null, registeredCount: 0, status: "active",
   };
 }
 
@@ -41,11 +43,14 @@ describe("campus event flags", () => {
     const group = new Group();
     const flags = createFlags(group, campus, [event("sample", start, end)], minutes(0));
     const stem = pole(group, "sample");
-    const [x, z] = building.entrance;
+    const [x, z] = roofCenter(building.footprint);
+    const roof = building.heightM + ROOF_DECK_OFFSET_M;
+    group.updateMatrixWorld(true);
     const bounds = new Box3().setFromObject(stem);
-    expect(stem.getWorldPosition(new Vector3()).toArray()).toEqual([x, height / 2, z]);
-    expect(bounds.min.y).toBeCloseTo(0);
-    expect(bounds.max.y).toBeCloseTo(height);
+    expect(stem.getWorldPosition(new Vector3()).toArray()).toEqual([x, roof + height / 2, z]);
+    expect(bounds.min.y).toBeCloseTo(roof);
+    expect(bounds.max.y).toBeCloseTo(roof + height);
+    expect(pointInRing(x, z, building.footprint)).toBe(true);
     const marker = group.getObjectByName("sample")!.getObjectByName("flag-marker") as Mesh;
     expect((marker.material as MeshBasicMaterial).color.getHex()).toBe(color);
     expect(marker.geometry.index?.count ?? marker.geometry.getAttribute("position").count).toBe(
@@ -55,22 +60,27 @@ describe("campus event flags", () => {
     flags.dispose();
   });
 
-  it("fans out flags sharing an entrance and omits ended and unknown-building events", () => {
+  it("clusters flags on their roof and omits cancelled, ended and unknown-building events", () => {
     const group = new Group();
     const flags = createFlags(group, campus, [
       event("first", 10, 50), event("second", 10, 50),
-      event("ended", -25, 0), event("unknown", 10, 50, "missing"),
+      event("ended", -25, 0), event("unknown", 10, 50, "missing"), { ...event("cancelled", 10, 50), status: "cancelled" },
     ], minutes(0));
     const first = pole(group, "first");
     const second = pole(group, "second");
     const firstPosition = first.getWorldPosition(new Vector3());
     const secondPosition = second.getWorldPosition(new Vector3());
-    expect(firstPosition.x).toBeLessThan(secondPosition.x);
-    expect(firstPosition.x + secondPosition.x).toBeCloseTo(2 * building.entrance[0]);
-    expect(firstPosition.z + secondPosition.z).toBeCloseTo(2 * building.entrance[1]);
+    expect([firstPosition.x, firstPosition.z]).toEqual(roofCenter(building.footprint));
+    expect(firstPosition.distanceTo(secondPosition)).toBeGreaterThan(0);
+    expect(firstPosition.distanceTo(secondPosition)).toBeLessThanOrEqual(18);
+    for (const point of [firstPosition, secondPosition]) {
+      expect(pointInRing(point.x, point.z, building.footprint)).toBe(true);
+      expect(distToRing(point.x, point.z, building.footprint)).toBeGreaterThan(2.6);
+    }
     for (const stem of [first, second]) expect(stem.rotation.toArray().slice(0, 3)).toEqual([0, 0, 0]);
     expect(group.getObjectByName("ended")).toBeUndefined();
     expect(group.getObjectByName("unknown")).toBeUndefined();
+    expect(group.getObjectByName("cancelled")).toBeUndefined();
     flags.dispose();
   });
 

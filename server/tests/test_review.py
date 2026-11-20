@@ -4,17 +4,30 @@ from shutil import copytree
 import pytest
 
 from conftest import FIXTURES_DIR
-from video_helpers import upload, wait_for_draft
+from video_helpers import owned_event, upload, wait_for_draft
 
 
-FIXTURE = "/api/routes/route-placeholder-draft"
+STAGE_DRAFT = "/api/routes/route-math-113-draft"
 
 
 def without_short_walk(route):
     return [step for step in route["steps"] if step["id"] != "s12"]
 
 
-def test_draft_edits_keep_checks_for_untouched_steps(client):
+@pytest.fixture
+def FIXTURE(client, monkeypatch):
+    """A mock draft (the flawed template under a new id) uploaded for an event Noah owns."""
+    import mock_pipeline
+
+    monkeypatch.setattr(mock_pipeline, "STAGE_SECONDS", 0.02)
+    response = upload(client)
+    assert response.status_code == 202, response.text
+    route_id = response.json()["id"]
+    wait_for_draft(client, route_id)
+    return f"/api/routes/{route_id}"
+
+
+def test_draft_edits_keep_checks_for_untouched_steps(client, FIXTURE):
     steps = client.get(FIXTURE).json()["steps"]
     next(step for step in steps if step["id"] == "s9")["source"] = "organizer"
     updated = client.put(f"{FIXTURE}/steps", json={"steps": steps})
@@ -29,7 +42,7 @@ def test_draft_edits_keep_checks_for_untouched_steps(client):
     assert [check["id"] for check in updated.json()["checks"]] == ["leg_length_range"]
 
 
-def test_draft_edits_recompute_short_walk_failures(client):
+def test_draft_edits_recompute_short_walk_failures(client, FIXTURE):
     steps = without_short_walk(client.get(FIXTURE).json())
     walk = next(step for step in steps if step["id"] == "s2")
     walk["lengthM"] = 0.5
@@ -54,7 +67,7 @@ def test_draft_edits_recompute_short_walk_failures(client):
     lambda steps: [steps[0], *steps],
     lambda steps: [steps[0], dict(steps[1], lengthM="8"), *steps[2:]],
 ], ids=["empty", "missing-entrance", "missing-exit", "wrong-label", "duplicate-ids", "wrong-type"])
-def test_invalid_steps_leave_draft_unchanged(client, change):
+def test_invalid_steps_leave_draft_unchanged(client, FIXTURE, change):
     original = client.get(FIXTURE).json()
     response = client.put(f"{FIXTURE}/steps", json={"steps": change(original["steps"])})
     assert response.status_code == 422
@@ -62,7 +75,7 @@ def test_invalid_steps_leave_draft_unchanged(client, change):
     assert client.get(FIXTURE).json() == original
 
 
-def test_confirmation_rejects_a_failed_check(client):
+def test_confirmation_rejects_a_failed_check(client, FIXTURE):
     response = client.post(f"{FIXTURE}/confirm")
     assert response.status_code == 409
     assert response.json()["error"] == {
@@ -76,24 +89,29 @@ def test_confirmation_rejects_a_failed_check(client):
     ("PUT", "steps", {"json": {"steps": []}}),
     ("POST", "confirm", {}),
 ])
-def test_confirmed_route_cannot_be_edited_or_confirmed_again(client, method, suffix, kwargs):
-    response = client.request(method, f"/api/routes/route-sample/{suffix}", **kwargs)
+def test_confirmed_route_cannot_be_edited_or_confirmed_again(client, FIXTURE, method, suffix, kwargs):
+    draft = client.get(FIXTURE).json()
+    assert client.put(f"{FIXTURE}/steps", json={"steps": without_short_walk(draft)}).status_code == 200
+    assert client.post(f"{FIXTURE}/confirm").status_code == 200
+    response = client.request(method, f"{FIXTURE}/{suffix}", **kwargs)
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "wrong_status"
 
 
-def test_fixture_confirm_resets_route_and_ephemeral_event_links_on_restart(make_client):
+def test_stage_draft_confirm_gives_room_113_directions_and_resets_on_restart(make_client):
     with make_client() as client:
-        draft = client.get(FIXTURE).json()
-        edited = client.put(f"{FIXTURE}/steps", json={"steps": without_short_walk(draft)})
-        assert edited.status_code == 200
-        confirmed = client.post(f"{FIXTURE}/confirm")
+        draft = client.get(STAGE_DRAFT).json()
+        assert client.get("/api/events/ev-23").json()["routeId"] is None
+        confirmed = client.post(f"{STAGE_DRAFT}/confirm")
         assert confirmed.status_code == 200
         assert confirmed.json()["status"] == "confirmed"
-        assert client.get("/api/events/ev-10").json()["routeId"] == draft["id"]
+        # Every event in Room 113 uses it at once, the Game Development Club's included.
+        assert client.get("/api/events/ev-25").json()["routeId"] == draft["id"]
+        assert client.get("/api/events/ev-23").json()["routeId"] == draft["id"]
     with make_client() as client:
-        assert client.get(FIXTURE).json() == draft
-        assert client.get("/api/events/ev-10").json()["routeId"] is None
+        # Bundled routes change in memory only, so every rehearsal starts from the draft.
+        assert client.get(STAGE_DRAFT).json() == draft
+        assert client.get("/api/events/ev-23").json()["routeId"] is None
 
 
 def test_uploaded_draft_edits_and_confirmed_room_links_survive_restart(
@@ -105,21 +123,18 @@ def test_uploaded_draft_edits_and_confirmed_room_links_survive_restart(
     fixtures_dir = copytree(FIXTURES_DIR, tmp_path / "fixtures")
     seeds_path = fixtures_dir / "events.seed.json"
     seeds = json.loads(seeds_path.read_text())
-    building_id = next(seed["location"]["buildingId"] for seed in seeds if seed["id"] == "ev-04")
     for seed in seeds:
-        if seed["id"] in {"ev-02", "ev-10"}:
-            seed["location"]["room"] = " 204 "
-        if seed["id"] == "ev-06":
-            seed["location"]["buildingId"] = building_id
+        if seed["id"] == "ev-22":
+            seed["location"]["room"] = " 310 "  # still the same room as "310"
     seeds_path.write_text(json.dumps(seeds))
 
     with make_client(fixtures_dir) as client:
-        response = upload(
-            client, buildingId=building_id, destination=" rOoM 204  ", eventId="ev-04",
-        )
+        event_id = owned_event(client, building="b-library", room="310")
+        response = upload(client, eventId=event_id)
         assert response.status_code == 202
         route_id = response.json()["id"]
         draft, _ = wait_for_draft(client, route_id)
+        assert draft["destination"] == "Room 310"
         route_url = f"/api/routes/{route_id}"
         edited = client.put(f"{route_url}/steps", json={"steps": without_short_walk(draft)})
         assert edited.status_code == 200
@@ -134,9 +149,8 @@ def test_uploaded_draft_edits_and_confirmed_room_links_survive_restart(
 
     with make_client(fixtures_dir) as client:
         assert client.get(route_url).json() == confirmed
-        events = {event["id"]: event for event in client.get("/api/events").json()}
-        assert events["ev-04"]["routeId"] == route_id  # Explicit event replaces its old route.
-        assert events["ev-10"]["routeId"] == route_id  # Matching room with no route.
-        assert events["ev-08"]["routeId"] == "route-sample"  # Existing route stays.
-        assert events["ev-02"]["routeId"] is None  # Same room number, different building.
-        assert events["ev-06"]["routeId"] is None  # Same building, different room.
+        events = {event["id"]: event for event in client.get("/api/events?range=week").json()}
+        assert events[event_id]["routeId"] == route_id  # the event it was uploaded for
+        assert events["ev-07"]["routeId"] == route_id  # University Library, same room
+        assert events["ev-22"]["routeId"] == route_id  # Green Owls, room written " 310 "
+        assert events["ev-10"]["routeId"] == "route-sample"  # another room keeps its route
