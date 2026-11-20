@@ -8,8 +8,9 @@ import { palette } from "../palette";
 import type { ViewerScene } from "../scene";
 import { createCampusWorld, type BuildingData, type CampusInfo } from "./build";
 import { createFlags, faceFlagsToCamera } from "./flags";
+import { roofCenter } from "./roof";
 import { createRenderLoop } from "./renderLoop";
-import { nativeLabelLayout, placeLabels, type Rect, type LabelCandidate } from "./labelPlacement";
+import { labelOpacity, nativeLabelLayout, placeLabels, type Rect, type LabelCandidate } from "./labelPlacement";
 
 // Map "pitch": polar angle from straight down. Portrait looks a little more
 // steeply down, so less near ground fills the bottom of a tall screen.
@@ -63,10 +64,11 @@ export function createCampusScene(
   container.append(credit);
   const legend = createFlagLegend();
   container.append(legend);
-  const labels: { id: string; element: HTMLElement; building: Mesh }[] = [];
+  const labels: { id: string; element: HTMLElement; building: Mesh; anchor: Vector3 }[] = [];
   const labelOffsets = new Map<string, { x: number; y: number }>();
 
   // ---- render on demand: frames run only while something moves --------------
+  let openingDistance = Infinity;
   let userMoved = false;
   let info: CampusInfo | undefined;
   let selectedId: string | null = null;
@@ -100,6 +102,15 @@ export function createCampusScene(
     return visible ? rect : undefined;
   }
 
+  function nativeViewport(width: number, height: number) {
+    const style = window.ReactNativeWebView ? window.getComputedStyle?.(document.documentElement) : undefined;
+    const value = (name: string, fallback: number) => {
+      const parsed = Number.parseFloat(style?.getPropertyValue(`--map-control-${name}`) ?? "");
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
+    return nativeLabelLayout(width, height, value("top", 76), value("left", 20), value("right", 20), value("clearance", 130));
+  }
+
   function render() {
     const d = camera.position.distanceTo(controls.target);
     fog.near = d * 1.1;
@@ -109,12 +120,14 @@ export function createCampusScene(
     const width = container.clientWidth, height = container.clientHeight;
     const obstacles: Rect[] = [];
     const candidates: LabelCandidate[] = [];
-    for (const { id, element, building } of labels) {
-      const rect = screenRect(building, width, height);
-      if (!rect) { element.hidden = true; continue; }
+    const opacity = labelOpacity(d, openingDistance);
+    for (const { id, element, anchor } of labels) {
+      projected.copy(anchor).project(camera);
+      if (Math.abs(projected.z) > 1) continue;
       const active = world.flagsLayer.children.some(flag => flag.userData.buildingId === id);
       const selected = world.flagsLayer.children.some(flag => flag.userData.buildingId === id && flag.userData.selected);
-      candidates.push({ id, building: rect, width: Math.min(200, width - 40, 16 + (element.textContent?.length ?? 0) * 5.8),
+      candidates.push({ id, anchor: { x: (projected.x + 1) * width / 2, y: (1 - projected.y) * height / 2 },
+        width: Math.min(200, width - 40, 16 + (element.textContent?.length ?? 0) * 5.8),
         height: 20, priority: selected ? 1000 : id === 'b-mathematics' ? 100 : active ? 20 : 1,
         offset: labelOffsets.get(id) });
     }
@@ -123,29 +136,25 @@ export function createCampusScene(
       if (rect) obstacles.push(rect);
     }
     const native = !!window.ReactNativeWebView;
-    const style = native ? window.getComputedStyle?.(document.documentElement) : undefined;
-    const controlValue = (name: string, fallback: number) => {
-      const value = Number.parseFloat(style?.getPropertyValue(`--map-control-${name}`) ?? "");
-      return Number.isFinite(value) ? value : fallback;
-    };
-    const nativeLayout = nativeLabelLayout(width, height, controlValue("top", 76), controlValue("left", 20),
-      controlValue("right", 20), controlValue("clearance", 130));
+    const nativeLayout = nativeViewport(width, height);
     // The app owns its toolbar and credit. Browser mode has its own collapsible legend.
-    if (native) obstacles.push(...nativeLayout.obstacles);
-    else obstacles.push({ left: width - (legend.open ? 216 : 64), top: 12, right: width - 16, bottom: legend.open ? 180 : 60 });
-    const placements = placeLabels(candidates, obstacles, native ? nativeLayout.viewport : {
+    if (!native) obstacles.push({ left: width - (legend.open ? 216 : 64), top: 12, right: width - 16, bottom: legend.open ? 180 : 60 });
+    const placements = placeLabels(opacity > 0 ? candidates : [], obstacles, native ? nativeLayout.viewport : {
       left: 20, top: 16, right: width - 20, bottom: height - 40,
     });
     for (const candidate of candidates) {
       const rect = placements.get(candidate.id);
       if (rect) labelOffsets.set(candidate.id, {
-        x: rect.left - (candidate.building.left + candidate.building.right) / 2,
-        y: rect.top - candidate.building.top,
+        x: rect.left - candidate.anchor.x,
+        y: rect.top - candidate.anchor.y,
       });
     }
     for (const { id, element } of labels) {
       const rect = placements.get(id);
-      element.hidden = !rect;
+      element.style.opacity = String(rect ? opacity : 0);
+      // Invalid slots disappear immediately so a fading label can never cover a flag.
+      // Zoom itself fades continuously to zero before placements are removed.
+      element.style.visibility = rect ? "visible" : "hidden";
       if (rect) {
         element.style.width = String(rect.right - rect.left) + 'px';
         element.style.left = String(rect.left) + 'px';
@@ -247,9 +256,8 @@ export function createCampusScene(
   }
 
   /**
-   * Default view: the closest camera, centered on the Globe plaza, that keeps
-   * every focus point inside the margins (MAP-1's fit). The whole campus stays
-   * reachable by zooming out to twice that distance.
+   * Fit the campus to the usable viewport. Native opens closer around the
+   * Globe and Mathematics; the full fit remains reachable by zooming out.
    */
   function fitView(campusInfo: CampusInfo, tilt: number) {
     // Flags are not part of the fit: one far flag would pull the camera back to the forest.
@@ -263,11 +271,19 @@ export function createCampusScene(
     const target = new Vector3();
     points.forEach((p) => target.add(p));
     target.divideScalar(points.length).setY(0);
+    const native = !!window.ReactNativeWebView;
+    const width = Math.max(container.clientWidth, 1), height = Math.max(container.clientHeight, 1);
+    const { viewport } = nativeViewport(width, height);
+    const mathematics = labels.find(label => label.id === "b-mathematics");
+    if (native) target.copy(mathematics?.anchor ?? new Vector3()).multiplyScalar(0.5).setY(0);
     const marginX = 0.88, marginY = 0.84;
     const fits = (e: ReturnType<typeof extent>) =>
-      e.minX >= -marginX && e.maxX <= marginX && e.minY >= -marginY - 0.01 && e.maxY <= marginY;
+      native
+        ? e.minX >= 2 * viewport.left / width - 1 && e.maxX <= 2 * viewport.right / width - 1
+          && e.minY >= 1 - 2 * viewport.bottom / height && e.maxY <= 1 - 2 * viewport.top / height
+        : e.minX >= -marginX && e.maxX <= marginX && e.minY >= -marginY - 0.01 && e.maxY <= marginY;
     let distance = 300;
-    for (let iteration = 0; iteration < 5; iteration++) {
+    for (let iteration = 0; iteration < (native ? 1 : 5); iteration++) {
       let lo = 40, hi = 2000;
       for (let k = 0; k < 30; k++) {
         distance = (lo + hi) / 2;
@@ -277,12 +293,15 @@ export function createCampusScene(
       }
       distance = hi;
       placeCamera(target, distance, tilt);
+      if (native) break;
       const e = extent(points);
       retarget(target, distance, tilt, (e.minX + e.maxX) / 2, (e.minY + e.maxY) / 2);
     }
 
-    controls.target.copy(target);
     controls.maxDistance = Math.max(distance * 2, 380);
+    openingDistance = Math.max(MIN_DISTANCE, distance * (native ? 0.75 : 1));
+    placeCamera(target, openingDistance, tilt);
+    controls.target.copy(target);
     controls.update();
   }
 
@@ -299,6 +318,11 @@ export function createCampusScene(
     const portrait = width < height;
     camera.aspect = width / height;
     camera.fov = portrait ? 45 : 36;
+    if (window.ReactNativeWebView) {
+      const { viewport } = nativeViewport(width, height);
+      // Put the orbit target at the center of the unobscured band.
+      camera.setViewOffset(width, height, 0, (height - viewport.bottom - viewport.top) / 2, width, height);
+    } else camera.clearViewOffset();
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
     if (info && !userMoved) {
@@ -330,6 +354,7 @@ export function createCampusScene(
           element.textContent = name;
           Object.assign(element.style, {
             position: "absolute",
+            transition: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "opacity 180ms ease",
             boxSizing: "border-box",
             height: "20px",
             maxWidth: "200px",
@@ -345,8 +370,11 @@ export function createCampusScene(
             pointerEvents: "none",
             userSelect: "none",
           });
-          element.hidden = true;
-          labels.push({ id, element, building });
+          element.style.opacity = "0";
+          element.style.visibility = "hidden";
+          const source = message.campus.buildings.find(candidate => candidate.id === id)!;
+          const [x, z] = roofCenter(source.footprint);
+          labels.push({ id, element, building, anchor: new Vector3(x, source.heightM, z) });
           container.append(element);
         }
         legend.hidden = !!window.ReactNativeWebView;

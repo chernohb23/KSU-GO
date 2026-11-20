@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   offlineBubble: { height: 28, paddingHorizontal: space.s, justifyContent: 'center' },
   offlineText: { ...text.footnote, color: tone.ink, fontWeight: '600' },
   actions: { flexDirection: 'row', gap: space.s },
-  bottomControls: { position: 'absolute', alignItems: 'flex-end' },
+  bottomControls: { position: 'absolute', alignItems: 'flex-start' },
   eventsButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.l, maxWidth: '100%' },
   iconButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   credit: { position: 'absolute', textAlign: 'right', color: tone.muted, fontSize: 11, lineHeight: 14 },
